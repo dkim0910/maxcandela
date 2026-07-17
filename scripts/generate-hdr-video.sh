@@ -23,11 +23,12 @@ fi
 mkdir -p "$OUT_DIR"
 
 echo "Generating HEVC PQ clip (Safari)…"
-# 10-bit white in PQ: signal value 940 (10-bit full-range white in limited
-# range terms is handled by ffmpeg's scale); we just feed a white source and
-# tag BT.2020/PQ so the browser treats it as HDR peak white.
+# White pinned at ~1000 nits, not PQ max (10,000): luma code 723 in 10-bit
+# limited range ≈ PQ signal 0.752 ≈ 1000 nits. Requesting only what the panel
+# can sustain makes macOS carve out less headroom, so the rest of the screen
+# (SDR content) dims far less while the boost stays effectively as strong.
 ffmpeg -y -loglevel error \
-    -f lavfi -i "color=c=white:s=64x64:d=1:r=30,format=yuv420p10le" \
+    -f lavfi -i "color=c=white:s=64x64:d=1:r=30,format=yuv420p10le,lutyuv=y=723:u=512:v=512" \
     -c:v libx265 -preset fast -crf 18 \
     -pix_fmt yuv420p10le \
     -color_primaries bt2020 -color_trc smpte2084 -colorspace bt2020nc \
