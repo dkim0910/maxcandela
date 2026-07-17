@@ -22,19 +22,24 @@ fi
 
 mkdir -p "$OUT_DIR"
 
-echo "Generating HEVC PQ clip (Safari)…"
-# White pinned at ~1000 nits, not PQ max (10,000): luma code 723 in 10-bit
-# limited range ≈ PQ signal 0.752 ≈ 1000 nits. Requesting only what the panel
-# can sustain makes macOS carve out less headroom, so the rest of the screen
-# (SDR content) dims far less while the boost stays effectively as strong.
-ffmpeg -y -loglevel error \
-    -f lavfi -i "color=c=white:s=64x64:d=1:r=30,format=yuv420p10le,lutyuv=y=723:u=512:v=512" \
-    -c:v libx265 -preset fast -crf 18 \
-    -pix_fmt yuv420p10le \
-    -color_primaries bt2020 -color_trc smpte2084 -colorspace bt2020nc \
-    -x265-params "hdr10=1:colorprim=bt2020:transfer=smpte2084:colormatrix=bt2020nc:master-display=G(13250,34500)B(7500,3000)R(34000,16000)WP(15635,16450)L(10000000,1):max-cll=1000,400" \
-    -tag:v hvc1 -movflags +faststart -an \
-    "$OUT_DIR/white-pq.mp4"
+# HEVC PQ clips (Safari/Chrome-with-HEVC) at three boost levels. The nits the
+# clip *claims* determines how much headroom macOS reserves — and how much it
+# dims surrounding SDR content (desktop) to pay for it. Lower level = less
+# desktop dimming, higher = stronger boost. Luma codes are the 10-bit
+# limited-range PQ values for each target: 700→687, 1000→723, 1600→769.
+for LEVEL in "700:687" "1000:723" "1600:769"; do
+    NITS="${LEVEL%%:*}"
+    CODE="${LEVEL##*:}"
+    echo "Generating HEVC PQ clip @ ${NITS} nits…"
+    ffmpeg -y -loglevel error \
+        -f lavfi -i "color=c=white:s=64x64:d=1:r=30,format=yuv420p10le,lutyuv=y=${CODE}:u=512:v=512" \
+        -c:v libx265 -preset fast -crf 18 \
+        -pix_fmt yuv420p10le \
+        -color_primaries bt2020 -color_trc smpte2084 -colorspace bt2020nc \
+        -x265-params "hdr10=1:colorprim=bt2020:transfer=smpte2084:colormatrix=bt2020nc:master-display=G(13250,34500)B(7500,3000)R(34000,16000)WP(15635,16450)L(10000000,1):max-cll=${NITS},${NITS}" \
+        -tag:v hvc1 -movflags +faststart -an \
+        "$OUT_DIR/white-pq-${NITS}.mp4"
+done
 
 echo "Generating VP9 HLG clip (Chrome/Firefox)…"
 # setparams stamps the HLG metadata onto the frames themselves — libvpx only

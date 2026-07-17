@@ -2,10 +2,20 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import NavBar from '@/components/NavBar';
-import BrightnessUnlocker, { UnlockerState } from '@/components/BrightnessUnlocker';
+import BrightnessUnlocker, {
+  BoostLevel,
+  UnlockerState,
+} from '@/components/BrightnessUnlocker';
+
+const LEVELS: { id: BoostLevel; label: string; hint: string }[] = [
+  { id: 'low', label: 'Low · 700 nits', hint: 'least desktop dimming' },
+  { id: 'medium', label: 'Medium · 1000 nits', hint: 'balanced' },
+  { id: 'high', label: 'High · 1600 nits', hint: 'max boost, dims desktop most' },
+];
 
 export default function Home() {
   const [enabled, setEnabled] = useState(false);
+  const [level, setLevel] = useState<BoostLevel>('medium');
   // null = not yet detected (avoids SSR/CSR mismatch on first paint)
   const [supported, setSupported] = useState<boolean | null>(null);
   const [unlocker, setUnlocker] = useState<UnlockerState | null>(null);
@@ -38,7 +48,11 @@ export default function Home() {
         supported={supported === true}
         onToggle={() => setEnabled((v) => !v)}
       />
-      <BrightnessUnlocker enabled={enabled} onStateChange={onUnlockerState} />
+      <BrightnessUnlocker
+        enabled={enabled}
+        level={level}
+        onStateChange={onUnlockerState}
+      />
 
       <main className="main">
         <section className="hero">
@@ -52,6 +66,22 @@ export default function Home() {
             <span className="status-dot" aria-hidden="true" />
             {status.text}
           </div>
+          {supported && (
+            <div className="levels" role="radiogroup" aria-label="Boost level">
+              {LEVELS.map((l) => (
+                <button
+                  key={l.id}
+                  className={`level ${level === l.id ? 'level-active' : ''}`}
+                  onClick={() => setLevel(l.id)}
+                  role="radio"
+                  aria-checked={level === l.id}
+                  title={l.hint}
+                >
+                  {l.label}
+                </button>
+              ))}
+            </div>
+          )}
           {enabled && unlocker && (
             <p className="diag">
               {unlocker.error
