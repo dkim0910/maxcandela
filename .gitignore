@@ -3,6 +3,14 @@
 .swiftpm/
 Package.resolved
 
+# Node / Next.js (apps/web)
+node_modules/
+.next/
+out/
+next-env.d.ts
+npm-debug.log*
+.eslintcache
+
 # Xcode
 *.xcodeproj/*
 !*.xcodeproj/project.pbxproj

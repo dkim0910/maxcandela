@@ -4,13 +4,22 @@ Guidance for Claude Code (and humans) working in this repository.
 
 ## What this project is
 
-MaxCandela is a macOS menu-bar app, written in Swift with AppKit + Metal, that
-raises a Mac display's usable brightness beyond the SDR ceiling by rendering
-into the display's **Extended Dynamic Range (EDR)** headroom. Think Vivid /
-BetterDisplay's brightness-boost feature, built from scratch.
+MaxCandela raises a Mac display's usable brightness beyond the SDR ceiling by
+lighting up the display's **Extended Dynamic Range (EDR)** headroom. Think
+Vivid / BetterDisplay's brightness-boost feature, built from scratch. macOS
+only — the target hardware is MacBook Pros with XDR panels. No Android/Windows.
 
-It is a native app distributed as a `.app` bundle. Build system is **Swift
-Package Manager** (no `.xcodeproj` checked in — SwiftPM drives everything).
+It's a monorepo with two apps:
+
+- **`apps/macos/`** — native menu-bar app, Swift + AppKit + Metal. Build system
+  is **Swift Package Manager** (no `.xcodeproj` — SwiftPM drives everything).
+  Left-clicking the ☀️ status icon toggles the boost; right-click opens a menu
+  with the boost slider.
+- **`apps/web/`** — Next.js 15 (App Router, TypeScript, static export) site
+  with a brightness toggle in its top nav bar. Unlocks brightness inside the
+  browser via the HDR-video trick (see below).
+
+Shared tooling lives in `scripts/`.
 
 ## Core technical concept — read this before touching brightness code
 
@@ -70,7 +79,35 @@ private APIs without a clearly documented reason here.
   so "quit == back to normal" must always hold.
 - Never bypass thermal throttling. If the OS lowers headroom, follow it down.
 
-## Architecture
+## Web app technique (apps/web)
+
+Browsers on EDR displays raise the backlight whenever HDR content is visible.
+The web app exploits this: a tiny (2×2 px, low-opacity) looping **HDR white
+video** plays while the boost is on, pushing the backlight into HDR headroom
+and brightening the whole screen. Pausing it restores normal brightness.
+
+Rules that make this work:
+
+- The `<video>` must stay **technically visible** — `display:none`, zero size,
+  or `opacity: 0` and the browser drops out of the HDR path. 2×2 px at
+  opacity ≈0.05 is enough.
+- Two encodings are needed: **HEVC 10-bit PQ** (`hvc1`, BT.2020/SMPTE-2084) for
+  Safari and **VP9 10-bit HLG** (BT.2020/arib-std-b67) for Chrome/Firefox. Both
+  live in `apps/web/public/hdr/` and are committed.
+- Regenerate them with `scripts/generate-hdr-video.sh` (needs ffmpeg). Gotcha:
+  libvpx only writes the WebM Colour element if the *input frames* carry the
+  metadata — hence the `setparams` filter in the script. Verify with
+  `ffprobe -show_entries stream=color_transfer` after any change.
+- Capability detection is `matchMedia('(dynamic-range: high)')` — a capability
+  hint only, not a live headroom value.
+- `video.play()` must be triggered from a user gesture (the nav-bar toggle) or
+  autoplay policy may reject it.
+
+Structure: `app/page.tsx` owns toggle state + detection; `components/NavBar.tsx`
+is the presentation-only nav bar with the toggle button;
+`components/BrightnessUnlocker.tsx` owns the hidden video element.
+
+## Native app architecture (apps/macos)
 
 ```
 main.swift            → NSApplication bootstrap, .accessory activation policy
@@ -93,14 +130,20 @@ Data flow: slider → `BrightnessController.setBoost(_:)` → clamp against
 ## Build / run / test
 
 ```bash
+# macOS app (from apps/macos/)
 swift build                 # debug
 swift run MaxCandela        # launch the menu-bar app
 swift build -c release      # release
 swift test                  # unit tests
+
+# Web app (from apps/web/)
+npm install
+npm run dev                 # http://localhost:3000
+npm run build               # static export → apps/web/out/
 ```
 
-There is no CI yet. When adding it, run `swift build` and `swift test` on
-macOS-latest.
+There is no CI yet. When adding it, run `swift build`/`swift test` (in
+`apps/macos`) and `npm run build` (in `apps/web`) on macOS-latest.
 
 ### Verifying a brightness change actually works
 
@@ -126,14 +169,18 @@ does disabling instantly restore it) is required before claiming it works.
 ## Current status / TODO
 
 - [x] Project scaffold: SwiftPM manifest, docs, source skeleton, tests.
-- [ ] MVP EDR primer overlay renders and visibly boosts on XDR hardware.
-- [ ] Live clamp against dynamic headroom + KVO on the headroom value.
-- [ ] Multi-display: create/tear down overlays on screen (dis)connect.
-- [ ] Menu-bar slider wired to persisted `Preferences`.
+- [x] Monorepo layout: `apps/macos` + `apps/web` + `scripts/`.
+- [x] Menu-bar icon = instant toggle (left-click); right-click menu w/ slider.
+- [x] Web app: Next.js static export, nav-bar toggle, HDR video assets
+      (`scripts/generate-hdr-video.sh`), `dynamic-range` detection.
+- [ ] Verify boost perceptually on XDR hardware (both native app and web page).
+- [ ] Live clamp against dynamic headroom + KVO on the headroom value (native).
+- [ ] Multi-display: create/tear down overlays on screen (dis)connect (native).
 - [ ] Graceful behavior on non-EDR displays (disable, explain in menu).
 - [ ] `scripts/`: `.app` bundling, codesign, notarization helpers.
 - [ ] Icon assets + Info.plist (`LSUIElement = true`).
-- [ ] Evaluate capture-and-remap (v2) vs. primer quality.
+- [ ] Evaluate capture-and-remap (v2) vs. primer quality (native).
+- [ ] Web deployment (static host of user's choice; `out/` is ready as-is).
 
 Keep this list current as work lands.
 

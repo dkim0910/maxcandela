@@ -2,12 +2,18 @@
 
 **Unlock the full brightness of your MacBook Pro display.**
 
-MaxCandela is a lightweight macOS menu-bar utility that pushes your Mac's display
-past its normal SDR brightness ceiling by rendering into the panel's unused
-**Extended Dynamic Range (EDR)** headroom. On mini-LED (Liquid Retina XDR) and
-many external HDR displays, this can boost usable brightness well beyond the
-~500–600 nit SDR cap that macOS enforces for ordinary content — the same
-headroom macOS itself only lights up for HDR video.
+MaxCandela pushes your Mac's display past its normal SDR brightness ceiling by
+lighting up the panel's unused **Extended Dynamic Range (EDR)** headroom. On
+mini-LED (Liquid Retina XDR) and many external HDR displays, this can boost
+usable brightness well beyond the ~500–600 nit SDR cap that macOS enforces for
+ordinary content — the same headroom macOS itself only lights up for HDR video.
+
+It ships in two forms (macOS only — no Android/Windows):
+
+- **Native menu-bar app** (`apps/macos`) — a ☀️ toggle in your Mac's top nav
+  bar. Click it to boost the whole system; right-click for a boost slider.
+- **Web app** (`apps/web`) — a Next.js site with a toggle in its nav bar that
+  unlocks brightness right in Safari/Chrome, no install needed.
 
 > ⚠️ **Early / experimental.** This is a code-first project scaffold. The
 > architecture is in place; the EDR compositing path is under active
@@ -24,12 +30,14 @@ for HDR. Apple exposes that headroom to apps through EDR: a screen's
 "SDR white" (1.0) the panel can currently go — often 1.6× to 16× on capable
 displays.
 
-MaxCandela places a transparent, click-through overlay window over each screen
-backed by a `CAMetalLayer` with `wantsExtendedDynamicRangeContent = true`.
-Rendering into that layer at values above 1.0 signals macOS to drive the
-backlight higher, raising the effective brightness of everything on screen. A
-menu-bar slider maps to a boost multiplier between 1.0 (off) and the display's
-reported EDR maximum.
+**Native app:** places a transparent, click-through overlay window over each
+screen backed by a `CAMetalLayer` with `wantsExtendedDynamicRangeContent =
+true`. Rendering into that layer at values above 1.0 signals macOS to drive
+the backlight higher, raising the effective brightness of everything on screen.
+
+**Web app:** plays a tiny, near-invisible HDR white video (HEVC/PQ for Safari,
+VP9/HLG for Chrome). Browsers raise the backlight whenever HDR content is on
+screen, so play = boost on, pause = boost off.
 
 Full detail, including the compositing strategy and the private-API fallbacks
 we're evaluating, lives in [CLAUDE.md](./CLAUDE.md).
@@ -55,27 +63,50 @@ panel beyond what Apple already considers safe for HDR playback.
 
 ## Build & run
 
+### Native app
+
 ```bash
-# From the repo root
+cd apps/macos
 swift build              # debug build
 swift run MaxCandela     # build and launch the menu-bar app
 swift build -c release   # optimized build
+swift test               # unit tests
 ```
-
-The app appears as a sun icon in the menu bar. Click it for the brightness
-slider and per-display controls.
 
 To package a distributable `.app` bundle, see `scripts/` (bundling and codesign
 helpers) — TODO, tracked in CLAUDE.md.
 
+### Web app
+
+```bash
+cd apps/web
+npm install
+npm run dev              # http://localhost:3000
+npm run build            # static export → apps/web/out/ (host anywhere)
+```
+
 ## Usage
 
-1. Launch MaxCandela — a ☀️ icon appears in the menu bar.
-2. Open the menu and drag the **Boost** slider.
-3. `1.0×` is a no-op (native brightness). Higher values light up EDR headroom.
-4. Toggle **Enabled** to instantly return to native brightness.
+### Native app
+
+1. Launch MaxCandela — a ☀️ icon appears in the menu bar (your Mac's top nav bar).
+2. **Click the icon** to toggle the brightness boost on/off instantly. The icon
+   fills in (`sun.max.fill`) while boosted.
+3. **Right-click** (or ⌃-click) the icon for the **Boost** slider, headroom
+   info, and Quit.
+4. `1.0×` is a no-op (native brightness). Higher values light up EDR headroom.
 
 Boost level and enabled-state persist across launches.
+
+### Web app
+
+1. Open the site in Safari or Chrome on an XDR MacBook Pro.
+2. Click the **Boost** toggle in the top nav bar.
+3. The page plays a hidden HDR clip and the whole screen brightens; toggle off
+   (or close the tab) to restore normal brightness. Nothing is installed.
+
+If the toggle is disabled, the browser reports no EDR headroom on the current
+display (`(dynamic-range: high)` media query is false).
 
 ## Safety & battery
 
@@ -91,21 +122,28 @@ Boost level and enabled-state persist across launches.
 
 ```
 maxcandela/
-├── Package.swift              # SwiftPM manifest (executable + tests)
 ├── README.md                  # you are here
 ├── CLAUDE.md                  # technical spec, architecture, working agreements
 ├── LICENSE
-├── Sources/MaxCandela/
-│   ├── main.swift             # entry point
-│   ├── AppDelegate.swift      # app lifecycle, menu-bar setup
-│   ├── MenuBarController.swift # status item + menu + slider
-│   ├── BrightnessController.swift # orchestrates overlays across displays
-│   ├── DisplayManager.swift   # display enumeration + EDR capability queries
-│   ├── EDROverlayWindow.swift # per-screen EDR overlay window
-│   ├── MetalRenderer.swift    # CAMetalLayer EDR render loop
-│   └── Preferences.swift      # persisted settings
-└── Tests/MaxCandelaTests/
-    └── DisplayManagerTests.swift
+├── apps/
+│   ├── macos/                 # native menu-bar app (SwiftPM)
+│   │   ├── Package.swift
+│   │   ├── Sources/MaxCandela/
+│   │   │   ├── main.swift             # entry point
+│   │   │   ├── AppDelegate.swift      # app lifecycle
+│   │   │   ├── MenuBarController.swift # ☀️ toggle + right-click menu
+│   │   │   ├── BrightnessController.swift # orchestrates overlays
+│   │   │   ├── DisplayManager.swift   # display enumeration + EDR queries
+│   │   │   ├── EDROverlayWindow.swift # per-screen EDR overlay window
+│   │   │   ├── MetalRenderer.swift    # CAMetalLayer EDR render loop
+│   │   │   └── Preferences.swift      # persisted settings
+│   │   └── Tests/MaxCandelaTests/
+│   └── web/                   # Next.js web app (static export)
+│       ├── app/               # App Router pages + global styles
+│       ├── components/        # NavBar (toggle) + BrightnessUnlocker (HDR video)
+│       └── public/hdr/        # committed HDR white clips (PQ mp4 + HLG webm)
+└── scripts/
+    └── generate-hdr-video.sh  # regenerates public/hdr/ clips (needs ffmpeg)
 ```
 
 ## Contributing

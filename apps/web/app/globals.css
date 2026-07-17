@@ -1,0 +1,210 @@
+/* MaxCandela web — dark, minimal, no UI library. */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  --bg: #0b0d10;
+  --bg-raised: #14181d;
+  --border: #262c33;
+  --text: #e8ebee;
+  --text-dim: #9aa4ae;
+  --accent: #ffb02e;
+  --accent-dim: #7a5516;
+  --on: #34c759;
+  --off: #6b7480;
+  --bad: #ff5f57;
+}
+
+html,
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+/* ---- Top nav bar ---- */
+
+.navbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  background: rgba(11, 13, 16, 0.8);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  z-index: 100;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 17px;
+  letter-spacing: -0.01em;
+}
+
+.brand-icon {
+  font-size: 18px;
+}
+
+/* The toggle button */
+
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px 8px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg-raised);
+  color: var(--text-dim);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.toggle:hover:not(:disabled) {
+  border-color: var(--accent-dim);
+  color: var(--text);
+}
+
+.toggle:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.toggle-dot {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--off);
+  transition: all 0.25s ease;
+}
+
+.toggle-on {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(255, 176, 46, 0.08);
+}
+
+.toggle-on .toggle-dot {
+  background: var(--accent);
+  box-shadow: 0 0 12px rgba(255, 176, 46, 0.8);
+}
+
+/* ---- Page body ---- */
+
+.main {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 128px 24px 64px;
+}
+
+.hero h1 {
+  font-size: clamp(28px, 5vw, 44px);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  background: linear-gradient(180deg, #fff, #c8ccd2);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.subtitle {
+  margin-top: 16px;
+  font-size: 18px;
+  color: var(--text-dim);
+  max-width: 600px;
+}
+
+/* Status pill */
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 28px;
+  padding: 10px 18px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg-raised);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.status-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--off);
+}
+
+.status-on .status-dot {
+  background: var(--on);
+  box-shadow: 0 0 8px rgba(52, 199, 89, 0.7);
+}
+
+.status-unsupported .status-dot {
+  background: var(--bad);
+}
+
+/* Cards */
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 16px;
+  margin-top: 56px;
+}
+
+.card {
+  padding: 24px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: var(--bg-raised);
+}
+
+.card h2 {
+  font-size: 16px;
+  margin-bottom: 10px;
+  color: var(--accent);
+}
+
+.card p,
+.card li {
+  font-size: 14px;
+  color: var(--text-dim);
+}
+
+.card ul {
+  list-style: none;
+}
+
+.card li {
+  padding: 3px 0;
+}
+
+/* Footer */
+
+.footer {
+  text-align: center;
+  padding: 32px 24px 40px;
+  font-size: 13px;
+  color: var(--text-dim);
+  border-top: 1px solid var(--border);
+}
