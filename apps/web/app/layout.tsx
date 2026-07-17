@@ -13,7 +13,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    // suppressHydrationWarning: browser extensions inject attributes into
+    // <html> before React hydrates (e.g. data-hwp-extension), which would
+    // otherwise trigger a spurious hydration-mismatch warning. This only
+    // suppresses attribute mismatches on this one element.
+    <html lang="en" suppressHydrationWarning>
       <body>{children}</body>
     </html>
   );
