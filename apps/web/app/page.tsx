@@ -1,13 +1,15 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import NavBar from '@/components/NavBar';
-import BrightnessUnlocker from '@/components/BrightnessUnlocker';
+import BrightnessUnlocker, { UnlockerState } from '@/components/BrightnessUnlocker';
 
 export default function Home() {
   const [enabled, setEnabled] = useState(false);
   // null = not yet detected (avoids SSR/CSR mismatch on first paint)
   const [supported, setSupported] = useState<boolean | null>(null);
+  const [unlocker, setUnlocker] = useState<UnlockerState | null>(null);
+  const onUnlockerState = useCallback((s: UnlockerState) => setUnlocker(s), []);
 
   useEffect(() => {
     // EDR/HDR capability check. `dynamic-range: high` is true on XDR MacBook
@@ -36,7 +38,7 @@ export default function Home() {
         supported={supported === true}
         onToggle={() => setEnabled((v) => !v)}
       />
-      <BrightnessUnlocker enabled={enabled} />
+      <BrightnessUnlocker enabled={enabled} onStateChange={onUnlockerState} />
 
       <main className="main">
         <section className="hero">
@@ -50,6 +52,15 @@ export default function Home() {
             <span className="status-dot" aria-hidden="true" />
             {status.text}
           </div>
+          {enabled && unlocker && (
+            <p className="diag">
+              {unlocker.error
+                ? `⚠️ ${unlocker.error}`
+                : unlocker.playing
+                  ? `HDR clip playing (${unlocker.source})`
+                  : 'HDR clip not playing'}
+            </p>
+          )}
         </section>
 
         <section className="cards">
@@ -57,10 +68,12 @@ export default function Home() {
             <h2>How it works</h2>
             <p>
               macOS caps standard (SDR) content at roughly 500–600 nits but
-              reserves extra backlight headroom for HDR video. This page plays a
-              tiny HDR clip, which tells the browser to raise the backlight —
-              brightening everything on screen. Toggling off pauses the clip and
-              restores normal brightness instantly.
+              reserves extra backlight headroom for HDR video. This page
+              composites itself into an EDR-white HDR clip, lifting its own
+              pixels into that headroom — the page gets brighter than SDR
+              allows. It boosts this browser window; for a system-wide boost
+              use the native menu-bar app. Toggling off restores normal
+              brightness instantly.
             </p>
           </div>
           <div className="card">

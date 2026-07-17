@@ -63,6 +63,16 @@ white rectangle on screen." Two candidate strategies:
    re-render it multiplied into EDR range, and present that. Accurate, but heavy:
    needs Screen Recording permission, more GPU, and careful latency handling.
 
+**⚠️ Known flaw in strategy 1 (same OS behavior found on the web side):** macOS
+compensates SDR pixels downward while EDR content is displayed, so a
+transparent EDR primer likely raises the backlight without visibly brightening
+SDR content. The fix used by Lunar's "XDR Brightness" is to *also* remap SDR
+pixel values upward (gamma/transfer-table via `CGSetDisplayTransferByFormula` /
+gamma APIs) so SDR white lands above 1.0 while the EDR overlay holds the
+backlight up. Strategy 2 (capture-and-remap) avoids the problem entirely by
+re-rendering the pixels itself. Verify on hardware before investing further in
+the bare primer.
+
 Private-API fallback (evaluate only if EDR proves insufficient on some panels):
 `DisplayServices` / `CoreDisplay` (`DisplayServicesSetBrightness`,
 `CoreDisplay_Display_SetUserBrightness`). These control *native* brightness, not
@@ -81,16 +91,23 @@ private APIs without a clearly documented reason here.
 
 ## Web app technique (apps/web)
 
-Browsers on EDR displays raise the backlight whenever HDR content is visible.
-The web app exploits this: a tiny (2×2 px, low-opacity) looping **HDR white
-video** plays while the boost is on, pushing the backlight into HDR headroom
-and brightening the whole screen. Pausing it restores normal brightness.
+**Critical fact (verified on hardware 2026-07): when HDR content is on screen,
+macOS raises the backlight but simultaneously compensates SDR pixels downward,
+so SDR content keeps the same apparent brightness.** A hidden HDR video
+therefore does *nothing visible* — we tried it first and it failed. Any boost
+strategy must lift the target pixels themselves into EDR range, not just wake
+the backlight.
+
+The working approach: a **fullscreen EDR-white video** covering the viewport
+with `mix-blend-mode: multiply` and `pointer-events: none`. Multiply gives
+`page × EDR-white(>1.0)` — the page's own pixels are scaled into HDR headroom
+and genuinely brighten. Scope: only the browser window; a web page cannot
+brighten other apps (that's the native app's job).
 
 Rules that make this work:
 
-- The `<video>` must stay **technically visible** — `display:none`, zero size,
-  or `opacity: 0` and the browser drops out of the HDR path. 2×2 px at
-  opacity ≈0.05 is enough.
+- The `<video>` must be visible while boosting (it's hidden with
+  `display:none` only when the boost is off).
 - Two encodings are needed: **HEVC 10-bit PQ** (`hvc1`, BT.2020/SMPTE-2084) for
   Safari and **VP9 10-bit HLG** (BT.2020/arib-std-b67) for Chrome/Firefox. Both
   live in `apps/web/public/hdr/` and are committed.

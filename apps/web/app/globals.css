@@ -163,6 +163,13 @@ body {
   background: var(--bad);
 }
 
+.diag {
+  margin-top: 12px;
+  font-size: 13px;
+  font-family: ui-monospace, 'SF Mono', monospace;
+  color: var(--text-dim);
+}
+
 /* Cards */
 
 .cards {
