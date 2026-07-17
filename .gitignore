@@ -1,0 +1,41 @@
+# Swift Package Manager
+.build/
+.swiftpm/
+Package.resolved
+
+# Xcode
+*.xcodeproj/*
+!*.xcodeproj/project.pbxproj
+!*.xcodeproj/xcshareddata/
+xcuserdata/
+DerivedData/
+*.xcworkspace/xcuserdata/
+*.moved-aside
+*.pbxuser
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+
+# Build artifacts / distribution
+build/
+dist/
+*.app
+*.dmg
+*.zip
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+
+# Signing / secrets — never commit these
+*.p12
+*.provisionprofile
+*.cer
+.env
+notarization-credentials.json
+
+# Editor
+.vscode/
+*.swp

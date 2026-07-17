@@ -1,0 +1,20 @@
+import AppKit
+
+/// App lifecycle. Owns the two top-level objects — the brightness orchestrator
+/// and the menu-bar UI — and keeps them alive for the app's duration.
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    private var brightness: BrightnessController!
+    private var menuBar: MenuBarController!
+
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        brightness = BrightnessController()
+        menuBar = MenuBarController(brightness: brightness)
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        // Quitting must return the display to native brightness. Tear down
+        // overlays without clearing the persisted enabled flag, so the app
+        // restores the user's state on next launch.
+        brightness.shutdown()
+    }
+}
