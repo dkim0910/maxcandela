@@ -2,12 +2,16 @@ import CoreGraphics
 import Foundation
 
 /// Applies a per-display "lift" so SDR pixel values ride up into the EDR
-/// headroom that the trigger window keeps engaged. Two experiments, tried in
-/// order (real-hardware behavior decides which sticks — see CLAUDE.md):
+/// headroom that the trigger window keeps engaged.
 ///
-///  A. `CGSetDisplayTransferByTable` with LUT values scaled above 1.0.
-///     Verified by reading the table back; if the OS clamped it, fall through.
-///  B. `CGSetDisplayTransferByFormula` with `max = scale`.
+/// Two rules keep colors intact (learned on hardware — see CLAUDE.md):
+///  1. Transfer tables hold *gamma-encoded* values. A desired luminance
+///     multiply of S needs an encoded gain of S^(1/2.2); multiplying encoded
+///     values by S directly over-drives luminance by S^2.2 and clips channels
+///     into washed-out white.
+///  2. Never replace the display's calibration: read the current ColorSync
+///     tables once per display and scale *those*, preserving the per-channel
+///     curve shapes. A plain ramp destroys calibration → dead colors.
 ///
 /// Safety: CG gamma changes are per-process and auto-restore when the process
 /// exits, so even a crash cannot leave the display stuck. `restoreAll()` gives
@@ -15,40 +19,59 @@ import Foundation
 final class GammaController {
     private static let tableSize = 256
 
-    /// Pure LUT builder, split out for unit testing: a linear ramp scaled by
-    /// `scale`. Values may exceed 1.0 — whether the OS honors that is exactly
-    /// what experiment A probes.
-    static func makeLiftTable(scale: Float, count: Int = tableSize) -> [Float] {
-        precondition(count > 1, "LUT needs at least two entries")
-        return (0..<count).map { Float($0) / Float(count - 1) * scale }
+    private typealias RGBTables = (red: [Float], green: [Float], blue: [Float])
+
+    /// Pristine calibration tables captured per display before our first lift.
+    /// Re-reading after we've applied a lift would compound gains.
+    private var baseTables: [CGDirectDisplayID: RGBTables] = [:]
+
+    // MARK: - Pure math (unit-tested)
+
+    /// Encoded-space gain that produces a luminance multiply of `scale` through
+    /// a display transfer curve of the given gamma.
+    static func encodedGain(forLuminanceScale scale: Float, gamma: Float = 2.2) -> Float {
+        guard scale > 0 else { return 1 }
+        return pow(scale, 1 / gamma)
     }
 
-    /// Apply a brightness lift to one display. Returns true if some lift was
-    /// applied (even a clamped one — the OS may cap at 1.0).
+    /// Scale an existing calibration table so on-screen luminance multiplies by
+    /// `luminanceScale`, preserving the curve's shape (and therefore color).
+    static func liftTable(base: [Float], luminanceScale: Float) -> [Float] {
+        let gain = encodedGain(forLuminanceScale: luminanceScale)
+        return base.map { $0 * gain }
+    }
+
+    // MARK: - Display application
+
+    /// Apply a luminance lift to one display. Returns true on success.
     @discardableResult
     func applyLift(scale: CGFloat, to displayID: CGDirectDisplayID) -> Bool {
-        let table = Self.makeLiftTable(scale: Float(scale))
+        let base = cachedBase(for: displayID)
+        let red = Self.liftTable(base: base.red, luminanceScale: Float(scale))
+        let green = Self.liftTable(base: base.green, luminanceScale: Float(scale))
+        let blue = Self.liftTable(base: base.blue, luminanceScale: Float(scale))
 
-        // Experiment A: table with values above 1.0.
         let tableResult = CGSetDisplayTransferByTable(
             displayID,
-            UInt32(table.count),
-            table, table, table
+            UInt32(red.count),
+            red, green, blue
         )
-        if tableResult == .success, !readBackClamped(displayID: displayID, expectedMax: Float(scale)) {
-            NSLog("MaxCandela: gamma lift %.2f× applied via table on display %u", scale, displayID)
+        if tableResult == .success {
+            NSLog("MaxCandela: luminance lift %.2f× (encoded gain %.3f) applied via table on display %u",
+                  scale, Self.encodedGain(forLuminanceScale: Float(scale)), displayID)
             return true
         }
 
-        // Experiment B: formula with max = scale.
+        // Fallback: formula path. Loses per-channel calibration but functional.
+        let gain = Self.encodedGain(forLuminanceScale: Float(scale))
         let formulaResult = CGSetDisplayTransferByFormula(
             displayID,
-            0, Float(scale), 1,   // red   min/max/gamma
-            0, Float(scale), 1,   // green
-            0, Float(scale), 1    // blue
+            0, gain, 1,   // red   min/max/gamma
+            0, gain, 1,   // green
+            0, gain, 1    // blue
         )
         if formulaResult == .success {
-            NSLog("MaxCandela: gamma lift %.2f× applied via formula on display %u (table path clamped or failed: %d)",
+            NSLog("MaxCandela: luminance lift %.2f× applied via formula on display %u (table failed: %d)",
                   scale, displayID, tableResult.rawValue)
             return true
         }
@@ -61,13 +84,17 @@ final class GammaController {
     /// Restore every display we may have touched to its ColorSync state.
     func restoreAll() {
         CGDisplayRestoreColorSyncSettings()
+        baseTables.removeAll()   // safe to re-read pristine tables next time
         NSLog("MaxCandela: gamma restored to ColorSync defaults")
     }
 
-    /// Reads the transfer table back and reports whether the OS clamped our
-    /// above-1.0 values down to ≤1.0.
-    private func readBackClamped(displayID: CGDirectDisplayID, expectedMax: Float) -> Bool {
-        guard expectedMax > 1.0 else { return false }
+    // MARK: - Base table capture
+
+    /// The display's calibration tables from before our first lift. Falls back
+    /// to an identity ramp if the tables can't be read.
+    private func cachedBase(for displayID: CGDirectDisplayID) -> RGBTables {
+        if let cached = baseTables[displayID] { return cached }
+
         var red = [Float](repeating: 0, count: Self.tableSize)
         var green = [Float](repeating: 0, count: Self.tableSize)
         var blue = [Float](repeating: 0, count: Self.tableSize)
@@ -76,12 +103,17 @@ final class GammaController {
             displayID, UInt32(Self.tableSize),
             &red, &green, &blue, &sampleCount
         )
-        guard result == .success, sampleCount > 0 else {
-            // Can't verify — assume not clamped rather than double-applying.
-            return false
+
+        let base: RGBTables
+        if result == .success, sampleCount > 1 {
+            let n = Int(sampleCount)
+            base = (Array(red[0..<n]), Array(green[0..<n]), Array(blue[0..<n]))
+        } else {
+            NSLog("MaxCandela: could not read calibration tables for display %u; using identity ramp", displayID)
+            let ramp = (0..<Self.tableSize).map { Float($0) / Float(Self.tableSize - 1) }
+            base = (ramp, ramp, ramp)
         }
-        let maxValue = red.prefix(Int(sampleCount)).max() ?? 0
-        // Allow a little slack for interpolation/rounding.
-        return maxValue < expectedMax * 0.9
+        baseTables[displayID] = base
+        return base
     }
 }

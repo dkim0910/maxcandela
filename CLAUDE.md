@@ -59,11 +59,16 @@ brightness" technique):
    each boosted screen (`EDROverlayWindow`) rendering EDR white at the current
    headroom, which keeps the compositor in EDR mode with headroom engaged.
 2. **Gamma lift** — `GammaController` scales every SDR pixel up into that
-   headroom via display transfer tables. Experiment A:
-   `CGSetDisplayTransferByTable` with LUT values > 1.0, verified by read-back;
-   Experiment B fallback: `CGSetDisplayTransferByFormula` with `max = scale`.
-   Which one macOS honors above 1.0 must be confirmed on real hardware — logs
-   say which path was taken.
+   headroom via display transfer tables (`CGSetDisplayTransferByTable`, formula
+   fallback). **Hardware-verified 2026-07: macOS honors table values > 1.0**
+   (screen visibly brightened). Two rules keep colors intact, both learned the
+   hard way on hardware:
+   - Tables hold *gamma-encoded* values: a luminance multiply of S needs an
+     encoded gain of S^(1/2.2). Multiplying encoded values by S directly
+     over-drives luminance by S^2.2 → channel clipping → washed-out color.
+   - Never replace the calibration: read the display's current ColorSync
+     tables once (cache before first lift; re-reading after would compound)
+     and scale those, preserving per-channel curve shapes.
 
 Safety facts: CG gamma changes are **per-process and auto-restore on process
 exit** (crash-safe), and `CGDisplayRestoreColorSyncSettings()` is the explicit
@@ -199,9 +204,10 @@ does disabling instantly restore it) is required before claiming it works.
       (`scripts/generate-hdr-video.sh`), `dynamic-range` detection.
 - [x] Web boost verified on hardware (fullscreen multiply-blend; 3 nit levels).
 - [x] Native trigger + gamma lift implemented; live 1 s headroom poll/clamp.
-- [ ] Verify native gamma lift perceptually on XDR hardware — which experiment
-      (table >1.0 vs formula) sticks? Logs will say. If both clamp → escalate
-      to capture-and-remap.
+- [x] Native gamma lift verified on hardware — table path with >1.0 values
+      works. Color washout fixed via encoded-gain math + calibration-preserving
+      tables (see boost mechanism section).
+- [ ] Re-verify color fidelity on hardware after the encoded-gain fix.
 - [ ] Graceful behavior on non-EDR displays (disable, explain in menu).
 - [ ] `scripts/`: `.app` bundling, codesign, notarization helpers.
 - [ ] Icon assets + Info.plist (`LSUIElement = true`).
