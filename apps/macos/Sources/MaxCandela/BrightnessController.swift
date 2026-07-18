@@ -16,10 +16,17 @@ import AppKit
 ///  - Disabling tears down triggers and restores gamma so the display returns
 ///    to native brightness. CG gamma also auto-restores if the process dies.
 final class BrightnessController {
-    /// How the live target is computed from what the user asked for and what
-    /// the OS currently allows. Pure, unit-tested.
-    static func targetScale(requested: CGFloat, currentHeadroom: CGFloat) -> CGFloat {
-        max(1.0, min(requested, currentHeadroom))
+    /// How the live target is computed from what the user asked for, what the
+    /// OS currently allows, and the thermal ceiling. Pure, unit-tested.
+    ///
+    /// The thermal ceiling scales only the boost *above* native (1.0): a ceiling
+    /// of 0.5 halves the extra brightness, 0.0 returns to native, 1.0 leaves it
+    /// unchanged. Scaling the whole multiplier would dim below native at 0.
+    static func targetScale(requested: CGFloat, currentHeadroom: CGFloat,
+                            thermalCeiling: CGFloat = 1.0) -> CGFloat {
+        let clamped = min(requested, currentHeadroom)
+        let extra = max(0, clamped - 1.0)
+        return max(1.0, 1.0 + extra * max(0, min(1, thermalCeiling)))
     }
 
     /// One animator frame: move `current` toward `target` by `rate` of the
@@ -32,6 +39,7 @@ final class BrightnessController {
 
     private let displayManager = DisplayManager()
     private let gamma = GammaController()
+    private let thermal = ThermalMonitor()
     private let prefs = Preferences.shared
     private var overlays: [CGDirectDisplayID: EDROverlayWindow] = [:]
 
@@ -49,6 +57,10 @@ final class BrightnessController {
         self.requestedBoost = CGFloat(prefs.boost)
         displayManager.onScreenConfigurationChanged = { [weak self] in
             self?.rebuildOverlays()
+        }
+        // React the instant the Mac heats up or cools, not just on the 1 s poll.
+        thermal.onChange = { [weak self] in
+            self?.refreshTargets()
         }
         if prefs.isEnabled {
             enable()
@@ -96,6 +108,12 @@ final class BrightnessController {
     /// Best potential headroom across displays, for UI copy ("up to N×").
     func maxPotentialBoost() -> CGFloat {
         displayManager.bestPotentialHeadroom()
+    }
+
+    /// True when the boost is currently being held back because the Mac is hot,
+    /// so the menu can explain the reduced brightness.
+    var thermalEased: Bool {
+        isEnabled && thermal.ceiling < 1.0
     }
 
     /// Live info for the menu: (applied lift, current headroom) of the display
@@ -201,11 +219,12 @@ final class BrightnessController {
             overlay.renderer.boost = max(1.0, info.currentHeadroom)
 
             let target = Self.targetScale(requested: requestedBoost,
-                                          currentHeadroom: info.currentHeadroom)
+                                          currentHeadroom: info.currentHeadroom,
+                                          thermalCeiling: thermal.ceiling)
             if targetScales[info.displayID] != target {
                 targetScales[info.displayID] = target
-                NSLog("MaxCandela: display %u headroom %.2f× → fading lift to %.2f× (requested %.2f×)",
-                      info.displayID, info.currentHeadroom, target, requestedBoost)
+                NSLog("MaxCandela: display %u headroom %.2f× thermal %.2f → fading lift to %.2f× (requested %.2f×)",
+                      info.displayID, info.currentHeadroom, thermal.ceiling, target, requestedBoost)
             }
             if abs((currentScales[info.displayID] ?? 1.0) - target) > 0.001 {
                 needsAnimation = true

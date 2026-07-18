@@ -78,6 +78,47 @@ final class BoostLogicTests: XCTestCase {
         XCTAssertEqual(BrightnessController.targetScale(requested: 0.0, currentHeadroom: 2.0), 1.0)
     }
 
+    // MARK: - Thermal ceiling
+
+    func testThermalCeilingMapping() {
+        XCTAssertEqual(ThermalMonitor.ceiling(for: .nominal), 1.0)
+        XCTAssertEqual(ThermalMonitor.ceiling(for: .fair), 1.0)
+        XCTAssertEqual(ThermalMonitor.ceiling(for: .serious), 0.5)
+        XCTAssertEqual(ThermalMonitor.ceiling(for: .critical), 0.0)
+    }
+
+    func testTargetScaleThermalCeilingScalesOnlyTheExtra() {
+        // Request 2.0×, plenty of headroom. Ceiling 0.5 halves the extra 1.0.
+        XCTAssertEqual(
+            BrightnessController.targetScale(requested: 2.0, currentHeadroom: 4.0, thermalCeiling: 0.5),
+            1.5, accuracy: 0.0001)
+    }
+
+    func testTargetScaleThermalCriticalReturnsNative() {
+        // Ceiling 0.0 → exactly native, never below.
+        XCTAssertEqual(
+            BrightnessController.targetScale(requested: 3.0, currentHeadroom: 3.0, thermalCeiling: 0.0),
+            1.0)
+    }
+
+    func testTargetScaleThermalNominalMatchesOldBehavior() {
+        // Ceiling 1.0 is the pre-thermal behavior: clamp to headroom.
+        XCTAssertEqual(
+            BrightnessController.targetScale(requested: 16.0, currentHeadroom: 1.6, thermalCeiling: 1.0),
+            1.6, accuracy: 0.0001)
+        // Default arg also means "no thermal effect".
+        XCTAssertEqual(
+            BrightnessController.targetScale(requested: 1.3, currentHeadroom: 2.0),
+            1.3, accuracy: 0.0001)
+    }
+
+    func testTargetScaleThermalClampsToHeadroomFirst() {
+        // Headroom (1.6) binds before thermal scales the extra 0.6 by 0.5 → 1.3.
+        XCTAssertEqual(
+            BrightnessController.targetScale(requested: 4.0, currentHeadroom: 1.6, thermalCeiling: 0.5),
+            1.3, accuracy: 0.0001)
+    }
+
     // MARK: - Fade animator
 
     func testAnimationStepApproachesTarget() {

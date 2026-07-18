@@ -1,17 +1,17 @@
 import type { Metadata } from 'next';
 import Analytics from '@/components/Analytics';
 import BoostProvider from '@/components/BoostProvider';
+import { SITE_URL } from '@/lib/site';
 import './globals.css';
-
-// TODO: replace with the real production domain before deploying — absolute
-// URLs for og/twitter images resolve against this.
-const SITE_URL = 'https://maxcandela.com';
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: 'MaxCandela — Unlock your MacBook Pro’s full brightness',
   description:
     'Your XDR display can go 70% brighter than macOS allows. One click in the menu bar unlocks it — full brightness, true colors, zero setup.',
+  alternates: {
+    canonical: SITE_URL,
+  },
   openGraph: {
     title: 'MaxCandela — Unlock your MacBook Pro’s full brightness',
     description:

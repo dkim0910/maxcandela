@@ -78,8 +78,9 @@ final class MenuBarController {
         }
         let potential = brightness.maxPotentialBoost()
         if let live = brightness.liveStatus() {
-            headroomItem.title = String(format: "Boosting %.2f× (headroom %.2f×)",
-                                        live.applied, live.headroom)
+            let base = String(format: "Boosting %.2f× (headroom %.2f×)",
+                              live.applied, live.headroom)
+            headroomItem.title = brightness.thermalEased ? base + " · eased for heat" : base
         } else if potential > 1.0 {
             headroomItem.title = String(format: "Headroom: up to %.1f×", potential)
         } else {

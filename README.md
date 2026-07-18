@@ -119,12 +119,16 @@ display (`(dynamic-range: high)` media query is false).
 ## Safety & battery
 
 - Boosting brightness increases backlight power draw and heat. Expect reduced
-  battery life and, on sustained high boost, thermal throttling of the backlight
-  by the OS.
+  battery life.
+- **Thermal-aware:** the app reads the system thermal state and automatically
+  eases the boost down as the Mac gets hot (halved at "serious", off at
+  "critical"), restoring it once cool. It cannot control fans — that needs SMC
+  access a sandboxed App Store app isn't permitted; easing its own boost is the
+  responsible lever it does have.
 - MaxCandela respects the OS-reported EDR ceiling and clamps to it; it does not
   bypass thermal protection.
-- If anything looks wrong, toggling **Enabled** off (or quitting) returns the
-  display to normal immediately — no persistent system state is changed.
+- If anything looks wrong, toggling off (or quitting) returns the display to
+  normal immediately — no persistent system state is changed.
 
 ## Project layout
 
@@ -142,7 +146,9 @@ maxcandela/
 │   │   │   ├── MenuBarController.swift # ☀️ toggle + right-click menu
 │   │   │   ├── BrightnessController.swift # orchestrator + fade animator
 │   │   │   ├── GammaController.swift  # calibration-preserving gamma lift
+│   │   │   ├── ThermalMonitor.swift   # eases boost down when the Mac is hot
 │   │   │   ├── StoreManager.swift     # StoreKit 2: trial + IAP licensing
+│   │   │   ├── Analytics.swift        # anonymous GA4 events (off in DEBUG)
 │   │   │   ├── DisplayManager.swift   # display enumeration + EDR queries
 │   │   │   ├── EDROverlayWindow.swift # tiny per-screen EDR trigger window
 │   │   │   ├── MetalRenderer.swift    # CAMetalLayer EDR render loop
@@ -150,13 +156,17 @@ maxcandela/
 │   │   ├── Resources/                 # Info.plist + sandbox entitlements
 │   │   └── Tests/MaxCandelaTests/
 │   └── web/                   # Next.js web app (static export)
-│       ├── app/               # pages: home, about, privacy, terms, support
+│       ├── app/               # pages + sitemap.ts/robots.ts + icons
 │       ├── components/        # BoostProvider (site-wide boost state),
 │       │                      # BrightnessUnlocker (HDR video), NavBar,
-│       │                      # LegalShell, SiteFooter
-│       └── public/hdr/        # committed HDR white clips (PQ mp4 + HLG webm)
+│       │                      # LegalShell, SiteFooter, Analytics
+│       ├── lib/               # site.ts (domain), analytics.ts (GA4)
+│       └── public/            # og.png, brand.png, hdr/ clips
 └── scripts/
-    └── generate-hdr-video.sh  # regenerates public/hdr/ clips (needs ffmpeg)
+    ├── generate-hdr-video.sh  # regenerates public/hdr/ clips (needs ffmpeg)
+    ├── make-hero.swift        # renders og.png social/brand image
+    ├── make-icon.swift        # renders the app icon / favicon
+    └── bundle-macos.sh        # builds the signed .app / App Store .pkg
 ```
 
 ## Contributing
