@@ -6,14 +6,14 @@
 #   scripts/bundle-macos.sh                  # ad-hoc signed .app (local testing)
 #   SIGN_IDENTITY="Apple Distribution: …" \
 #   INSTALLER_IDENTITY="3rd Party Mac Developer Installer: …" \
+#   PROVISIONING_PROFILE=path/to/MaxCandela_MAS.provisionprofile \
 #   scripts/bundle-macos.sh --pkg            # App Store-ready .pkg
 #
 # App Store submission checklist (after this script):
 #   1. App Store Connect: create the app (bundle ID com.maxcandela.MaxCandela)
 #   2. Create IAPs: com.maxcandela.pro.lifetime ($9.99 non-consumable),
 #      com.maxcandela.pro.monthly ($0.99 auto-renewable)
-#   3. Upload: xcrun altool --upload-app -f dist/MaxCandela.pkg …
-#      (or use Transporter.app)
+#   3. Upload dist/MaxCandela.pkg with Transporter.app
 
 set -euo pipefail
 
@@ -40,6 +40,14 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/MaxCandela"
 cp "$MACOS_DIR/Resources/Info.plist" "$APP/Contents/Info.plist"
 cp "$DIST/AppIcon.icns" "$APP/Contents/Resources/AppIcon.icns"
+
+# Mac App Store builds must embed their provisioning profile.
+if [[ -n "${PROVISIONING_PROFILE:-}" ]]; then
+    echo "==> Embedding provisioning profile…"
+    cp "$PROVISIONING_PROFILE" "$APP/Contents/embedded.provisionprofile"
+elif [[ "${1:-}" == "--pkg" ]]; then
+    echo "warning: no PROVISIONING_PROFILE set — App Store uploads will be rejected without one" >&2
+fi
 
 echo "==> Codesigning (identity: $SIGN_IDENTITY)…"
 codesign --force --options runtime \
