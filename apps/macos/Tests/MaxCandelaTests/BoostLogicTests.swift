@@ -34,6 +34,33 @@ final class BoostLogicTests: XCTestCase {
         XCTAssertEqual(GammaController.liftTable(base: base, luminanceScale: 1.0), base)
     }
 
+    // MARK: - StoreManager trial clock
+
+    func testTrialFullOnFirstDay() {
+        let start = Date()
+        XCTAssertEqual(StoreManager.trialDaysRemaining(firstLaunch: start, now: start), 7)
+    }
+
+    func testTrialCountsDownByWholeDays() {
+        let start = Date()
+        let threeDaysLater = start.addingTimeInterval(3 * 86_400 + 60)
+        XCTAssertEqual(StoreManager.trialDaysRemaining(firstLaunch: start, now: threeDaysLater), 4)
+    }
+
+    func testTrialExpiresAtZeroAndStaysThere() {
+        let start = Date()
+        let eightDaysLater = start.addingTimeInterval(8 * 86_400)
+        XCTAssertEqual(StoreManager.trialDaysRemaining(firstLaunch: start, now: eightDaysLater), 0)
+        let yearLater = start.addingTimeInterval(365 * 86_400)
+        XCTAssertEqual(StoreManager.trialDaysRemaining(firstLaunch: start, now: yearLater), 0)
+    }
+
+    func testTrialLenientWhenClockRolledBack() {
+        let start = Date()
+        let past = start.addingTimeInterval(-86_400)
+        XCTAssertEqual(StoreManager.trialDaysRemaining(firstLaunch: start, now: past), 7)
+    }
+
     // MARK: - BrightnessController target scale
 
     func testTargetScaleClampsToHeadroom() {

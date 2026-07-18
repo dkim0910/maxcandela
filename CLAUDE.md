@@ -21,6 +21,29 @@ It's a monorepo with two apps:
 
 Shared tooling lives in `scripts/`.
 
+## Business model / App Store
+
+Free download on the Mac App Store, 7-day full trial, then in-app purchase:
+
+- `com.maxcandela.pro.lifetime` — non-consumable, **$9.99**
+- `com.maxcandela.pro.monthly` — auto-renewable subscription, **$0.99/month**
+
+Purchases are per-Apple-ID (App Store rule — per-device licensing is not
+possible on MAS; marketed as "one purchase, all your Macs"). `StoreManager`
+implements StoreKit 2 entitlement checks + purchases; the trial clock is
+first-launch date in UserDefaults (v1 — receipt original-purchase-date is the
+robust upgrade, see TODO). The paywall gates *turning the boost on*; turning it
+OFF and quitting are never gated (kill-switch invariant).
+
+DEBUG builds bypass the paywall so `swift run` stays usable; set
+`MAXCANDELA_FORCE_PAYWALL=1` to test paywall flows in debug.
+
+Packaging: `scripts/bundle-macos.sh` builds a universal release binary,
+generates the icon (`scripts/make-icon.swift`), assembles `dist/MaxCandela.app`
+with `Resources/Info.plist` (LSUIElement) + sandbox entitlements, codesigns
+(ad-hoc by default; `SIGN_IDENTITY`/`INSTALLER_IDENTITY` + `--pkg` for App
+Store upload). App Store Connect steps are listed at the top of that script.
+
 ## Core technical concept — read this before touching brightness code
 
 macOS enforces a brightness cap on **SDR** (standard dynamic range) content —
@@ -208,9 +231,21 @@ does disabling instantly restore it) is required before claiming it works.
       works. Color washout fixed via encoded-gain math + calibration-preserving
       tables (see boost mechanism section).
 - [ ] Re-verify color fidelity on hardware after the encoded-gain fix.
+- [x] StoreKit 2 paywall: 7-day trial, $9.99 lifetime / $0.99 monthly IAP,
+      restore purchases, transaction listener; off/quit never gated.
+- [x] Packaging: Info.plist, sandbox entitlements, generated icon,
+      `bundle-macos.sh` (.app verified locally with ad-hoc signing; --pkg for
+      App Store).
+- [x] Web: marketing page (hero, live demo, features, pricing, FAQ).
+- [ ] Verify gamma/EDR APIs work inside the **sandboxed** build before
+      submission (sandbox may behave differently than swift run).
+- [ ] App Store Connect setup: app record, both IAP products, screenshots,
+      privacy labels ("data not collected").
+- [ ] Trial clock hardening: use receipt original-purchase-date instead of
+      UserDefaults first-launch.
+- [ ] Real App Store badge asset + store URL on the web page (CTAs are
+      placeholders until the app is live).
 - [ ] Graceful behavior on non-EDR displays (disable, explain in menu).
-- [ ] `scripts/`: `.app` bundling, codesign, notarization helpers.
-- [ ] Icon assets + Info.plist (`LSUIElement = true`).
 - [ ] Web deployment (static host of user's choice; `out/` is ready as-is).
 
 Keep this list current as work lands.

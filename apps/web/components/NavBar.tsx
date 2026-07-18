@@ -19,6 +19,11 @@ export default function NavBar({
         <span className="brand-icon" aria-hidden="true">☀️</span>
         MaxCandela
       </span>
+      <div className="nav-links">
+        <a href="#features">Features</a>
+        <a href="#pricing">Pricing</a>
+        <a href="#faq">FAQ</a>
+      </div>
       <button
         className={`toggle ${enabled ? 'toggle-on' : ''}`}
         onClick={onToggle}

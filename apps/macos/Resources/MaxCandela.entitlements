@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Mac App Store requires the sandbox. The gamma/EDR APIs we use are
+	     public CoreGraphics/AppKit — no extra entitlements needed, but
+	     sandbox behavior of CGSetDisplayTransferByTable must be verified in
+	     a sandboxed build before submission (CLAUDE.md TODO). -->
+	<key>com.apple.security.app-sandbox</key>
+	<true/>
+	<!-- StoreKit purchases -->
+	<key>com.apple.security.network.client</key>
+	<true/>
+</dict>
+</plist>
