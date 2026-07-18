@@ -1,10 +1,17 @@
 import AppKit
 
-/// A borderless, transparent, click-through window covering one screen. It hosts
-/// the EDR `CAMetalLayer` that primes the display's HDR headroom. It must never
-/// intercept input or vanish in fullscreen — hence the window level, collection
-/// behavior, and `ignoresMouseEvents` below.
+/// A tiny (few-pixel) borderless, click-through window parked in the corner of
+/// one screen. It hosts the EDR `CAMetalLayer` whose only job is to keep the
+/// compositor in EDR mode so the display's HDR headroom stays engaged — the
+/// actual screen-wide brightening comes from GammaController's lift.
+///
+/// It must never intercept input or vanish in fullscreen — hence the window
+/// level, collection behavior, and `ignoresMouseEvents` below.
 final class EDROverlayWindow: NSWindow {
+    /// Side length of the trigger patch in points. Small enough to be
+    /// effectively invisible, large enough that the compositor doesn't cull it.
+    static let patchSize: CGFloat = 4
+
     let renderer: MetalRenderer
 
     /// Returns nil if Metal is unavailable on this machine (see MetalRenderer).
@@ -12,8 +19,17 @@ final class EDROverlayWindow: NSWindow {
         guard let renderer = MetalRenderer() else { return nil }
         self.renderer = renderer
 
+        // Bottom-right corner of the target screen.
+        let size = Self.patchSize
+        let rect = NSRect(
+            x: screen.frame.maxX - size,
+            y: screen.frame.minY,
+            width: size,
+            height: size
+        )
+
         super.init(
-            contentRect: screen.frame,
+            contentRect: rect,
             styleMask: .borderless,
             backing: .buffered,
             defer: false,
@@ -26,18 +42,19 @@ final class EDROverlayWindow: NSWindow {
         ignoresMouseEvents = true            // click-through
         level = .screenSaver                 // above normal content
         collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenAuxiliary, .ignoresCycle]
-        // Low alpha: we prime EDR headroom rather than paint an opaque sheet.
-        // BrightnessController tunes this alongside boost. See CLAUDE.md (MVP).
-        alphaValue = 0.0
 
-        let hosting = NSView(frame: screen.frame)
+        let hosting = NSView(frame: NSRect(origin: .zero, size: rect.size))
         hosting.wantsLayer = true
         renderer.metalLayer.frame = hosting.bounds
+        renderer.metalLayer.drawableSize = CGSize(
+            width: size * (screen.backingScaleFactor),
+            height: size * (screen.backingScaleFactor)
+        )
         hosting.layer = renderer.metalLayer
         contentView = hosting
     }
 
-    /// Overlay windows should never become key/main — they're passive.
+    /// Trigger windows should never become key/main — they're passive.
     override var canBecomeKey: Bool { false }
     override var canBecomeMain: Bool { false }
 

@@ -67,7 +67,10 @@ final class MenuBarController {
             button.image?.isTemplate = true
         }
         let potential = brightness.maxPotentialBoost()
-        if potential > 1.0 {
+        if let live = brightness.liveStatus() {
+            headroomItem.title = String(format: "Boosting %.2f× (headroom %.2f×)",
+                                        live.applied, live.headroom)
+        } else if potential > 1.0 {
             headroomItem.title = String(format: "Headroom: up to %.1f×", potential)
         } else {
             headroomItem.title = "No EDR headroom on this display"

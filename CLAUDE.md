@@ -46,32 +46,34 @@ Key API surface:
   cap. Value `1.0` == SDR white; `headroom` == the brightest the panel will go
   right now.
 
-### The boost mechanism
+### The boost mechanism (implemented: trigger + gamma lift)
 
 The effect we want is "make everything on screen brighter," not "put a bright
-white rectangle on screen." Two candidate strategies:
+white rectangle on screen." Key OS behavior (verified on hardware via the web
+app, 2026-07): **macOS compensates SDR pixels downward while EDR content is
+displayed** — EDR presence alone raises the backlight but nothing visibly
+brightens. So the implemented approach is two-part (the Lunar/Vivid "XDR
+brightness" technique):
 
-1. **Transparent EDR headroom primer (MVP).** A full-screen, click-through,
-   transparent overlay whose `CAMetalLayer` is filled with EDR white at the
-   target multiplier, at a low alpha. Presenting EDR content anywhere on screen
-   causes macOS to raise the backlight; SDR content underneath then appears
-   brighter relative to the (now higher) backlight. Simple, no screen capture,
-   but tone-mapping/perceptual results are approximate and can wash out.
-   **This is where we start.**
+1. **EDR trigger** — a tiny (~4×4 px) click-through window in the corner of
+   each boosted screen (`EDROverlayWindow`) rendering EDR white at the current
+   headroom, which keeps the compositor in EDR mode with headroom engaged.
+2. **Gamma lift** — `GammaController` scales every SDR pixel up into that
+   headroom via display transfer tables. Experiment A:
+   `CGSetDisplayTransferByTable` with LUT values > 1.0, verified by read-back;
+   Experiment B fallback: `CGSetDisplayTransferByFormula` with `max = scale`.
+   Which one macOS honors above 1.0 must be confirmed on real hardware — logs
+   say which path was taken.
 
-2. **Capture-and-remap (v2).** Use `ScreenCaptureKit` to sample the framebuffer,
-   re-render it multiplied into EDR range, and present that. Accurate, but heavy:
-   needs Screen Recording permission, more GPU, and careful latency handling.
+Safety facts: CG gamma changes are **per-process and auto-restore on process
+exit** (crash-safe), and `CGDisplayRestoreColorSyncSettings()` is the explicit
+restore used on disable/quit.
 
-**⚠️ Known flaw in strategy 1 (same OS behavior found on the web side):** macOS
-compensates SDR pixels downward while EDR content is displayed, so a
-transparent EDR primer likely raises the backlight without visibly brightening
-SDR content. The fix used by Lunar's "XDR Brightness" is to *also* remap SDR
-pixel values upward (gamma/transfer-table via `CGSetDisplayTransferByFormula` /
-gamma APIs) so SDR white lands above 1.0 while the EDR overlay holds the
-backlight up. Strategy 2 (capture-and-remap) avoids the problem entirely by
-re-rendering the pixels itself. Verify on hardware before investing further in
-the bare primer.
+**Escalation path if both gamma experiments clamp at 1.0 on hardware:**
+capture-and-remap — use `ScreenCaptureKit` to sample the framebuffer, re-render
+it multiplied into EDR range, and present that. Accurate, but heavy: needs
+Screen Recording permission, more GPU, and careful latency handling. Not built;
+gated on the gamma finding.
 
 Private-API fallback (evaluate only if EDR proves insufficient on some panels):
 `DisplayServices` / `CoreDisplay` (`DisplayServicesSetBrightness`,
@@ -129,20 +131,25 @@ is the presentation-only nav bar with the toggle button;
 ```
 main.swift            → NSApplication bootstrap, .accessory activation policy
 AppDelegate           → lifecycle; owns MenuBarController + BrightnessController
-MenuBarController      → NSStatusItem, menu, boost slider, enable toggle
-BrightnessController   → orchestrator: one EDROverlayWindow per active NSScreen;
-                         reacts to screen-config + EDR-headroom changes; clamps
+MenuBarController      → NSStatusItem; left-click = instant toggle, right-click
+                         menu w/ slider + live "Boosting N×" line
+BrightnessController   → orchestrator: tiny EDR trigger per boost-capable
+                         screen; 1 s headroom poll; gamma lift = min(requested,
+                         current headroom); toggle-on targets max headroom
+GammaController        → per-display SDR→EDR lift via transfer tables
+                         (table w/ >1.0 values, formula fallback); restoreAll()
 DisplayManager         → enumerates NSScreens, reports EDR capability per screen,
                          observes NSApplication.didChangeScreenParametersNotification
-EDROverlayWindow       → borderless, transparent, click-through NSWindow per
-                         screen; hosts the CAMetalLayer; ignoresMouseEvents
+EDROverlayWindow       → ~4×4 px borderless click-through corner window per
+                         screen; hosts the CAMetalLayer EDR trigger patch
 MetalRenderer          → owns MTLDevice/queue; drives the CAMetalLayer render
                          loop (CVDisplayLink); clears drawable to EDR white ×boost
 Preferences            → UserDefaults-backed enabled flag + boost level
 ```
 
-Data flow: slider → `BrightnessController.setBoost(_:)` → clamp against
-`DisplayManager` headroom → each `EDROverlayWindow.renderer.boost = clamped`.
+Data flow: toggle/slider → `BrightnessController` → per-tick
+`targetScale(requested, currentHeadroom)` → trigger renderer boost + gamma
+lift per display.
 
 ## Build / run / test
 
@@ -190,13 +197,14 @@ does disabling instantly restore it) is required before claiming it works.
 - [x] Menu-bar icon = instant toggle (left-click); right-click menu w/ slider.
 - [x] Web app: Next.js static export, nav-bar toggle, HDR video assets
       (`scripts/generate-hdr-video.sh`), `dynamic-range` detection.
-- [ ] Verify boost perceptually on XDR hardware (both native app and web page).
-- [ ] Live clamp against dynamic headroom + KVO on the headroom value (native).
-- [ ] Multi-display: create/tear down overlays on screen (dis)connect (native).
+- [x] Web boost verified on hardware (fullscreen multiply-blend; 3 nit levels).
+- [x] Native trigger + gamma lift implemented; live 1 s headroom poll/clamp.
+- [ ] Verify native gamma lift perceptually on XDR hardware — which experiment
+      (table >1.0 vs formula) sticks? Logs will say. If both clamp → escalate
+      to capture-and-remap.
 - [ ] Graceful behavior on non-EDR displays (disable, explain in menu).
 - [ ] `scripts/`: `.app` bundling, codesign, notarization helpers.
 - [ ] Icon assets + Info.plist (`LSUIElement = true`).
-- [ ] Evaluate capture-and-remap (v2) vs. primer quality (native).
 - [ ] Web deployment (static host of user's choice; `out/` is ready as-is).
 
 Keep this list current as work lands.
