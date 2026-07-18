@@ -143,23 +143,46 @@ brighten other apps (that's the native app's job).
 
 Rules that make this work:
 
-- The `<video>` must be visible while boosting (it's hidden with
-  `display:none` only when the boost is off).
-- Two encodings are needed: **HEVC 10-bit PQ** (`hvc1`, BT.2020/SMPTE-2084) for
-  Safari and **VP9 10-bit HLG** (BT.2020/arib-std-b67) for Chrome/Firefox. Both
-  live in `apps/web/public/hdr/` and are committed.
+- **Priming for an instant toggle**: on any EDR-capable display the clip plays
+  *continuously* at 2×2 px in a corner (never `display:none` while priming — a
+  hidden video drops out of the HDR pipeline). macOS's 1–2 s headroom ramp
+  happens once at page load (invisible thanks to SDR compensation); the boost
+  toggle is then a pure style swap (tiny corner ↔ fullscreen multiply), so
+  brightness changes instantly. Trade-off: EDR mode stays engaged while the
+  site is open.
+- **Site-wide boost**: state + the video element live in
+  `components/BoostProvider.tsx`, mounted in the root layout. All internal
+  navigation MUST use `next/link` — a plain `<a>` triggers a full page load,
+  unmounting the video and visibly blinking the boost off/on. sessionStorage
+  (`maxcandela.boost`) restores the boost after hard reloads (muted video may
+  resume without a gesture).
+- **No glows in the CSS**: no `box-shadow` halos or `radial-gradient` washes —
+  under the boost they multiply into EDR and read as light bleed ("blooming").
+  Hard-edged gradients inside elements are fine.
+- Two encodings are needed: **HEVC 10-bit PQ** (`hvc1`, BT.2020/SMPTE-2084,
+  white pinned at ~1000 nits) for Safari/Chrome-with-HEVC and **VP9 10-bit
+  HLG** (BT.2020/arib-std-b67) as fallback. Both live in `apps/web/public/hdr/`
+  and are committed; pick via `canPlayType`.
 - Regenerate them with `scripts/generate-hdr-video.sh` (needs ffmpeg). Gotcha:
   libvpx only writes the WebM Colour element if the *input frames* carry the
   metadata — hence the `setparams` filter in the script. Verify with
   `ffprobe -show_entries stream=color_transfer` after any change.
 - Capability detection is `matchMedia('(dynamic-range: high)')` — a capability
   hint only, not a live headroom value.
-- `video.play()` must be triggered from a user gesture (the nav-bar toggle) or
-  autoplay policy may reject it.
+- In the `BrightnessUnlocker` effect, never let error state or callbacks into
+  the dependency array — a failed `play()` re-triggering the effect creates an
+  infinite retry loop; a staleness flag silences the expected
+  "play() interrupted by pause()" on fast toggles.
 
-Structure: `app/page.tsx` owns toggle state + detection; `components/NavBar.tsx`
-is the presentation-only nav bar with the toggle button;
-`components/BrightnessUnlocker.tsx` owns the hidden video element.
+Structure: `components/BoostProvider.tsx` (root-layout context: state,
+detection, sessionStorage, renders the video) → `components/
+BrightnessUnlocker.tsx` (the video element + prime/boost styling).
+`app/page.tsx` is the marketing page (hero, demo section with the big toggle,
+features, pricing, FAQ); `components/NavBar.tsx` is links-only (toggle
+deliberately lives in the demo section); `components/LegalShell.tsx` +
+`SiteFooter.tsx` wrap the secondary pages `/about`, `/privacy`, `/terms`,
+`/support`. `next.config.mjs` sets `output: 'export'` + `trailingSlash: true`
+(folder/index.html per route so static hosts serve them).
 
 ## Native app architecture (apps/macos)
 
@@ -255,8 +278,16 @@ does disabling instantly restore it) is required before claiming it works.
       privacy labels ("data not collected").
 - [ ] Trial clock hardening: use receipt original-purchase-date instead of
       UserDefaults first-launch.
+- [x] Web legal pages: /privacy, /terms (incl. subscription disclosures),
+      /support, /about — shared footer links from every page. App Store
+      Connect requires the Privacy Policy + Support URLs, so the site must be
+      **deployed** before submission (any static host; out/ is the artifact).
+- [x] Web: site-wide instant boost (BoostProvider in root layout, priming,
+      next/link navigation, sessionStorage restore); glow-free CSS.
 - [ ] Real App Store badge asset + store URL on the web page (CTAs are
       placeholders until the app is live).
+- [ ] Support email is hello+maxcandela@nelera.net (constant in
+      app/support/page.tsx) — swap for a dedicated address if desired.
 - [ ] Graceful behavior on non-EDR displays (disable, explain in menu).
 - [ ] Web deployment (static host of user's choice; `out/` is ready as-is).
 
@@ -274,3 +305,16 @@ Keep this list current as work lands.
 - SwiftPM executable targets can build AppKit apps, but a bare binary isn't a
   bundle — some behaviors (LSUIElement, icon) need the `.app` wrapper. That's
   why bundling scripts are on the list.
+- **Never run `npm run build` while `next dev` is serving** — they share
+  `.next/`, and the build yanks compiled chunks out from under the dev server
+  ("Cannot find module './NNN.js'"). Cure: stop dev, `rm -rf apps/web/.next`,
+  restart. Use `npx tsc --noEmit` for verification while dev is running.
+- Gamma changes must never be applied as hard table swaps in a loop — each
+  swap reads as screen flicker. Fade via the 30 Hz animator; likewise debounce
+  `didChangeScreenParametersNotification` (our own EDR engagement fires it).
+- `NSWindow`'s `screen:` initializer variant traps in Swift subclasses on
+  newer macOS ("unimplemented initializer") — call the base designated
+  `init(contentRect:styleMask:backing:defer:)` with global coordinates instead.
+- Hydration-mismatch warnings citing `data-*` attributes on `<html>`/`<body>`
+  are browser extensions (Grammarly etc.), not bugs — both elements carry
+  `suppressHydrationWarning` in the root layout.

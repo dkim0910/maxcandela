@@ -1,10 +1,9 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
 import NavBar from '@/components/NavBar';
-import BrightnessUnlocker, {
-  UnlockerState,
-} from '@/components/BrightnessUnlocker';
+import SiteFooter from '@/components/SiteFooter';
+import { useBoost } from '@/components/BoostProvider';
 
 const FEATURES = [
   {
@@ -63,22 +62,9 @@ const FAQS = [
 ];
 
 export default function Home() {
-  const [enabled, setEnabled] = useState(false);
-  // null = not yet detected (avoids SSR/CSR mismatch on first paint)
-  const [supported, setSupported] = useState<boolean | null>(null);
-  const [unlocker, setUnlocker] = useState<UnlockerState | null>(null);
-  const onUnlockerState = useCallback((s: UnlockerState) => setUnlocker(s), []);
-
-  useEffect(() => {
-    // EDR/HDR capability check. `dynamic-range: high` is true on XDR MacBook
-    // Pro panels in Safari and Chrome. It's a capability hint, not a headroom
-    // measurement — the actual boost still depends on current conditions.
-    const mq = window.matchMedia('(dynamic-range: high)');
-    setSupported(mq.matches);
-    const onChange = (e: MediaQueryListEvent) => setSupported(e.matches);
-    mq.addEventListener('change', onChange);
-    return () => mq.removeEventListener('change', onChange);
-  }, []);
+  // Site-wide boost state — the video overlay itself renders from the root
+  // layout (BoostProvider), so it stays active on every page.
+  const { enabled, supported, unlocker, toggle } = useBoost();
 
   const status =
     supported === null
@@ -87,16 +73,11 @@ export default function Home() {
         ? { cls: 'status-unsupported', text: 'This display/browser has no HDR headroom — the demo needs an XDR Mac' }
         : enabled
           ? { cls: 'status-on', text: 'Boost active — this page is now brighter than macOS normally allows' }
-          : { cls: 'status-off', text: 'Boost off — flip the switch in the nav bar ↗' };
+          : { cls: 'status-off', text: 'Boost off — normal brightness' };
 
   return (
     <>
-      <NavBar
-        enabled={enabled}
-        supported={supported === true}
-        onToggle={() => setEnabled((v) => !v)}
-      />
-      <BrightnessUnlocker enabled={enabled} onStateChange={onUnlockerState} />
+      <NavBar />
 
       <main className="main">
         {/* ---- Hero ---- */}
@@ -116,6 +97,9 @@ export default function Home() {
             <a className="cta cta-primary" href="#pricing">
                Download on the Mac App Store
             </a>
+            <a className="cta cta-secondary" href="#demo">
+              Try it in your browser ↓
+            </a>
             <span className="cta-note">Free · 7-day full trial</span>
           </div>
         </section>
@@ -125,9 +109,17 @@ export default function Home() {
           <h2>Don’t take our word for it — feel it</h2>
           <p className="demo-copy">
             This page can boost itself the same way, right in your browser.
-            Use the toggle in the nav bar, then come back and imagine your
-            whole Mac like this.
+            Press the button and imagine your whole Mac like this.
           </p>
+          <button
+            className={`toggle toggle-big ${enabled ? 'toggle-on' : ''}`}
+            onClick={toggle}
+            disabled={supported !== true}
+            aria-pressed={enabled}
+          >
+            <span className="toggle-dot" aria-hidden="true" />
+            {enabled ? 'Boost on — press to restore' : 'Try the boost'}
+          </button>
           <div className={`status ${status.cls}`} role="status">
             <span className="status-dot" aria-hidden="true" />
             {status.text}
@@ -194,7 +186,11 @@ export default function Home() {
           </div>
           <p className="pricing-fineprint">
             Purchases via Apple. One purchase covers every Mac on your Apple
-            ID. Requires macOS 13+ and an EDR-capable display.
+            ID. Requires macOS 13+ and an EDR-capable display. Subscriptions
+            renew monthly and can be cancelled anytime in App Store →
+            Subscriptions; payment is charged to your Apple Account. See our{' '}
+            <Link href="/terms/">Terms of Use</Link> and{' '}
+            <Link href="/privacy/">Privacy Policy</Link>.
           </p>
         </section>
 
@@ -210,10 +206,7 @@ export default function Home() {
         </section>
       </main>
 
-      <footer className="footer">
-        MaxCandela · not affiliated with Apple Inc. · “MacBook Pro” and
-        “Liquid Retina XDR” are trademarks of Apple Inc.
-      </footer>
+      <SiteFooter />
     </>
   );
 }

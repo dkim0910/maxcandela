@@ -13,8 +13,10 @@ It ships in two forms (macOS only — no Android/Windows):
 - **Native menu-bar app** (`apps/macos`) — a ☀️ toggle in your Mac's top nav
   bar. One click boosts the whole system to the panel's maximum; one click
   restores it. Free 7-day trial, then $9.99 lifetime or $0.99/month.
-- **Web app** (`apps/web`) — the marketing site, with a live demo toggle that
-  unlocks brightness right in Safari/Chrome, no install needed.
+- **Web app** (`apps/web`) — the marketing site (features, pricing, FAQ,
+  about, legal pages) with a live **Try the boost** demo that unlocks
+  brightness right in Safari/Chrome, no install needed. The boost is instant
+  and stays on across every page of the site.
 
 > ⚠️ **Early / experimental.** This is a code-first project scaffold. The
 > architecture is in place; the EDR compositing path is under active
@@ -36,9 +38,10 @@ display's HDR headroom stays engaged, then lifts every SDR pixel into that
 headroom with a color-calibrated gamma transfer — the whole desktop gets
 brighter with colors preserved, fading smoothly between levels.
 
-**Web app:** plays a tiny, near-invisible HDR white video (HEVC/PQ for Safari,
-VP9/HLG for Chrome). Browsers raise the backlight whenever HDR content is on
-screen, so play = boost on, pause = boost off.
+**Web app:** keeps a tiny HDR white clip playing (HEVC/PQ for Safari, VP9/HLG
+fallback) so the browser's HDR headroom stays warm, then composites the page
+into it fullscreen with `mix-blend-mode: multiply` when boosting — the page's
+own pixels are lifted into HDR range, instantly and without washing out.
 
 Full detail, including the compositing strategy and the private-API fallbacks
 we're evaluating, lives in [CLAUDE.md](./CLAUDE.md).
@@ -103,11 +106,14 @@ $9.99 lifetime or $0.99/month via in-app purchase.
 ### Web app
 
 1. Open the site in Safari or Chrome on an XDR MacBook Pro.
-2. Click the **Boost** toggle in the top nav bar.
-3. The page plays a hidden HDR clip and the whole screen brightens; toggle off
-   (or close the tab) to restore normal brightness. Nothing is installed.
+2. Press the big **Try the boost** button in the demo section (also reachable
+   via "Try it" in the nav bar).
+3. The site instantly brightens beyond the normal SDR cap and stays boosted as
+   you browse its pages; press again (or close the tab) to restore. Nothing is
+   installed. The demo brightens the site's own pages only — the Mac app is
+   the system-wide version.
 
-If the toggle is disabled, the browser reports no EDR headroom on the current
+If the button is disabled, the browser reports no EDR headroom on the current
 display (`(dynamic-range: high)` media query is false).
 
 ## Safety & battery
@@ -144,8 +150,10 @@ maxcandela/
 │   │   ├── Resources/                 # Info.plist + sandbox entitlements
 │   │   └── Tests/MaxCandelaTests/
 │   └── web/                   # Next.js web app (static export)
-│       ├── app/               # App Router pages + global styles
-│       ├── components/        # NavBar (toggle) + BrightnessUnlocker (HDR video)
+│       ├── app/               # pages: home, about, privacy, terms, support
+│       ├── components/        # BoostProvider (site-wide boost state),
+│       │                      # BrightnessUnlocker (HDR video), NavBar,
+│       │                      # LegalShell, SiteFooter
 │       └── public/hdr/        # committed HDR white clips (PQ mp4 + HLG webm)
 └── scripts/
     └── generate-hdr-video.sh  # regenerates public/hdr/ clips (needs ffmpeg)

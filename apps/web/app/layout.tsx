@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import BoostProvider from '@/components/BoostProvider';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -14,11 +15,14 @@ export default function RootLayout({
 }) {
   return (
     // suppressHydrationWarning: browser extensions inject attributes into
-    // <html> before React hydrates (e.g. data-hwp-extension), which would
-    // otherwise trigger a spurious hydration-mismatch warning. This only
-    // suppresses attribute mismatches on this one element.
+    // <html> and <body> before React hydrates (data-hwp-extension, Grammarly's
+    // data-gr-ext-installed, …), which would otherwise trigger spurious
+    // hydration-mismatch warnings. This only suppresses attribute mismatches
+    // on these two elements — real hydration bugs elsewhere still surface.
     <html lang="en" suppressHydrationWarning>
-      <body>{children}</body>
+      <body suppressHydrationWarning>
+        <BoostProvider>{children}</BoostProvider>
+      </body>
     </html>
   );
 }
