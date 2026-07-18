@@ -28,12 +28,15 @@ final class EDROverlayWindow: NSWindow {
             height: size
         )
 
+        // Note: use the base designated initializer, not the `screen:` variant.
+        // On newer macOS the screen: variant delegates to this one on `self`,
+        // which traps in Swift subclasses ("unimplemented initializer"). The
+        // rect is in global screen coordinates, so no screen hint is needed.
         super.init(
             contentRect: rect,
             styleMask: .borderless,
             backing: .buffered,
-            defer: false,
-            screen: screen
+            defer: false
         )
 
         isOpaque = false
