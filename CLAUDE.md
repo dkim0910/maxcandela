@@ -2,6 +2,11 @@
 
 Guidance for Claude Code (and humans) working in this repository.
 
+## Working agreements
+
+- **Do not commit.** The maintainer commits personally; Claude prepares changes
+  and verifies builds/tests, then stops. (Standing instruction from 2026-07-18.)
+
 ## What this project is
 
 MaxCandela raises a Mac display's usable brightness beyond the SDR ceiling by
@@ -13,8 +18,10 @@ It's a monorepo with two apps:
 
 - **`apps/macos/`** — native menu-bar app, Swift + AppKit + Metal. Build system
   is **Swift Package Manager** (no `.xcodeproj` — SwiftPM drives everything).
-  Left-clicking the ☀️ status icon toggles the boost; right-click opens a menu
-  with the boost slider.
+  Left-clicking the ☀️ status icon toggles full brightness on/off; right-click
+  opens a menu with live status, license/purchase items, and Quit. There is
+  deliberately **no boost slider** (removed 2026-07 — toggle always targets the
+  panel's max headroom; a manual level didn't add value and confused testing).
 - **`apps/web/`** — Next.js 15 (App Router, TypeScript, static export) site
   with a brightness toggle in its top nav bar. Unlocks brightness inside the
   browser via the HDR-video trick (see below).
@@ -159,11 +166,12 @@ is the presentation-only nav bar with the toggle button;
 ```
 main.swift            → NSApplication bootstrap, .accessory activation policy
 AppDelegate           → lifecycle; owns MenuBarController + BrightnessController
-MenuBarController      → NSStatusItem; left-click = instant toggle, right-click
-                         menu w/ slider + live "Boosting N×" line
+MenuBarController      → NSStatusItem; left-click = instant toggle (gated by
+                         license), right-click menu w/ live "Boosting N×" line,
+                         purchase/restore items, Quit. No slider.
 BrightnessController   → orchestrator: tiny EDR trigger per boost-capable
-                         screen; 1 s headroom poll; gamma lift = min(requested,
-                         current headroom); toggle-on targets max headroom
+                         screen; 1 s headroom poll; gamma lift fades via 30 Hz
+                         animator; toggle-on targets max headroom
 GammaController        → per-display SDR→EDR lift via transfer tables
                          (table w/ >1.0 values, formula fallback); restoreAll()
 DisplayManager         → enumerates NSScreens, reports EDR capability per screen,
@@ -175,9 +183,13 @@ MetalRenderer          → owns MTLDevice/queue; drives the CAMetalLayer render
 Preferences            → UserDefaults-backed enabled flag + boost level
 ```
 
-Data flow: toggle/slider → `BrightnessController` → per-tick
+Data flow: toggle → `BrightnessController` → per-tick
 `targetScale(requested, currentHeadroom)` → trigger renderer boost + gamma
-lift per display.
+lift (faded by the animator) per display.
+
+Also removed 2026-07: the web app's three-level boost selector (single
+1000-nit clip with codec detection remains; the 700/1600-nit clips still exist
+in `public/hdr/` and the generator script if ever needed again).
 
 ## Build / run / test
 

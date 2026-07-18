@@ -11,8 +11,9 @@ ordinary content — the same headroom macOS itself only lights up for HDR video
 It ships in two forms (macOS only — no Android/Windows):
 
 - **Native menu-bar app** (`apps/macos`) — a ☀️ toggle in your Mac's top nav
-  bar. Click it to boost the whole system; right-click for a boost slider.
-- **Web app** (`apps/web`) — a Next.js site with a toggle in its nav bar that
+  bar. One click boosts the whole system to the panel's maximum; one click
+  restores it. Free 7-day trial, then $9.99 lifetime or $0.99/month.
+- **Web app** (`apps/web`) — the marketing site, with a live demo toggle that
   unlocks brightness right in Safari/Chrome, no install needed.
 
 > ⚠️ **Early / experimental.** This is a code-first project scaffold. The
@@ -30,10 +31,10 @@ for HDR. Apple exposes that headroom to apps through EDR: a screen's
 "SDR white" (1.0) the panel can currently go — often 1.6× to 16× on capable
 displays.
 
-**Native app:** places a transparent, click-through overlay window over each
-screen backed by a `CAMetalLayer` with `wantsExtendedDynamicRangeContent =
-true`. Rendering into that layer at values above 1.0 signals macOS to drive
-the backlight higher, raising the effective brightness of everything on screen.
+**Native app:** keeps a tiny (4 px) EDR trigger window on each screen so the
+display's HDR headroom stays engaged, then lifts every SDR pixel into that
+headroom with a color-calibrated gamma transfer — the whole desktop gets
+brighter with colors preserved, fading smoothly between levels.
 
 **Web app:** plays a tiny, near-invisible HDR white video (HEVC/PQ for Safari,
 VP9/HLG for Chrome). Browsers raise the backlight whenever HDR content is on
@@ -90,13 +91,14 @@ npm run build            # static export → apps/web/out/ (host anywhere)
 ### Native app
 
 1. Launch MaxCandela — a ☀️ icon appears in the menu bar (your Mac's top nav bar).
-2. **Click the icon** to toggle the brightness boost on/off instantly. The icon
-   fills in (`sun.max.fill`) while boosted.
-3. **Right-click** (or ⌃-click) the icon for the **Boost** slider, headroom
-   info, and Quit.
-4. `1.0×` is a no-op (native brightness). Higher values light up EDR headroom.
+2. **Click the icon** to toggle full brightness on/off instantly. The icon
+   fills in (`sun.max.fill`) while boosted. The boost always targets the
+   panel's maximum available headroom and follows it live (thermals, battery).
+3. **Right-click** (or ⌃-click) the icon for live status ("Boosting N×"),
+   trial/purchase options, and Quit.
 
-Boost level and enabled-state persist across launches.
+Enabled-state persists across launches. Licensing: 7-day free trial, then
+$9.99 lifetime or $0.99/month via in-app purchase.
 
 ### Web app
 
@@ -132,11 +134,14 @@ maxcandela/
 │   │   │   ├── main.swift             # entry point
 │   │   │   ├── AppDelegate.swift      # app lifecycle
 │   │   │   ├── MenuBarController.swift # ☀️ toggle + right-click menu
-│   │   │   ├── BrightnessController.swift # orchestrates overlays
+│   │   │   ├── BrightnessController.swift # orchestrator + fade animator
+│   │   │   ├── GammaController.swift  # calibration-preserving gamma lift
+│   │   │   ├── StoreManager.swift     # StoreKit 2: trial + IAP licensing
 │   │   │   ├── DisplayManager.swift   # display enumeration + EDR queries
-│   │   │   ├── EDROverlayWindow.swift # per-screen EDR overlay window
+│   │   │   ├── EDROverlayWindow.swift # tiny per-screen EDR trigger window
 │   │   │   ├── MetalRenderer.swift    # CAMetalLayer EDR render loop
 │   │   │   └── Preferences.swift      # persisted settings
+│   │   ├── Resources/                 # Info.plist + sandbox entitlements
 │   │   └── Tests/MaxCandelaTests/
 │   └── web/                   # Next.js web app (static export)
 │       ├── app/               # App Router pages + global styles

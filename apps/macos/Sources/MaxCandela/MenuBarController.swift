@@ -2,13 +2,12 @@ import AppKit
 import StoreKit
 
 /// The menu-bar surface. Left-clicking the ☀️ status icon toggles the boost
-/// instantly (license permitting); right-clicking opens a menu with the boost
-/// slider, headroom info, license status/purchases, and Quit.
+/// instantly (license permitting); right-clicking opens a menu with headroom
+/// info, license status/purchases, and Quit.
 final class MenuBarController {
     private let statusItem: NSStatusItem
     private let brightness: BrightnessController
     private let store = StoreManager.shared
-    private let slider: NSSlider
     private let headroomItem: NSMenuItem
     private let licenseItem: NSMenuItem
     private let lifetimeItem: NSMenuItem
@@ -22,12 +21,6 @@ final class MenuBarController {
     init(brightness: BrightnessController) {
         self.brightness = brightness
         self.statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-
-        self.slider = NSSlider(value: Double(brightness.requestedBoost),
-                               minValue: 1.0,
-                               maxValue: Double(max(1.01, brightness.maxPotentialBoost())),
-                               target: nil,
-                               action: nil)
         self.headroomItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
         self.licenseItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
         self.lifetimeItem = NSMenuItem(title: "Unlock Lifetime — $9.99", action: nil, keyEquivalent: "")
@@ -50,20 +43,6 @@ final class MenuBarController {
     }
 
     private func buildMenu() {
-        // Boost slider embedded in a menu item via a custom view.
-        let boostLabel = NSMenuItem(title: "Boost", action: nil, keyEquivalent: "")
-        boostLabel.isEnabled = false
-        menu.addItem(boostLabel)
-
-        slider.target = self
-        slider.action = #selector(sliderChanged)
-        let sliderItem = NSMenuItem()
-        let container = NSView(frame: NSRect(x: 0, y: 0, width: 200, height: 28))
-        slider.frame = NSRect(x: 14, y: 4, width: 172, height: 20)
-        container.addSubview(slider)
-        sliderItem.view = container
-        menu.addItem(sliderItem)
-
         headroomItem.isEnabled = false
         menu.addItem(headroomItem)
 
@@ -98,9 +77,6 @@ final class MenuBarController {
             button.image?.isTemplate = true
         }
         let potential = brightness.maxPotentialBoost()
-        // Keep the slider range in step with the hardware — headroom can
-        // appear/disappear after launch (external displays, clamshell, …).
-        slider.maxValue = Double(max(1.01, potential))
         if let live = brightness.liveStatus() {
             headroomItem.title = String(format: "Boosting %.2f× (headroom %.2f×)",
                                         live.applied, live.headroom)
@@ -232,9 +208,5 @@ final class MenuBarController {
         alert.addButton(withTitle: "OK")
         NSApp.activate(ignoringOtherApps: true)
         alert.runModal()
-    }
-
-    @objc private func sliderChanged() {
-        brightness.setBoost(CGFloat(slider.doubleValue))
     }
 }

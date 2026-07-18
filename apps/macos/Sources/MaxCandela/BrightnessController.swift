@@ -87,14 +87,6 @@ final class BrightnessController {
         teardownAllOverlays()
     }
 
-    /// Set the requested boost (from the menu slider). The animator fades to
-    /// the new level — repeated slider ticks just retarget the fade.
-    func setBoost(_ value: CGFloat) {
-        requestedBoost = value
-        prefs.boost = Double(value)
-        refreshTargets()
-    }
-
     /// Best potential headroom across displays, for UI copy ("up to N×").
     func maxPotentialBoost() -> CGFloat {
         displayManager.bestPotentialHeadroom()
