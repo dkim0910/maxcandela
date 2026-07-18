@@ -312,39 +312,6 @@ h2 {
   background: var(--bad);
 }
 
-/* Boost level selector */
-
-.levels {
-  display: inline-flex;
-  gap: 6px;
-  margin-top: 16px;
-  padding: 4px;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  background: var(--bg);
-}
-
-.level {
-  padding: 6px 18px;
-  border: none;
-  border-radius: 999px;
-  background: transparent;
-  color: var(--text-dim);
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.level:hover {
-  color: var(--text);
-}
-
-.level-active {
-  background: rgba(255, 176, 46, 0.14);
-  color: var(--accent);
-}
-
 .diag {
   margin-top: 12px;
   font-size: 13px;

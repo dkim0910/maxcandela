@@ -10,7 +10,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         brightness = BrightnessController()
         menuBar = MenuBarController(brightness: brightness)
         // Keep entitlements fresh (renewals, refunds, purchases on other Macs).
-        StoreManager.shared.startTransactionListener { }
+        StoreManager.shared.startTransactionListener { [weak self] in
+            self?.menuBar.licenseDidChange()
+        }
     }
 
     func applicationWillTerminate(_ notification: Notification) {

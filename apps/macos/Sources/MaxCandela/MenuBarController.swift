@@ -98,6 +98,9 @@ final class MenuBarController {
             button.image?.isTemplate = true
         }
         let potential = brightness.maxPotentialBoost()
+        // Keep the slider range in step with the hardware — headroom can
+        // appear/disappear after launch (external displays, clamshell, …).
+        slider.maxValue = Double(max(1.01, potential))
         if let live = brightness.liveStatus() {
             headroomItem.title = String(format: "Boosting %.2f× (headroom %.2f×)",
                                         live.applied, live.headroom)
@@ -118,6 +121,11 @@ final class MenuBarController {
             licenseItem.title = "Trial ended — unlock to keep boosting"
             [lifetimeItem, monthlyItem, restoreItem].forEach { $0.isHidden = false }
         }
+    }
+
+    /// External license changes (renewal, refund, purchase on another Mac).
+    func licenseDidChange() {
+        refreshLicense()
     }
 
     /// Re-check entitlements and localized prices off the main thread.

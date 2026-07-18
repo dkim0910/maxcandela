@@ -3,15 +3,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import NavBar from '@/components/NavBar';
 import BrightnessUnlocker, {
-  BoostLevel,
   UnlockerState,
 } from '@/components/BrightnessUnlocker';
-
-const LEVELS: { id: BoostLevel; label: string; hint: string }[] = [
-  { id: 'low', label: 'Low', hint: 'least desktop dimming' },
-  { id: 'medium', label: 'Medium', hint: 'balanced' },
-  { id: 'high', label: 'High', hint: 'maximum boost' },
-];
 
 const FEATURES = [
   {
@@ -71,7 +64,6 @@ const FAQS = [
 
 export default function Home() {
   const [enabled, setEnabled] = useState(false);
-  const [level, setLevel] = useState<BoostLevel>('medium');
   // null = not yet detected (avoids SSR/CSR mismatch on first paint)
   const [supported, setSupported] = useState<boolean | null>(null);
   const [unlocker, setUnlocker] = useState<UnlockerState | null>(null);
@@ -104,11 +96,7 @@ export default function Home() {
         supported={supported === true}
         onToggle={() => setEnabled((v) => !v)}
       />
-      <BrightnessUnlocker
-        enabled={enabled}
-        level={level}
-        onStateChange={onUnlockerState}
-      />
+      <BrightnessUnlocker enabled={enabled} onStateChange={onUnlockerState} />
 
       <main className="main">
         {/* ---- Hero ---- */}
@@ -144,22 +132,6 @@ export default function Home() {
             <span className="status-dot" aria-hidden="true" />
             {status.text}
           </div>
-          {supported && (
-            <div className="levels" role="radiogroup" aria-label="Boost level">
-              {LEVELS.map((l) => (
-                <button
-                  key={l.id}
-                  className={`level ${level === l.id ? 'level-active' : ''}`}
-                  onClick={() => setLevel(l.id)}
-                  role="radio"
-                  aria-checked={level === l.id}
-                  title={l.hint}
-                >
-                  {l.label}
-                </button>
-              ))}
-            </div>
-          )}
           {enabled && unlocker?.error && (
             <p className="diag">⚠️ {unlocker.error}</p>
           )}

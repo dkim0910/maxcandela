@@ -73,6 +73,12 @@ final class MetalRenderer {
         displayLink = nil
     }
 
+    /// The display-link callback holds an *unretained* pointer to self; it must
+    /// never outlive us, even if a caller forgets deactivate().
+    deinit {
+        stop()
+    }
+
     private func renderFrame() {
         guard let drawable = metalLayer.nextDrawable(),
               let commandBuffer = commandQueue.makeCommandBuffer() else {

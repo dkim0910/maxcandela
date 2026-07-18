@@ -161,7 +161,10 @@ final class BrightnessController {
         }
 
         // Add triggers for new displays.
-        let infoByID = Dictionary(uniqueKeysWithValues: displayManager.currentDisplays().map { ($0.displayID, $0) })
+        // uniquingKeysWith: mirrored screens can report duplicate display IDs;
+        // uniqueKeysWithValues would trap on that.
+        let infoByID = Dictionary(displayManager.currentDisplays().map { ($0.displayID, $0) },
+                                  uniquingKeysWith: { first, _ in first })
         for id in wanted.subtracting(existing) {
             guard let info = infoByID[id] else { continue }
             guard let overlay = EDROverlayWindow(screen: info.screen) else {
@@ -232,10 +235,17 @@ final class BrightnessController {
             guard abs(current - target) > 0.001 else { continue }
 
             let next = Self.animationStep(current: current, target: target)
-            currentScales[id] = next
-            gamma.applyLift(scale: next, to: id)
-            if next != target {
-                allSettled = false
+            if gamma.applyLift(scale: next, to: id) {
+                // Only record progress the display actually accepted — otherwise
+                // liveStatus() would report a boost that isn't on the glass.
+                currentScales[id] = next
+                if next != target {
+                    allSettled = false
+                }
+            } else {
+                // Display refused the lift: stop chasing it this fade instead
+                // of spinning the animator forever. The next poll retries.
+                targetScales[id] = current
             }
         }
         if allSettled {
