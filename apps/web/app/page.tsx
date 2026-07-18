@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import NavBar from '@/components/NavBar';
 import SiteFooter from '@/components/SiteFooter';
+import ScrollLink from '@/components/ScrollLink';
 import { useBoost } from '@/components/BoostProvider';
 
 const FEATURES = [
@@ -23,8 +24,8 @@ const FEATURES = [
   },
   {
     icon: '🌡️',
-    title: 'Panel-safe by design',
-    text: 'MaxCandela never exceeds the limits macOS itself enforces for HDR. Thermal protection stays fully in charge.',
+    title: 'Looks after your Mac',
+    text: 'Never exceeds the limits macOS enforces for HDR. As your Mac warms up it eases the boost off, and if it gets genuinely hot it briefly dims the screen below normal to help it cool — then restores everything.',
   },
   {
     icon: '🔆',
@@ -41,7 +42,11 @@ const FEATURES = [
 const FAQS = [
   {
     q: 'Is this safe for my display?',
-    a: 'Yes. MaxCandela uses the same HDR headroom macOS itself uses for HDR video, and never exceeds the limit the OS reports. If your Mac gets hot, macOS lowers that limit and MaxCandela follows it down automatically.',
+    a: 'Yes. MaxCandela uses the same HDR headroom macOS itself uses for HDR video, and never exceeds the limit the OS reports. If your Mac gets hot, MaxCandela follows the OS down automatically.',
+  },
+  {
+    q: 'What happens if my Mac gets hot?',
+    a: 'MaxCandela looks after it. As your Mac warms up it eases the boost off, and if it gets genuinely hot it lowers brightness a little to help it cool — the same way phones do — then brings everything back once the temperature drops. It all happens automatically, and you can turn the boost off any time.',
   },
   {
     q: 'Which Macs are supported?',
@@ -53,7 +58,7 @@ const FAQS = [
   },
   {
     q: 'How does the free trial work?',
-    a: 'Download free from the Mac App Store and get 7 days with everything unlocked. After that, keep it for $0.99/month or unlock it forever for $9.99. One purchase works on all Macs signed into your Apple ID.',
+    a: 'Download free from the Mac App Store and get 5 days with everything unlocked. After that, keep it for $0.99/month or unlock it forever for $9.99. One purchase works on all Macs signed into your Apple ID.',
   },
   {
     q: 'Why doesn’t macOS just allow this?',
@@ -94,13 +99,13 @@ export default function Home() {
             in your menu bar. Full brightness, true colors, zero setup.
           </p>
           <div className="cta-row">
-            <a className="cta cta-primary" href="#pricing">
+            <ScrollLink targetId="pricing" className="cta cta-primary">
                Download on the Mac App Store
-            </a>
-            <a className="cta cta-secondary" href="#demo">
+            </ScrollLink>
+            <ScrollLink targetId="demo" className="cta cta-secondary">
               Try it in your browser ↓
-            </a>
-            <span className="cta-note">Free · 7-day full trial</span>
+            </ScrollLink>
+            <span className="cta-note">Free · 5-day full trial</span>
           </div>
         </section>
 
@@ -151,7 +156,7 @@ export default function Home() {
         <section className="pricing" id="pricing">
           <h2>Simple pricing</h2>
           <p className="pricing-sub">
-            Free for 7 days, everything unlocked. Then pick what suits you.
+            Free for 5 days, everything unlocked. Then pick what suits you.
           </p>
           <div className="price-cards">
             <div className="price-card">
@@ -164,9 +169,9 @@ export default function Home() {
                 <li>✓ All future updates</li>
                 <li>✓ Cancel anytime in the App Store</li>
               </ul>
-              <a className="cta cta-secondary" href="#">
+              <ScrollLink targetId="demo" className="cta cta-secondary">
                 Start free trial
-              </a>
+              </ScrollLink>
             </div>
             <div className="price-card price-card-best">
               <span className="badge">Best value</span>
@@ -179,9 +184,9 @@ export default function Home() {
                 <li>✓ All future updates</li>
                 <li>✓ Pays for itself in 11 months</li>
               </ul>
-              <a className="cta cta-primary" href="#">
+              <ScrollLink targetId="demo" className="cta cta-primary">
                 Start free trial
-              </a>
+              </ScrollLink>
             </div>
           </div>
           <p className="pricing-fineprint">

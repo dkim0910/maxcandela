@@ -38,19 +38,19 @@ final class BoostLogicTests: XCTestCase {
 
     func testTrialFullOnFirstDay() {
         let start = Date()
-        XCTAssertEqual(StoreManager.trialDaysRemaining(firstLaunch: start, now: start), 7)
+        XCTAssertEqual(StoreManager.trialDaysRemaining(firstLaunch: start, now: start), 5)
     }
 
     func testTrialCountsDownByWholeDays() {
         let start = Date()
         let threeDaysLater = start.addingTimeInterval(3 * 86_400 + 60)
-        XCTAssertEqual(StoreManager.trialDaysRemaining(firstLaunch: start, now: threeDaysLater), 4)
+        XCTAssertEqual(StoreManager.trialDaysRemaining(firstLaunch: start, now: threeDaysLater), 2)
     }
 
     func testTrialExpiresAtZeroAndStaysThere() {
         let start = Date()
-        let eightDaysLater = start.addingTimeInterval(8 * 86_400)
-        XCTAssertEqual(StoreManager.trialDaysRemaining(firstLaunch: start, now: eightDaysLater), 0)
+        let sixDaysLater = start.addingTimeInterval(6 * 86_400)
+        XCTAssertEqual(StoreManager.trialDaysRemaining(firstLaunch: start, now: sixDaysLater), 0)
         let yearLater = start.addingTimeInterval(365 * 86_400)
         XCTAssertEqual(StoreManager.trialDaysRemaining(firstLaunch: start, now: yearLater), 0)
     }
@@ -58,7 +58,7 @@ final class BoostLogicTests: XCTestCase {
     func testTrialLenientWhenClockRolledBack() {
         let start = Date()
         let past = start.addingTimeInterval(-86_400)
-        XCTAssertEqual(StoreManager.trialDaysRemaining(firstLaunch: start, now: past), 7)
+        XCTAssertEqual(StoreManager.trialDaysRemaining(firstLaunch: start, now: past), 5)
     }
 
     // MARK: - BrightnessController target scale
@@ -78,13 +78,16 @@ final class BoostLogicTests: XCTestCase {
         XCTAssertEqual(BrightnessController.targetScale(requested: 0.0, currentHeadroom: 2.0), 1.0)
     }
 
-    // MARK: - Thermal ceiling
+    // MARK: - Thermal limits
 
-    func testThermalCeilingMapping() {
-        XCTAssertEqual(ThermalMonitor.ceiling(for: .nominal), 1.0)
-        XCTAssertEqual(ThermalMonitor.ceiling(for: .fair), 1.0)
-        XCTAssertEqual(ThermalMonitor.ceiling(for: .serious), 0.5)
-        XCTAssertEqual(ThermalMonitor.ceiling(for: .critical), 0.0)
+    func testThermalLimitsMapping() {
+        XCTAssertEqual(ThermalMonitor.limits(for: .nominal), .init(boostCeiling: 1.0, dimTo: nil))
+        XCTAssertEqual(ThermalMonitor.limits(for: .fair), .init(boostCeiling: 1.0, dimTo: nil))
+        XCTAssertEqual(ThermalMonitor.limits(for: .serious), .init(boostCeiling: 0.5, dimTo: nil))
+        // Critical: no boost AND an active safety dim below normal.
+        XCTAssertEqual(ThermalMonitor.limits(for: .critical),
+                       .init(boostCeiling: 0.0, dimTo: ThermalMonitor.criticalDim))
+        XCTAssertLessThan(ThermalMonitor.criticalDim, 1.0)
     }
 
     func testTargetScaleThermalCeilingScalesOnlyTheExtra() {
@@ -94,11 +97,27 @@ final class BoostLogicTests: XCTestCase {
             1.5, accuracy: 0.0001)
     }
 
-    func testTargetScaleThermalCriticalReturnsNative() {
-        // Ceiling 0.0 → exactly native, never below.
+    func testTargetScaleSeriousDoesNotDim() {
+        // Ceiling 0.0 without a dim → exactly native, never below.
         XCTAssertEqual(
             BrightnessController.targetScale(requested: 3.0, currentHeadroom: 3.0, thermalCeiling: 0.0),
             1.0)
+    }
+
+    func testTargetScaleCriticalDimsBelowNative() {
+        // Critical: boost removed AND dimmed to the safety level (0.8).
+        XCTAssertEqual(
+            BrightnessController.targetScale(requested: 3.0, currentHeadroom: 3.0,
+                                             thermalCeiling: 0.0, dimTo: 0.8),
+            0.8, accuracy: 0.0001)
+    }
+
+    func testTargetScaleDimCapsEvenWithHeadroom() {
+        // Even if boost would apply, the dim cap wins when set.
+        XCTAssertEqual(
+            BrightnessController.targetScale(requested: 4.0, currentHeadroom: 4.0,
+                                             thermalCeiling: 1.0, dimTo: 0.8),
+            0.8, accuracy: 0.0001)
     }
 
     func testTargetScaleThermalNominalMatchesOldBehavior() {

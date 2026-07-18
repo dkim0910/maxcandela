@@ -30,7 +30,7 @@ Shared tooling lives in `scripts/`.
 
 ## Business model / App Store
 
-Free download on the Mac App Store, 7-day full trial, then in-app purchase:
+Free download on the Mac App Store, 5-day full trial, then in-app purchase:
 
 - `com.maxcandela.pro.lifetime` — non-consumable, **$9.99**
 - `com.maxcandela.pro.monthly` — auto-renewable subscription, **$0.99/month**
@@ -124,13 +124,18 @@ like Macs Fan Control ship outside the App Store for this reason). Instead
 `ThermalMonitor` reads `ProcessInfo.thermalState` and eases the boost down as
 the Mac heats up:
 
-- Mapping (`ThermalMonitor.ceiling(for:)`): nominal/fair → 1.0 (full), serious
-  → 0.5, critical → 0.0. The ceiling scales only the boost *above* native, so
-  0.0 returns to exactly native brightness, never below.
-- `targetScale(requested:currentHeadroom:thermalCeiling:)` folds it into the
-  existing clamp; the 30 Hz animator fades the change smoothly.
-- `thermalStateDidChangeNotification` triggers an immediate re-eval (not just
-  the 1 s poll); the menu shows "· eased for heat" while active.
+- Mapping (`ThermalMonitor.limits(for:)` → `Limits{boostCeiling, dimTo}`):
+  nominal/fair → full boost, no dim; serious → half the extra boost, no dim;
+  **critical → no boost AND an active safety dim to `criticalDim` (0.8 = 80%
+  of normal)**. The boostCeiling scales only the boost above native; `dimTo`,
+  when set, caps the result *below* native to shed heat (phone-style thermal
+  dimming).
+- `targetScale(requested:currentHeadroom:thermalCeiling:dimTo:)` folds it in;
+  the 30 Hz animator fades the change (including down below 1.0) smoothly. The
+  gamma path already handles scale < 1.0 (dims the calibration tables).
+- `thermalStateDidChangeNotification` triggers immediate re-eval. Menu via
+  `thermalStatus` (.normal/.eased/.dimmed): "· eased for heat" at serious,
+  "Dimmed to N% — Mac too hot" at critical.
 - DEBUG: `MAXCANDELA_FORCE_THERMAL=serious|critical|fair|nominal` forces a
   state (real thermal state can't be triggered on demand).
 
@@ -309,9 +314,14 @@ does disabling instantly restore it) is required before claiming it works.
 - [x] Native gamma lift verified on hardware — table path with >1.0 values
       works. Color washout fixed via encoded-gain math + calibration-preserving
       tables (see boost mechanism section).
-- [ ] Re-verify color fidelity on hardware after the encoded-gain fix.
-- [x] StoreKit 2 paywall: 7-day trial, $9.99 lifetime / $0.99 monthly IAP,
-      restore purchases, transaction listener; off/quit never gated.
+- [x] Color fidelity verified on hardware after the encoded-gain fix (in daily
+      use since, no washout).
+- [x] StoreKit 2 paywall: 5-day trial, $9.99 lifetime / $0.99 monthly IAP,
+      restore purchases, transaction listener; off/quit never gated. Paywall +
+      first-run welcome dialogs use the brand logo (bundled `AppIcon.png`
+      resource). Debug: `MAXCANDELA_FORCE_TRIAL`, `MAXCANDELA_FORCE_WELCOME`.
+- [x] First-run onboarding: welcome popover anchored to the ☀️ status item
+      ("MaxCandela lives up here") so users find the menu-bar-only app.
 - [x] Brand mark everywhere: `make-icon.swift` draws the blazing-MacBook logo
       (same visual language as `make-hero.swift`, hero image on the site);
       used as the .icns app icon, the web favicon/touch icon (`app/icon.png`,
@@ -319,43 +329,67 @@ does disabling instantly restore it) is required before claiming it works.
 - [x] Packaging: Info.plist, sandbox entitlements, generated icon,
       `bundle-macos.sh` (.app verified locally with ad-hoc signing; --pkg for
       App Store).
-- [x] Web: marketing page (hero, live demo, features, pricing, FAQ).
-- [ ] Verify gamma/EDR APIs work inside the **sandboxed** build before
-      submission (sandbox may behave differently than swift run).
-- [ ] App Store Connect setup: app record, both IAP products, screenshots,
-      privacy labels — **"Usage Data → Analytics, not linked to identity"**
-      (NOT "data not collected"; the app sends anonymous GA4 events).
-- [ ] Analytics credentials: web Measurement ID in `apps/web/lib/analytics.ts`;
-      app Measurement ID + API secret in
-      `apps/macos/Sources/MaxCandela/Analytics.swift` (GA4 admin → Data
-      Streams → Measurement Protocol API secrets). Both ship disabled until
-      the placeholders are replaced. App events: app_launch, boost_enabled/
-      boost_disabled, paywall_shown, purchase_completed; web: page views +
-      boost_enabled/boost_disabled. DEBUG builds never send. Keep the
-      /privacy page in sync with any event changes.
-- [ ] GDPR/ePrivacy: GA cookies on the site technically require a consent
-      banner for EU visitors — decide before launch (add banner, or switch to
-      a cookieless analytics provider).
-- [ ] Trial clock hardening: use receipt original-purchase-date instead of
-      UserDefaults first-launch.
+- [x] Web: marketing page (hero, live demo, features, pricing, FAQ) + UX
+      polish (anchor scroll-margin, ScrollLink so nav/CTAs don't pollute the
+      back stack, thermal-dim explanation copy).
+- [x] Verify gamma/EDR APIs work inside the **sandboxed** build — confirmed via
+      the codesigned `dist/MaxCandela.app` (boost + thermal work sandboxed).
+
+### App Store submission — remaining (Daniel drives, Apple-side)
+
+- [~] App Store Connect setup — IN PROGRESS: app record created (bundle
+      `com.maxcandela.MaxCandela`, SKU `maxcandela-macos-001`), keywords set,
+      content-rights/age answered (4+). Still to do:
+  - [ ] Finish both IAP products: `com.maxcandela.pro.lifetime` ($9.99
+        non-consumable) + `com.maxcandela.pro.monthly` ($0.99/mo subscription
+        in a "MaxCandela Pro" group) — product IDs must match the code exactly.
+  - [ ] Set the App Privacy label: **"Usage Data → Analytics, not linked to
+        identity"** (NOT "data not collected" — the app sends anonymous GA4).
+  - [ ] **Create + upload screenshots**: App Store product screenshots (Mac
+        sizes, e.g. 2880×1800) showing the menu-bar toggle + brightness effect,
+        AND an IAP review screenshot (the paywall / purchase menu) per product.
+  - [ ] Certificates (Xcode): Apple Distribution + Mac Installer Distribution.
+  - [ ] Provisioning profile (Mac App Store) → download → build the `.pkg`:
+        `SIGN_IDENTITY=… INSTALLER_IDENTITY=… PROVISIONING_PROFILE=… \
+        scripts/bundle-macos.sh --pkg`, upload via Transporter.
+  - [ ] **Submit for App Review.**
+
+### Google Analytics — remaining
+
+- [ ] Create a GA4 property, then fill credentials (both ship DISABLED until
+      the `G-XXXX` placeholders are replaced):
+      - web Measurement ID → `apps/web/lib/analytics.ts`
+      - app Measurement ID + API secret → env vars `GA_MEASUREMENT_ID` /
+        `GA_API_SECRET` (injected into Info.plist by `bundle-macos.sh`; never
+        committed). GA4 admin → Data Streams → Measurement Protocol secrets.
+      App events: app_launch, boost_enabled/boost_disabled, paywall_shown,
+      purchase_completed; web: page views + boost_enabled/boost_disabled.
+      DEBUG never sends. Keep the /privacy page in sync with any event changes.
 - [x] Web legal pages: /privacy, /terms (incl. subscription disclosures),
       /support, /about — shared footer links from every page. App Store
       Connect requires the Privacy Policy + Support URLs, so the site must be
       **deployed** before submission (any static host; out/ is the artifact).
 - [x] Web: site-wide instant boost (BoostProvider in root layout, priming,
       next/link navigation, sessionStorage restore); glow-free CSS.
-- [x] Thermal-aware boost throttling (`ThermalMonitor` + `targetScale`
-      thermal ceiling); fan control documented as impossible in-sandbox.
+- [x] Thermal-aware protection: `ThermalMonitor` eases the boost as the Mac
+      warms and — at critical — actively **dims below native** (`criticalDim`
+      0.8) to shed heat; fan control documented as impossible in-sandbox.
 - [x] SEO: domain maxcandela.com wired (`lib/site.ts`), canonical + OG/Twitter
       tags + `og.png`, `sitemap.xml` + `robots.txt` generated at build.
-- [ ] Deploy the site, then verify ownership in **Google Search Console** and
+- [x] Web deployment: LIVE at https://maxcandela.com via GitHub Pages +
+      Actions (`.github/workflows/deploy-web.yml`), custom domain + HTTPS.
+      Pushes to `main` touching `apps/web/**` auto-rebuild/redeploy.
+- [ ] After the next deploy, verify ownership in **Google Search Console** and
       submit `https://maxcandela.com/sitemap.xml` (this is what gets indexed).
 - [ ] Real App Store badge asset + store URL on the web page (CTAs are
       placeholders until the app is live).
 - [ ] Support email is hello+maxcandela@nelera.net (constant in
       app/support/page.tsx) — swap for a dedicated address if desired.
+- [ ] GDPR/ePrivacy: GA cookies need an EU consent banner — decide before
+      turning analytics on (banner, or a cookieless provider).
+- [ ] Trial clock hardening: use the receipt original-purchase-date instead of
+      the UserDefaults first-launch (resettable today).
 - [ ] Graceful behavior on non-EDR displays (disable, explain in menu).
-- [ ] Web deployment (static host of user's choice; `out/` is ready as-is).
 
 Keep this list current as work lands.
 

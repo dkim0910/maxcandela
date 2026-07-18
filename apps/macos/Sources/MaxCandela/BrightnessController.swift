@@ -17,16 +17,23 @@ import AppKit
 ///    to native brightness. CG gamma also auto-restores if the process dies.
 final class BrightnessController {
     /// How the live target is computed from what the user asked for, what the
-    /// OS currently allows, and the thermal ceiling. Pure, unit-tested.
+    /// OS currently allows, and the thermal limits. Pure, unit-tested.
     ///
-    /// The thermal ceiling scales only the boost *above* native (1.0): a ceiling
-    /// of 0.5 halves the extra brightness, 0.0 returns to native, 1.0 leaves it
-    /// unchanged. Scaling the whole multiplier would dim below native at 0.
+    /// The thermal `boostCeiling` scales only the boost *above* native (1.0): a
+    /// ceiling of 0.5 halves the extra brightness, 0.0 removes it (native).
+    /// `dimTo`, when set (critical heat), caps the result below native — an
+    /// active safety dim (e.g. 0.8 = 80% brightness).
     static func targetScale(requested: CGFloat, currentHeadroom: CGFloat,
-                            thermalCeiling: CGFloat = 1.0) -> CGFloat {
+                            thermalCeiling: CGFloat = 1.0,
+                            dimTo: CGFloat? = nil) -> CGFloat {
         let clamped = min(requested, currentHeadroom)
         let extra = max(0, clamped - 1.0)
-        return max(1.0, 1.0 + extra * max(0, min(1, thermalCeiling)))
+        let boostTarget = max(1.0, 1.0 + extra * max(0, min(1, thermalCeiling)))
+        // A safety dim caps below native; otherwise the boost target stands.
+        if let dimTo {
+            return min(boostTarget, dimTo)
+        }
+        return boostTarget
     }
 
     /// One animator frame: move `current` toward `target` by `rate` of the
@@ -105,15 +112,25 @@ final class BrightnessController {
         teardownAllOverlays()
     }
 
-    /// Best potential headroom across displays, for UI copy ("up to N×").
-    func maxPotentialBoost() -> CGFloat {
-        displayManager.bestPotentialHeadroom()
+    /// Whether any attached display can be boosted at all.
+    func canBoost() -> Bool {
+        displayManager.bestPotentialHeadroom() > 1.0
     }
 
-    /// True when the boost is currently being held back because the Mac is hot,
-    /// so the menu can explain the reduced brightness.
-    var thermalEased: Bool {
-        isEnabled && thermal.ceiling < 1.0
+    /// The real, live headroom across displays right now (not the theoretical
+    /// potential). ~1.0 when nothing has engaged EDR.
+    func currentHeadroom() -> CGFloat {
+        displayManager.bestCurrentHeadroom()
+    }
+
+    /// How heat is currently affecting brightness, for the menu to explain a
+    /// reduced/dimmed screen.
+    enum ThermalStatus { case normal, eased, dimmed }
+    var thermalStatus: ThermalStatus {
+        guard isEnabled else { return .normal }
+        let limits = thermal.limits
+        if limits.dimTo != nil { return .dimmed }
+        return limits.boostCeiling < 1.0 ? .eased : .normal
     }
 
     /// Live info for the menu: (applied lift, current headroom) of the display
@@ -218,13 +235,17 @@ final class BrightnessController {
             // holds EDR mode fully open.
             overlay.renderer.boost = max(1.0, info.currentHeadroom)
 
+            let limits = thermal.limits
             let target = Self.targetScale(requested: requestedBoost,
                                           currentHeadroom: info.currentHeadroom,
-                                          thermalCeiling: thermal.ceiling)
+                                          thermalCeiling: limits.boostCeiling,
+                                          dimTo: limits.dimTo)
             if targetScales[info.displayID] != target {
                 targetScales[info.displayID] = target
-                NSLog("MaxCandela: display %u headroom %.2f× thermal %.2f → fading lift to %.2f× (requested %.2f×)",
-                      info.displayID, info.currentHeadroom, thermal.ceiling, target, requestedBoost)
+                NSLog("MaxCandela: display %u headroom %.2f× thermal(ceil %.2f dim %@) → fading to %.2f× (requested %.2f×)",
+                      info.displayID, info.currentHeadroom, limits.boostCeiling,
+                      limits.dimTo.map { String(format: "%.2f", $0) } ?? "none",
+                      target, requestedBoost)
             }
             if abs((currentScales[info.displayID] ?? 1.0) - target) > 0.001 {
                 needsAnimation = true

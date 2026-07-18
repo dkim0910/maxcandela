@@ -38,7 +38,7 @@ export default function AboutPage() {
         color-calibrated transform, so everything gets brighter without
         washing out. It respects the system’s thermal and battery limits at
         all times, collects zero data, and never sees what’s on your screen.
-        Free for 7 days, then $9.99 once or $0.99/month.
+        Free for 5 days, then $9.99 once or $0.99/month.
       </p>
 
       <h2>This website</h2>

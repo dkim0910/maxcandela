@@ -35,7 +35,7 @@ export default function TermsPage() {
 
       <h2>Trial, pricing, and subscriptions</h2>
       <ul>
-        <li>The app is free to download and fully functional for a 7-day
+        <li>The app is free to download and fully functional for a 5-day
           trial.</li>
         <li>After the trial, continued use of the brightness boost requires
           either a one-time lifetime purchase (<strong>$9.99</strong>) or a

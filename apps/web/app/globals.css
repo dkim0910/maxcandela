@@ -23,6 +23,12 @@ html {
   scroll-behavior: smooth;
 }
 
+/* Anchor jumps (#demo, #features, …) stop below the fixed 56px navbar instead
+   of sliding the section heading underneath it / overshooting. */
+section[id] {
+  scroll-margin-top: 72px;
+}
+
 html,
 body {
   background: var(--bg);

@@ -12,7 +12,8 @@ let package = Package(
     targets: [
         .executableTarget(
             name: "MaxCandela",
-            path: "Sources/MaxCandela"
+            path: "Sources/MaxCandela",
+            resources: [.process("Resources")]
         ),
         .testTarget(
             name: "MaxCandelaTests",

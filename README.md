@@ -53,7 +53,7 @@ unlock. Requires macOS 13 or later.
 
 ## Pricing
 
-Free to download with a **7-day trial**, fully unlocked. After that:
+Free to download with a **5-day trial**, fully unlocked. After that:
 
 - **$9.99** once — yours for life, or
 - **$0.99 / month**
@@ -63,9 +63,11 @@ One purchase covers every Mac on your Apple ID.
 ## A note on heat & battery
 
 More brightness uses more power and generates more heat — that's physics, the
-same as playing HDR video. MaxCandela watches your Mac's thermal state and eases
-the boost down automatically when things get warm, then restores it once cool.
-Turn it off any time to go back to normal.
+same as playing HDR video. MaxCandela watches your Mac's thermal state and looks
+after your machine automatically: it eases the boost down as things get warm,
+and if the Mac gets genuinely hot it will briefly **dim the screen below normal**
+to help it cool — then restores everything once the temperature drops. Turn it
+off any time to go back to normal.
 
 ## Links
 

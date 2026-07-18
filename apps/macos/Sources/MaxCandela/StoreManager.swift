@@ -1,7 +1,7 @@
 import Foundation
 import StoreKit
 
-/// Licensing: free download, 7-day full trial, then either a monthly
+/// Licensing: free download, 5-day full trial, then either a monthly
 /// subscription or a lifetime unlock via Apple in-app purchase.
 ///
 /// Product IDs must match App Store Connect exactly:
@@ -24,7 +24,7 @@ final class StoreManager {
     static let monthlyProductID = "com.maxcandela.pro.monthly"
     private static let productIDs: Set<String> = [lifetimeProductID, monthlyProductID]
 
-    private static let trialDays = 7
+    private static let trialDays = 5
     private static let firstLaunchKey = "com.maxcandela.firstLaunchDate"
 
     private let defaults: UserDefaults
@@ -58,8 +58,24 @@ final class StoreManager {
     /// wins; otherwise the trial clock decides.
     func currentState() async -> LicenseState {
         #if DEBUG
-        // swift run / debug builds stay unlocked so development isn't gated on
-        // App Store Connect. Set MAXCANDELA_FORCE_PAYWALL=1 to test the paywall.
+        // Force a license state for testing:
+        //   MAXCANDELA_FORCE_TRIAL=expired|trial|licensed
+        // (real StoreKit entitlements can't be exercised outside the App Store).
+        if let forced = ProcessInfo.processInfo.environment["MAXCANDELA_FORCE_TRIAL"] {
+            switch forced {
+            case "licensed": return .licensed
+            case "expired": return .expired
+            case "trial": return .trial(daysRemaining: Self.trialDays)
+            default:
+                // A number forces that many days remaining (0 = expired).
+                if let days = Int(forced) {
+                    return days > 0 ? .trial(daysRemaining: days) : .expired
+                }
+            }
+        }
+        // Otherwise debug builds stay unlocked so development isn't gated on
+        // App Store Connect. Set MAXCANDELA_FORCE_PAYWALL=1 to reach the real
+        // entitlement/trial-clock path below.
         if ProcessInfo.processInfo.environment["MAXCANDELA_FORCE_PAYWALL"] == nil {
             return .licensed
         }

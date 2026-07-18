@@ -1,10 +1,11 @@
 import Link from 'next/link';
+import ScrollLink from './ScrollLink';
 
 /**
  * Fixed top nav bar: brand + section links. Presentation-only — the boost
  * toggle deliberately lives in the demo section on the page, where every
- * visitor sees it, not up here. Cross-page links use next/link so the boost
- * video in the root layout survives navigation.
+ * visitor sees it, not up here. Section links use ScrollLink (no history
+ * pollution); cross-page links use next/link.
  */
 export default function NavBar() {
   return (
@@ -14,10 +15,10 @@ export default function NavBar() {
         MaxCandela
       </span>
       <div className="nav-links">
-        <a href="#demo">Try it</a>
-        <a href="#features">Features</a>
-        <a href="#pricing">Pricing</a>
-        <a href="#faq">FAQ</a>
+        <ScrollLink targetId="demo">Try it</ScrollLink>
+        <ScrollLink targetId="features">Features</ScrollLink>
+        <ScrollLink targetId="pricing">Pricing</ScrollLink>
+        <ScrollLink targetId="faq">FAQ</ScrollLink>
         <Link href="/about/">About</Link>
       </div>
     </nav>

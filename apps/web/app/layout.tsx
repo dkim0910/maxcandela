@@ -41,7 +41,7 @@ export default function RootLayout({
     // data-gr-ext-installed, …), which would otherwise trigger spurious
     // hydration-mismatch warnings. This only suppresses attribute mismatches
     // on these two elements — real hydration bugs elsewhere still surface.
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" data-scroll-behavior="smooth" suppressHydrationWarning>
       <body suppressHydrationWarning>
         <Analytics />
         <BoostProvider>{children}</BoostProvider>

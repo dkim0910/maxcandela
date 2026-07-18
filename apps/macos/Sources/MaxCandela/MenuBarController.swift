@@ -15,6 +15,10 @@ final class MenuBarController {
     private let restoreItem: NSMenuItem
     private let menu: NSMenu
 
+    /// Held so the first-run welcome popover isn't deallocated while shown.
+    private var welcomePopover: NSPopover?
+    private static let welcomeSeenKey = "com.maxcandela.hasSeenWelcome"
+
     /// Last observed license state; refreshed on launch and every menu open.
     private var licenseState: StoreManager.LicenseState = .trial(daysRemaining: StoreManager.shared.trialDaysRemaining)
 
@@ -32,6 +36,36 @@ final class MenuBarController {
         buildMenu()
         refresh()
         refreshLicense()
+        showWelcomeIfFirstRun()
+    }
+
+    // MARK: - First-run welcome
+
+    /// On the very first launch, pop a small callout anchored to the ☀️ icon so
+    /// the user knows the app lives in the menu bar (there's no window/Dock icon).
+    private func showWelcomeIfFirstRun() {
+        let defaults = UserDefaults.standard
+        #if DEBUG
+        // MAXCANDELA_FORCE_WELCOME=1 shows the callout every launch for testing.
+        let force = ProcessInfo.processInfo.environment["MAXCANDELA_FORCE_WELCOME"] == "1"
+        #else
+        let force = false
+        #endif
+        guard force || !defaults.bool(forKey: Self.welcomeSeenKey) else { return }
+        defaults.set(true, forKey: Self.welcomeSeenKey)
+
+        // Defer a beat so the status item is on screen before we anchor to it.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in
+            guard let self, let button = self.statusItem.button else { return }
+            let popover = NSPopover()
+            popover.behavior = .transient
+            popover.contentViewController = WelcomeViewController(icon: Self.brandIcon) { [weak self] in
+                self?.welcomePopover?.close()
+                self?.welcomePopover = nil
+            }
+            self.welcomePopover = popover
+            popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+        }
     }
 
     private func configureStatusButton() {
@@ -76,27 +110,43 @@ final class MenuBarController {
             button.image = NSImage(systemSymbolName: symbol, accessibilityDescription: "MaxCandela")
             button.image?.isTemplate = true
         }
-        let potential = brightness.maxPotentialBoost()
         if let live = brightness.liveStatus() {
+            // On: real live numbers.
             let base = String(format: "Boosting %.2f× (headroom %.2f×)",
                               live.applied, live.headroom)
-            headroomItem.title = brightness.thermalEased ? base + " · eased for heat" : base
-        } else if potential > 1.0 {
-            headroomItem.title = String(format: "Headroom: up to %.1f×", potential)
-        } else {
+            switch brightness.thermalStatus {
+            case .normal: headroomItem.title = base
+            case .eased:  headroomItem.title = base + " · eased for heat"
+            case .dimmed: headroomItem.title = String(format: "Dimmed to %.0f%% — Mac too hot",
+                                                      live.applied * 100)
+            }
+        } else if !brightness.canBoost() {
             headroomItem.title = "No EDR headroom on this display"
+        } else {
+            // Off: the panel's live headroom is ~1.0 until we engage EDR, and
+            // the theoretical max overstates reality — so show the real current
+            // value if something's already using EDR, else just invite a click.
+            let current = brightness.currentHeadroom()
+            headroomItem.title = current > 1.05
+                ? String(format: "Headroom available now: %.2f×", current)
+                : "Click the sun to boost"
         }
 
         switch licenseState {
         case .licensed:
             licenseItem.title = "MaxCandela Pro — unlocked"
             [lifetimeItem, monthlyItem, restoreItem].forEach { $0.isHidden = true }
+            statusItem.button?.toolTip = "MaxCandela Pro"
         case .trial(let days):
-            licenseItem.title = "Free trial — \(days) day\(days == 1 ? "" : "s") left"
+            let dayText = "\(days) day\(days == 1 ? "" : "s")"
+            licenseItem.title = "Free trial — \(dayText) left"
             [lifetimeItem, monthlyItem, restoreItem].forEach { $0.isHidden = false }
+            // Hover tooltip so the countdown is visible without opening the menu.
+            statusItem.button?.toolTip = "MaxCandela — \(dayText) left in your free trial"
         case .expired:
             licenseItem.title = "Trial ended — unlock to keep boosting"
             [lifetimeItem, monthlyItem, restoreItem].forEach { $0.isHidden = false }
+            statusItem.button?.toolTip = "MaxCandela — free trial ended"
         }
     }
 
@@ -159,9 +209,22 @@ final class MenuBarController {
         statusItem.menu = nil
     }
 
+    /// The MaxCandela logo for dialogs. Loaded from the bundled resource so it
+    /// shows even under `swift run` (a bare binary otherwise has no app icon,
+    /// so NSAlert falls back to a generic file/document icon). Falls back to the
+    /// app icon in a normal bundled launch.
+    private static let brandIcon: NSImage? = {
+        if let url = Bundle.module.url(forResource: "AppIcon", withExtension: "png"),
+           let image = NSImage(contentsOf: url) {
+            return image
+        }
+        return NSApp.applicationIconImage
+    }()
+
     private func showPaywallAlert() {
         Analytics.track("paywall_shown")
         let alert = NSAlert()
+        alert.icon = Self.brandIcon
         alert.messageText = "Your free trial has ended"
         alert.informativeText = "Keep the full brightness of your display with MaxCandela Pro: $9.99 once, or $0.99/month. One purchase works on all your Macs."
         alert.addButton(withTitle: "Unlock Lifetime")
@@ -206,6 +269,7 @@ final class MenuBarController {
 
     private func showStoreUnavailableAlert() {
         let alert = NSAlert()
+        alert.icon = Self.brandIcon
         alert.messageText = "App Store unavailable"
         alert.informativeText = "Products could not be loaded. Check your internet connection and try again."
         alert.addButton(withTitle: "OK")
