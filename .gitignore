@@ -44,6 +44,12 @@ Icon?
 .env
 notarization-credentials.json
 
+# Internal docs — kept local, not published to the public repo.
+# (Already-tracked ones need `git rm --cached CLAUDE.md` to stop tracking;
+#  they also remain in git history until history is rewritten.)
+CLAUDE.md
+README.dev.md
+
 # Editor
 .vscode/
 *.swp

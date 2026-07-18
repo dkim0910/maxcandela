@@ -39,6 +39,18 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/MaxCandela"
 cp "$MACOS_DIR/Resources/Info.plist" "$APP/Contents/Info.plist"
+
+# Inject GA4 credentials from the environment (never stored in the repo). Unset
+# => keys stay empty => analytics disabled. Set GA_MEASUREMENT_ID / GA_API_SECRET
+# (e.g. from a gitignored .env you `source`) for a real analytics release.
+if [[ -n "${GA_MEASUREMENT_ID:-}" ]]; then
+    /usr/libexec/PlistBuddy -c "Set :GAMeasurementID $GA_MEASUREMENT_ID" "$APP/Contents/Info.plist"
+    echo "==> Injected GA measurement ID"
+fi
+if [[ -n "${GA_API_SECRET:-}" ]]; then
+    /usr/libexec/PlistBuddy -c "Set :GAApiSecret $GA_API_SECRET" "$APP/Contents/Info.plist"
+    echo "==> Injected GA API secret"
+fi
 cp "$DIST/AppIcon.icns" "$APP/Contents/Resources/AppIcon.icns"
 
 # Mac App Store builds must embed their provisioning profile.

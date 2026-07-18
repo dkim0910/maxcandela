@@ -32,5 +32,12 @@
 	<string>Copyright © 2026 MaxCandela. All rights reserved.</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<!-- GA4 credentials. Left empty in the repo (public-safe); the real values
+	     are injected by scripts/bundle-macos.sh from the GA_MEASUREMENT_ID /
+	     GA_API_SECRET env vars at release-build time. Empty = analytics off. -->
+	<key>GAMeasurementID</key>
+	<string></string>
+	<key>GAApiSecret</key>
+	<string></string>
 </dict>
 </plist>

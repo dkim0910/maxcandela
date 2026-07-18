@@ -12,16 +12,25 @@ import Foundation
 ///
 /// App Store privacy label implication: "Usage Data — Analytics, not linked
 /// to identity" (no longer "Data Not Collected").
+///
+/// Credentials are NOT in source. They're read from the app bundle's
+/// Info.plist (keys GAMeasurementID / GAApiSecret), which
+/// `scripts/bundle-macos.sh` fills from the GA_MEASUREMENT_ID / GA_API_SECRET
+/// environment variables at release-build time. The committed Info.plist keeps
+/// them empty, so the real API secret never lives in the (public) repo. When
+/// the keys are empty, analytics is silently disabled.
 enum Analytics {
-    // TODO: fill from Google Analytics admin — create a GA4 property, then
-    // Admin → Data Streams → (stream) → Measurement Protocol API secrets.
-    private static let measurementID = "G-XXXXXXXXXX"
-    private static let apiSecret = "REPLACE_ME"
-
     private static let clientIDKey = "com.maxcandela.analyticsClientID"
 
+    private static var measurementID: String {
+        Bundle.main.object(forInfoDictionaryKey: "GAMeasurementID") as? String ?? ""
+    }
+    private static var apiSecret: String {
+        Bundle.main.object(forInfoDictionaryKey: "GAApiSecret") as? String ?? ""
+    }
+
     private static var isConfigured: Bool {
-        !measurementID.contains("XXXX") && apiSecret != "REPLACE_ME"
+        !measurementID.isEmpty && !apiSecret.isEmpty
     }
 
     /// Random per-install identifier; created lazily, never leaves this Mac

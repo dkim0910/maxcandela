@@ -1,179 +1,78 @@
-# MaxCandela
+<p align="center">
+  <img src="apps/web/public/og.png" alt="MaxCandela" width="640">
+</p>
 
-**Unlock the full brightness of your MacBook Pro display.**
+<h1 align="center">MaxCandela</h1>
 
-MaxCandela pushes your Mac's display past its normal SDR brightness ceiling by
-lighting up the panel's unused **Extended Dynamic Range (EDR)** headroom. On
-mini-LED (Liquid Retina XDR) and many external HDR displays, this can boost
-usable brightness well beyond the ~500–600 nit SDR cap that macOS enforces for
-ordinary content — the same headroom macOS itself only lights up for HDR video.
+<p align="center"><strong>Your MacBook Pro screen can go far brighter than macOS lets it. MaxCandela unlocks it.</strong></p>
 
-It ships in two forms (macOS only — no Android/Windows):
-
-- **Native menu-bar app** (`apps/macos`) — a ☀️ toggle in your Mac's top nav
-  bar. One click boosts the whole system to the panel's maximum; one click
-  restores it. Free 7-day trial, then $9.99 lifetime or $0.99/month.
-- **Web app** (`apps/web`) — the marketing site (features, pricing, FAQ,
-  about, legal pages) with a live **Try the boost** demo that unlocks
-  brightness right in Safari/Chrome, no install needed. The boost is instant
-  and stays on across every page of the site.
-
-> ⚠️ **Early / experimental.** This is a code-first project scaffold. The
-> architecture is in place; the EDR compositing path is under active
-> development. See [CLAUDE.md](./CLAUDE.md) for the technical plan and current
-> status.
+<p align="center">
+  <a href="https://maxcandela.com">maxcandela.com</a>
+</p>
 
 ---
 
-## How it works (the short version)
+Your MacBook Pro's XDR display is rated for around **1,000 nits** of brightness —
+but for everyday content, macOS caps it near **600**. The rest is reserved for
+HDR video and normally sits unused. MaxCandela hands that reserve back to you.
 
-macOS caps SDR content brightness, but keeps extra backlight headroom in reserve
-for HDR. Apple exposes that headroom to apps through EDR: a screen's
-`maximumExtendedDynamicRangeColorComponentValue` reports how much brighter than
-"SDR white" (1.0) the panel can currently go — often 1.6× to 16× on capable
-displays.
+One click, and your whole screen steps up to the brightness your hardware always
+had — brighter for working in sunlight, on a bright desk, or any time 600 nits
+just isn't enough.
 
-**Native app:** keeps a tiny (4 px) EDR trigger window on each screen so the
-display's HDR headroom stays engaged, then lifts every SDR pixel into that
-headroom with a color-calibrated gamma transfer — the whole desktop gets
-brighter with colors preserved, fading smoothly between levels.
+## Two ways to use it
 
-**Web app:** keeps a tiny HDR white clip playing (HEVC/PQ for Safari, VP9/HLG
-fallback) so the browser's HDR headroom stays warm, then composites the page
-into it fullscreen with `mix-blend-mode: multiply` when boosting — the page's
-own pixels are lifted into HDR range, instantly and without washing out.
+**🖥️ The Mac app** — a single ☀️ button in your menu bar. Click to boost your
+entire screen (every app, every window); click again to go back. That's the
+whole thing.
 
-Full detail, including the compositing strategy and the private-API fallbacks
-we're evaluating, lives in [CLAUDE.md](./CLAUDE.md).
+**🌐 The website** — visit **[maxcandela.com](https://maxcandela.com)** and press
+**Try the boost** to see the effect right in your browser, no install needed.
+(The web demo brightens the site's own pages; the Mac app brightens everything.)
 
-## Supported hardware
+## Why people like it
 
-| Display | EDR headroom | Notes |
-|---|---|---|
-| MacBook Pro 14"/16" (2021+), mini-LED XDR | High (up to ~16×) | Best results |
-| MacBook Air/Pro with Liquid Retina | Moderate | Boost varies by model |
-| Pro Display XDR | High | |
-| External HDR / HDR10 displays | Varies | Depends on the panel's reported headroom |
-| Older non-HDR panels | None (1.0×) | No headroom to unlock; app runs but does nothing |
+- **Your whole Mac, brighter** — not just one window or one app.
+- **One click** — no settings, no sliders, no setup.
+- **True colors** — a color-calibrated boost that keeps your display's profile
+  intact. Brighter, never washed out.
+- **Panel-safe** — it never pushes past the limits macOS itself allows for HDR,
+  and it automatically eases off when your Mac runs hot.
+- **Private** — no accounts, no screen recording. The app never sees what's on
+  your screen; it only makes it brighter.
+- **Instantly reversible** — turn it off, or just quit, and your display returns
+  to exactly where it was.
 
-MaxCandela never exceeds the headroom the OS itself reports, so it cannot drive a
-panel beyond what Apple already considers safe for HDR playback.
+## Will it work on my Mac?
 
-## Requirements
+Best on **MacBook Pro 14″ / 16″ (2021 and later)** with the Liquid Retina XDR
+display, and on the **Pro Display XDR** — where it can reach roughly 1,000 nits
+instead of the usual ~600. It also works on other EDR-capable displays to
+varying degrees. On a display with no HDR headroom, there's simply nothing to
+unlock. Requires macOS 13 or later.
 
-- macOS 13 (Ventura) or later
-- Apple silicon or Intel Mac with an EDR-capable display
-- Swift 5.9+ toolchain (Xcode 15+ or the Swift toolchain) to build
+## Pricing
 
-## Build & run
+Free to download with a **7-day trial**, fully unlocked. After that:
 
-### Native app
+- **$9.99** once — yours for life, or
+- **$0.99 / month**
 
-```bash
-cd apps/macos
-swift build              # debug build
-swift run MaxCandela     # build and launch the menu-bar app
-swift build -c release   # optimized build
-swift test               # unit tests
-```
+One purchase covers every Mac on your Apple ID.
 
-To package a distributable `.app` bundle, see `scripts/` (bundling and codesign
-helpers) — TODO, tracked in CLAUDE.md.
+## A note on heat & battery
 
-### Web app
+More brightness uses more power and generates more heat — that's physics, the
+same as playing HDR video. MaxCandela watches your Mac's thermal state and eases
+the boost down automatically when things get warm, then restores it once cool.
+Turn it off any time to go back to normal.
 
-```bash
-cd apps/web
-npm install
-npm run dev              # http://localhost:3000
-npm run build            # static export → apps/web/out/ (host anywhere)
-```
+## Links
 
-## Usage
-
-### Native app
-
-1. Launch MaxCandela — a ☀️ icon appears in the menu bar (your Mac's top nav bar).
-2. **Click the icon** to toggle full brightness on/off instantly. The icon
-   fills in (`sun.max.fill`) while boosted. The boost always targets the
-   panel's maximum available headroom and follows it live (thermals, battery).
-3. **Right-click** (or ⌃-click) the icon for live status ("Boosting N×"),
-   trial/purchase options, and Quit.
-
-Enabled-state persists across launches. Licensing: 7-day free trial, then
-$9.99 lifetime or $0.99/month via in-app purchase.
-
-### Web app
-
-1. Open the site in Safari or Chrome on an XDR MacBook Pro.
-2. Press the big **Try the boost** button in the demo section (also reachable
-   via "Try it" in the nav bar).
-3. The site instantly brightens beyond the normal SDR cap and stays boosted as
-   you browse its pages; press again (or close the tab) to restore. Nothing is
-   installed. The demo brightens the site's own pages only — the Mac app is
-   the system-wide version.
-
-If the button is disabled, the browser reports no EDR headroom on the current
-display (`(dynamic-range: high)` media query is false).
-
-## Safety & battery
-
-- Boosting brightness increases backlight power draw and heat. Expect reduced
-  battery life.
-- **Thermal-aware:** the app reads the system thermal state and automatically
-  eases the boost down as the Mac gets hot (halved at "serious", off at
-  "critical"), restoring it once cool. It cannot control fans — that needs SMC
-  access a sandboxed App Store app isn't permitted; easing its own boost is the
-  responsible lever it does have.
-- MaxCandela respects the OS-reported EDR ceiling and clamps to it; it does not
-  bypass thermal protection.
-- If anything looks wrong, toggling off (or quitting) returns the display to
-  normal immediately — no persistent system state is changed.
-
-## Project layout
-
-```
-maxcandela/
-├── README.md                  # you are here
-├── CLAUDE.md                  # technical spec, architecture, working agreements
-├── LICENSE
-├── apps/
-│   ├── macos/                 # native menu-bar app (SwiftPM)
-│   │   ├── Package.swift
-│   │   ├── Sources/MaxCandela/
-│   │   │   ├── main.swift             # entry point
-│   │   │   ├── AppDelegate.swift      # app lifecycle
-│   │   │   ├── MenuBarController.swift # ☀️ toggle + right-click menu
-│   │   │   ├── BrightnessController.swift # orchestrator + fade animator
-│   │   │   ├── GammaController.swift  # calibration-preserving gamma lift
-│   │   │   ├── ThermalMonitor.swift   # eases boost down when the Mac is hot
-│   │   │   ├── StoreManager.swift     # StoreKit 2: trial + IAP licensing
-│   │   │   ├── Analytics.swift        # anonymous GA4 events (off in DEBUG)
-│   │   │   ├── DisplayManager.swift   # display enumeration + EDR queries
-│   │   │   ├── EDROverlayWindow.swift # tiny per-screen EDR trigger window
-│   │   │   ├── MetalRenderer.swift    # CAMetalLayer EDR render loop
-│   │   │   └── Preferences.swift      # persisted settings
-│   │   ├── Resources/                 # Info.plist + sandbox entitlements
-│   │   └── Tests/MaxCandelaTests/
-│   └── web/                   # Next.js web app (static export)
-│       ├── app/               # pages + sitemap.ts/robots.ts + icons
-│       ├── components/        # BoostProvider (site-wide boost state),
-│       │                      # BrightnessUnlocker (HDR video), NavBar,
-│       │                      # LegalShell, SiteFooter, Analytics
-│       ├── lib/               # site.ts (domain), analytics.ts (GA4)
-│       └── public/            # og.png, brand.png, hdr/ clips
-└── scripts/
-    ├── generate-hdr-video.sh  # regenerates public/hdr/ clips (needs ffmpeg)
-    ├── make-hero.swift        # renders og.png social/brand image
-    ├── make-icon.swift        # renders the app icon / favicon
-    └── bundle-macos.sh        # builds the signed .app / App Store .pkg
-```
-
-## Contributing
-
-This is an early-stage scaffold. Start with [CLAUDE.md](./CLAUDE.md) for the
-architecture and the current TODO list. Keep new code consistent with the
-existing structure and matching comment style.
+- 🌐 Website — [maxcandela.com](https://maxcandela.com)
+- 🔒 [Privacy Policy](https://maxcandela.com/privacy/)
+- 📄 [Terms of Use](https://maxcandela.com/terms/)
+- 💬 [Support](https://maxcandela.com/support/)
 
 ## License
 
