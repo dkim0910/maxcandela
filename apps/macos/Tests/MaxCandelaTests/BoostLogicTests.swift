@@ -78,6 +78,26 @@ final class BoostLogicTests: XCTestCase {
         XCTAssertEqual(BrightnessController.targetScale(requested: 0.0, currentHeadroom: 2.0), 1.0)
     }
 
+    // MARK: - Fade animator
+
+    func testAnimationStepApproachesTarget() {
+        let next = BrightnessController.animationStep(current: 1.0, target: 2.0)
+        XCTAssertEqual(next, 1.3, accuracy: 0.0001)   // 30% of remaining distance
+        XCTAssertLessThan(next, 2.0)
+    }
+
+    func testAnimationStepSnapsWhenClose() {
+        XCTAssertEqual(BrightnessController.animationStep(current: 1.99, target: 2.0), 2.0)
+        XCTAssertEqual(BrightnessController.animationStep(current: 2.0, target: 2.0), 2.0)
+    }
+
+    func testAnimationStepConvergesFromEitherSide() {
+        // Fading down (thermal ceiling drop) must converge too.
+        var value: CGFloat = 2.0
+        for _ in 0..<50 { value = BrightnessController.animationStep(current: value, target: 1.4) }
+        XCTAssertEqual(value, 1.4)
+    }
+
     func testTargetScaleTracksHeadroomDownAndUp() {
         // Simulates a thermal down-ramp and recovery at fixed request.
         let request: CGFloat = 2.0

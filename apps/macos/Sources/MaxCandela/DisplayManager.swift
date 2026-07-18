@@ -22,6 +22,11 @@ final class DisplayManager {
     /// Called whenever the set of screens or their arrangement changes.
     var onScreenConfigurationChanged: (() -> Void)?
 
+    /// Screen-parameter notifications fire in bursts — notably when *our own*
+    /// EDR trigger flips the display into HDR mode. Debounce so a burst
+    /// becomes one callback instead of a flickering rebuild loop.
+    private var debounceTimer: Timer?
+
     init() {
         NotificationCenter.default.addObserver(
             self,
@@ -32,6 +37,7 @@ final class DisplayManager {
     }
 
     deinit {
+        debounceTimer?.invalidate()
         NotificationCenter.default.removeObserver(self)
     }
 
@@ -53,6 +59,9 @@ final class DisplayManager {
     }
 
     @objc private func screenParametersChanged() {
-        onScreenConfigurationChanged?()
+        debounceTimer?.invalidate()
+        debounceTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: false) { [weak self] _ in
+            self?.onScreenConfigurationChanged?()
+        }
     }
 }

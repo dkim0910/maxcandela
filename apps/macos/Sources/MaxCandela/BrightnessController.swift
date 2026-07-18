@@ -5,12 +5,16 @@ import AppKit
 /// brightens the whole screen (see CLAUDE.md: EDR alone gets compensated away;
 /// trigger + lift together do the job).
 ///
+/// Gamma changes are never applied as hard steps — every change fades through
+/// a 30 Hz animator (hard table swaps read as screen flicker). Likewise,
+/// screen-reconfiguration events only rebuild windows when the display set
+/// actually changed; a restore/re-apply cycle on every notification flashes.
+///
 /// Invariants (see CLAUDE.md):
 ///  - The live lift is always clamped to each display's *current* EDR headroom,
 ///    re-checked every poll tick — thermal/battery ceilings are followed down.
 ///  - Disabling tears down triggers and restores gamma so the display returns
-///    to native brightness immediately. CG gamma also auto-restores if the
-///    process dies, so no failure mode leaves the screen stuck.
+///    to native brightness. CG gamma also auto-restores if the process dies.
 final class BrightnessController {
     /// How the live target is computed from what the user asked for and what
     /// the OS currently allows. Pure, unit-tested.
@@ -18,15 +22,25 @@ final class BrightnessController {
         max(1.0, min(requested, currentHeadroom))
     }
 
-    /// Headroom changes smaller than this don't trigger a gamma re-apply.
-    private static let reapplyThreshold: CGFloat = 0.05
+    /// One animator frame: move `current` toward `target` by `rate` of the
+    /// remaining distance, snapping when close. Pure, unit-tested.
+    static func animationStep(current: CGFloat, target: CGFloat,
+                              rate: CGFloat = 0.3, snapWithin: CGFloat = 0.01) -> CGFloat {
+        let next = current + (target - current) * rate
+        return abs(next - target) < snapWithin ? target : next
+    }
 
     private let displayManager = DisplayManager()
     private let gamma = GammaController()
     private let prefs = Preferences.shared
     private var overlays: [CGDirectDisplayID: EDROverlayWindow] = [:]
-    private var appliedScales: [CGDirectDisplayID: CGFloat] = [:]
+
+    /// What's on the glass right now vs. where the fade is heading.
+    private var currentScales: [CGDirectDisplayID: CGFloat] = [:]
+    private var targetScales: [CGDirectDisplayID: CGFloat] = [:]
+
     private var pollTimer: Timer?
+    private var animationTimer: Timer?
 
     /// The user-requested boost multiplier (unclamped). 1.0 == native.
     private(set) var requestedBoost: CGFloat
@@ -58,8 +72,8 @@ final class BrightnessController {
 
     func disable() {
         prefs.isEnabled = false
-        stopPolling()
-        teardownOverlays()
+        stopTimers()
+        teardownAllOverlays()
     }
 
     func toggle() {
@@ -69,16 +83,16 @@ final class BrightnessController {
     /// Tear down without touching the persisted enabled flag — used on app
     /// termination so the user's state survives to the next launch.
     func shutdown() {
-        stopPolling()
-        teardownOverlays()
+        stopTimers()
+        teardownAllOverlays()
     }
 
-    /// Set the requested boost (from the menu slider). Persists and applies
-    /// immediately.
+    /// Set the requested boost (from the menu slider). The animator fades to
+    /// the new level — repeated slider ticks just retarget the fade.
     func setBoost(_ value: CGFloat) {
         requestedBoost = value
         prefs.boost = Double(value)
-        applyBoost(force: true)
+        refreshTargets()
     }
 
     /// Best potential headroom across displays, for UI copy ("up to N×").
@@ -93,7 +107,7 @@ final class BrightnessController {
               let best = displayManager.currentDisplays()
                   .max(by: { $0.currentHeadroom < $1.currentHeadroom })
         else { return nil }
-        let applied = appliedScales[best.displayID] ?? 1.0
+        let applied = currentScales[best.displayID] ?? 1.0
         return (applied, best.currentHeadroom)
     }
 
@@ -102,68 +116,131 @@ final class BrightnessController {
     /// EDR headroom ramps up over a few seconds after the trigger appears and
     /// drifts with thermals/battery — poll it and follow (never cache).
     private func startPolling() {
-        stopPolling()
+        pollTimer?.invalidate()
         let timer = Timer(timeInterval: 1.0, repeats: true) { [weak self] _ in
-            self?.applyBoost(force: false)
+            self?.refreshTargets()
         }
         RunLoop.main.add(timer, forMode: .common)
         pollTimer = timer
-        applyBoost(force: true)
+        refreshTargets()
     }
 
-    private func stopPolling() {
+    private func stopTimers() {
         pollTimer?.invalidate()
         pollTimer = nil
+        animationTimer?.invalidate()
+        animationTimer = nil
     }
 
     // MARK: - Overlay lifecycle
 
+    /// Create/remove trigger windows only when the boost-capable display set
+    /// actually changed. EDR engagement fires screen notifications; treating
+    /// those as full rebuilds caused a restore/re-apply flicker loop.
     private func rebuildOverlays() {
-        teardownOverlays()
         guard prefs.isEnabled else { return }
 
-        for info in displayManager.currentDisplays() where info.supportsBoost {
+        let wanted = Set(
+            displayManager.currentDisplays()
+                .filter(\.supportsBoost)
+                .map(\.displayID)
+        )
+        let existing = Set(overlays.keys)
+        guard wanted != existing else {
+            refreshTargets()
+            return
+        }
+
+        // Remove triggers for departed displays (no gamma restore needed —
+        // restore is global and would flash the surviving displays).
+        for id in existing.subtracting(wanted) {
+            overlays[id]?.deactivate()
+            overlays[id] = nil
+            currentScales[id] = nil
+            targetScales[id] = nil
+        }
+
+        // Add triggers for new displays.
+        let infoByID = Dictionary(uniqueKeysWithValues: displayManager.currentDisplays().map { ($0.displayID, $0) })
+        for id in wanted.subtracting(existing) {
+            guard let info = infoByID[id] else { continue }
             guard let overlay = EDROverlayWindow(screen: info.screen) else {
-                NSLog("MaxCandela: Metal unavailable; cannot create trigger for display \(info.displayID)")
+                NSLog("MaxCandela: Metal unavailable; cannot create trigger for display \(id)")
                 continue
             }
-            overlays[info.displayID] = overlay
+            overlays[id] = overlay
             overlay.activate()
         }
-        applyBoost(force: true)
+        refreshTargets()
     }
 
-    private func teardownOverlays() {
+    private func teardownAllOverlays() {
         for overlay in overlays.values {
             overlay.deactivate()
         }
         overlays.removeAll()
-        if !appliedScales.isEmpty {
-            appliedScales.removeAll()
+        targetScales.removeAll()
+        if !currentScales.isEmpty {
+            currentScales.removeAll()
             gamma.restoreAll()
         }
     }
 
-    /// One tick: for each triggered display, compute the clamped target and
-    /// (re-)apply the renderer boost + gamma lift when it moved enough.
-    private func applyBoost(force: Bool) {
+    // MARK: - Target computation + fade
+
+    /// Recompute per-display targets from the live headroom and kick the
+    /// animator if anything needs to move.
+    private func refreshTargets() {
+        var needsAnimation = false
         for info in displayManager.currentDisplays() {
             guard let overlay = overlays[info.displayID] else { continue }
 
-            let target = Self.targetScale(requested: requestedBoost,
-                                          currentHeadroom: info.currentHeadroom)
             // Keep the trigger patch at the headroom ceiling so the compositor
             // holds EDR mode fully open.
             overlay.renderer.boost = max(1.0, info.currentHeadroom)
 
-            let applied = appliedScales[info.displayID]
-            if force || applied == nil || abs((applied ?? 1.0) - target) > Self.reapplyThreshold {
-                if gamma.applyLift(scale: target, to: info.displayID) {
-                    appliedScales[info.displayID] = target
-                }
-                NSLog("MaxCandela: display %u headroom %.2f× → lift %.2f× (requested %.2f×)",
+            let target = Self.targetScale(requested: requestedBoost,
+                                          currentHeadroom: info.currentHeadroom)
+            if targetScales[info.displayID] != target {
+                targetScales[info.displayID] = target
+                NSLog("MaxCandela: display %u headroom %.2f× → fading lift to %.2f× (requested %.2f×)",
                       info.displayID, info.currentHeadroom, target, requestedBoost)
             }
+            if abs((currentScales[info.displayID] ?? 1.0) - target) > 0.001 {
+                needsAnimation = true
+            }
+        }
+        if needsAnimation {
+            startAnimatorIfNeeded()
+        }
+    }
+
+    /// 30 Hz fade toward the targets; stops itself when everything has snapped.
+    private func startAnimatorIfNeeded() {
+        guard animationTimer == nil else { return }
+        let timer = Timer(timeInterval: 1.0 / 30.0, repeats: true) { [weak self] _ in
+            self?.animationTick()
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        animationTimer = timer
+    }
+
+    private func animationTick() {
+        var allSettled = true
+        for (id, target) in targetScales {
+            let current = currentScales[id] ?? 1.0
+            guard abs(current - target) > 0.001 else { continue }
+
+            let next = Self.animationStep(current: current, target: target)
+            currentScales[id] = next
+            gamma.applyLift(scale: next, to: id)
+            if next != target {
+                allSettled = false
+            }
+        }
+        if allSettled {
+            animationTimer?.invalidate()
+            animationTimer = nil
         }
     }
 }

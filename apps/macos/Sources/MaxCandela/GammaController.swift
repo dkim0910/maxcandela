@@ -57,8 +57,7 @@ final class GammaController {
             red, green, blue
         )
         if tableResult == .success {
-            NSLog("MaxCandela: luminance lift %.2f× (encoded gain %.3f) applied via table on display %u",
-                  scale, Self.encodedGain(forLuminanceScale: Float(scale)), displayID)
+            // No per-call logging: the fade animator applies at 30 Hz.
             return true
         }
 
@@ -71,8 +70,6 @@ final class GammaController {
             0, gain, 1    // blue
         )
         if formulaResult == .success {
-            NSLog("MaxCandela: luminance lift %.2f× applied via formula on display %u (table failed: %d)",
-                  scale, displayID, tableResult.rawValue)
             return true
         }
 
