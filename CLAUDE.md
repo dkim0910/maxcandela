@@ -268,6 +268,10 @@ does disabling instantly restore it) is required before claiming it works.
 - [ ] Re-verify color fidelity on hardware after the encoded-gain fix.
 - [x] StoreKit 2 paywall: 7-day trial, $9.99 lifetime / $0.99 monthly IAP,
       restore purchases, transaction listener; off/quit never gated.
+- [x] Brand mark everywhere: `make-icon.swift` draws the blazing-MacBook logo
+      (same visual language as `make-hero.swift`, hero image on the site);
+      used as the .icns app icon, the web favicon/touch icon (`app/icon.png`,
+      `app/apple-icon.png`), and the nav-bar brand (`public/brand.png`).
 - [x] Packaging: Info.plist, sandbox entitlements, generated icon,
       `bundle-macos.sh` (.app verified locally with ad-hoc signing; --pkg for
       App Store).
@@ -275,7 +279,19 @@ does disabling instantly restore it) is required before claiming it works.
 - [ ] Verify gamma/EDR APIs work inside the **sandboxed** build before
       submission (sandbox may behave differently than swift run).
 - [ ] App Store Connect setup: app record, both IAP products, screenshots,
-      privacy labels ("data not collected").
+      privacy labels — **"Usage Data → Analytics, not linked to identity"**
+      (NOT "data not collected"; the app sends anonymous GA4 events).
+- [ ] Analytics credentials: web Measurement ID in `apps/web/lib/analytics.ts`;
+      app Measurement ID + API secret in
+      `apps/macos/Sources/MaxCandela/Analytics.swift` (GA4 admin → Data
+      Streams → Measurement Protocol API secrets). Both ship disabled until
+      the placeholders are replaced. App events: app_launch, boost_enabled/
+      boost_disabled, paywall_shown, purchase_completed; web: page views +
+      boost_enabled/boost_disabled. DEBUG builds never send. Keep the
+      /privacy page in sync with any event changes.
+- [ ] GDPR/ePrivacy: GA cookies on the site technically require a consent
+      banner for EU visitors — decide before launch (add banner, or switch to
+      a cookieless analytics provider).
 - [ ] Trial clock hardening: use receipt original-purchase-date instead of
       UserDefaults first-launch.
 - [x] Web legal pages: /privacy, /terms (incl. subscription disclosures),

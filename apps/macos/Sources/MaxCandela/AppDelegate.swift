@@ -9,6 +9,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         brightness = BrightnessController()
         menuBar = MenuBarController(brightness: brightness)
+        Analytics.track("app_launch")
         // Keep entitlements fresh (renewals, refunds, purchases on other Macs).
         StoreManager.shared.startTransactionListener { [weak self] in
             self?.menuBar.licenseDidChange()

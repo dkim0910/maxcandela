@@ -159,6 +159,7 @@ final class MenuBarController {
     }
 
     private func showPaywallAlert() {
+        Analytics.track("paywall_shown")
         let alert = NSAlert()
         alert.messageText = "Your free trial has ended"
         alert.informativeText = "Keep the full brightness of your display with MaxCandela Pro: $9.99 once, or $0.99/month. One purchase works on all your Macs."
@@ -187,6 +188,7 @@ final class MenuBarController {
                 if try await store.purchase(product) {
                     licenseState = .licensed
                     refresh()
+                    Analytics.track("purchase_completed", params: ["product": productID])
                 }
             } catch {
                 NSLog("MaxCandela: purchase failed: \(error.localizedDescription)")

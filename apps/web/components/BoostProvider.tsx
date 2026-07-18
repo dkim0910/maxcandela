@@ -8,6 +8,7 @@ import {
   useState,
 } from 'react';
 import BrightnessUnlocker, { UnlockerState } from './BrightnessUnlocker';
+import { trackEvent } from '@/lib/analytics';
 
 interface BoostContextValue {
   enabled: boolean;
@@ -66,6 +67,7 @@ export default function BoostProvider({
       } catch {
         // Private-mode storage restrictions — boost still works this page.
       }
+      trackEvent(next ? 'boost_enabled' : 'boost_disabled');
       return next;
     });
   }, []);

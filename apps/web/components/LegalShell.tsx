@@ -19,7 +19,7 @@ export default function LegalShell({
     <>
       <nav className="navbar">
         <Link className="brand" href="/">
-          <span className="brand-icon" aria-hidden="true">☀️</span>
+          <img className="brand-logo" src="/brand.png" alt="" width={28} height={28} />
           MaxCandela
         </Link>
       </nav>

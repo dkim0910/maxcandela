@@ -11,8 +11,10 @@ import Link from 'next/link';
 export default function SiteFooter() {
   return (
     <footer className="footer">
+      <Link href="/" aria-label="MaxCandela home">
+        <img className="footer-logo" src="/brand.png" alt="MaxCandela logo" width={44} height={44} />
+      </Link>
       <nav className="footer-links">
-        <Link href="/">Home</Link>
         <Link href="/about/">About</Link>
         <Link href="/privacy/">Privacy Policy</Link>
         <Link href="/terms/">Terms of Use</Link>

@@ -77,7 +77,13 @@ final class BrightnessController {
     }
 
     func toggle() {
-        isEnabled ? disable() : enable()
+        if isEnabled {
+            disable()
+            Analytics.track("boost_disabled")
+        } else {
+            enable()
+            Analytics.track("boost_enabled")
+        }
     }
 
     /// Tear down without touching the persisted enabled flag — used on app
