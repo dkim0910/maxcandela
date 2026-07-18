@@ -10,10 +10,10 @@ import ScrollLink from './ScrollLink';
 export default function NavBar() {
   return (
     <nav className="navbar">
-      <span className="brand">
+      <Link className="brand" href="/" aria-label="MaxCandela home">
         <img className="brand-logo" src="/brand.png" alt="" width={28} height={28} />
         MaxCandela
-      </span>
+      </Link>
       <div className="nav-links">
         <ScrollLink targetId="demo">Try it</ScrollLink>
         <ScrollLink targetId="features">Features</ScrollLink>

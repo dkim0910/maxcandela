@@ -275,8 +275,26 @@ swift test                  # unit tests
 # Web app (from apps/web/)
 npm install
 npm run dev                 # http://localhost:3000
-npm run build               # static export → apps/web/out/
+npm run build               # static export → apps/web/out/  (NOT while dev runs)
 ```
+
+### DEBUG-only preview flags (macOS)
+
+Compiled out of release builds, so they can never affect real users. Prefix the
+run command, e.g. `MAXCANDELA_FORCE_TRIAL=3 swift run MaxCandela`. Kill any
+running instance first (`pkill -x MaxCandela`) to avoid two menu-bar icons.
+
+| Flag | Effect |
+|---|---|
+| `MAXCANDELA_FORCE_TRIAL=5\|4\|3\|2\|1` | Trial with N days left (countdown + tooltip) |
+| `MAXCANDELA_FORCE_TRIAL=expired` (or `0`) | Trial ended → paywall on click |
+| `MAXCANDELA_FORCE_TRIAL=trial\|licensed` | Full trial / Pro-unlocked |
+| `MAXCANDELA_FORCE_PAYWALL=1` | Skip the debug auto-unlock, hit the real trial-clock path |
+| `MAXCANDELA_FORCE_WELCOME=1` | Re-show the first-run welcome popover |
+| `MAXCANDELA_FORCE_THERMAL=nominal\|fair\|serious\|critical` | Force a thermal state (eases/dims the boost) |
+
+Note: plain `swift run` (DEBUG) auto-unlocks (returns `.licensed`) so dev isn't
+gated on the App Store — that's why the trial/paywall don't show without a flag.
 
 There is no CI yet. When adding it, run `swift build`/`swift test` (in
 `apps/macos`) and `npm run build` (in `apps/web`) on macOS-latest.
@@ -379,6 +397,8 @@ does disabling instantly restore it) is required before claiming it works.
 - [x] Web deployment: LIVE at https://maxcandela.com via GitHub Pages +
       Actions (`.github/workflows/deploy-web.yml`), custom domain + HTTPS.
       Pushes to `main` touching `apps/web/**` auto-rebuild/redeploy.
+- [ ] Update / refresh the website UI — visual design pass on the current dark
+      theme (hero, sections, spacing, imagery) to make it feel more polished.
 - [ ] After the next deploy, verify ownership in **Google Search Console** and
       submit `https://maxcandela.com/sitemap.xml` (this is what gets indexed).
 - [ ] Real App Store badge asset + store URL on the web page (CTAs are
