@@ -76,12 +76,15 @@ export default function BoostProvider({
     <BoostContext.Provider value={{ enabled, supported, unlocker, toggle }}>
       {/* prime on any EDR display: keeps the headroom warm so the boost
           toggle is instant instead of ramping over a second or two. */}
+      {children}
+      {/* Rendered after children (it's position:fixed, so DOM order doesn't
+          affect its placement) — keeps Next's scroll target off this fixed
+          element, avoiding the "Skipping auto-scroll" console warning. */}
       <BrightnessUnlocker
         prime={supported === true}
         enabled={enabled}
         onStateChange={onUnlockerState}
       />
-      {children}
     </BoostContext.Provider>
   );
 }

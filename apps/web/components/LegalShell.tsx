@@ -16,7 +16,9 @@ export default function LegalShell({
   children: React.ReactNode;
 }) {
   return (
-    <>
+    // Normal-flow wrapper so Next's scroll restoration doesn't target the fixed
+    // <nav> (avoids the "Skipping auto-scroll" console warning).
+    <div>
       <nav className="navbar">
         <Link className="brand" href="/">
           <img className="brand-logo" src="/brand.png" alt="" width={28} height={28} />
@@ -29,6 +31,6 @@ export default function LegalShell({
         {children}
       </main>
       <SiteFooter />
-    </>
+    </div>
   );
 }

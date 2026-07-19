@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import Script from 'next/script';
 import Analytics from '@/components/Analytics';
 import BoostProvider from '@/components/BoostProvider';
 import { SITE_URL } from '@/lib/site';
@@ -55,11 +54,13 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareSchema) }}
         />
         <Analytics />
-        <Script
+        {/* Native <script> (React 19 hoists it to <head>) rather than
+            next/script — AdSense rejects the data-nscript attribute that
+            next/script adds. */}
+        <script
           async
           src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_CLIENT}`}
           crossOrigin="anonymous"
-          strategy="afterInteractive"
         />
         <BoostProvider>{children}</BoostProvider>
       </body>

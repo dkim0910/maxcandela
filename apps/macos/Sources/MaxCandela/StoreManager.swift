@@ -47,9 +47,27 @@ final class StoreManager {
         return max(0, length - daysUsed)
     }
 
+    /// Synchronous trial estimate from the locally-stored first-launch date.
+    /// Used for the initial menu label before the async receipt check resolves.
     var trialDaysRemaining: Int {
         let stamp = defaults.double(forKey: Self.firstLaunchKey)
         return Self.trialDaysRemaining(firstLaunch: Date(timeIntervalSince1970: stamp))
+    }
+
+    /// Tamper-proof trial start: the App Store receipt's original purchase date
+    /// (signed by Apple, can't be reset by deleting preferences). Falls back to
+    /// the local first-launch date when no receipt is present (dev builds, or a
+    /// brand-new install before the receipt syncs).
+    private func trialStartDate() async -> Date {
+        do {
+            if case .verified(let appTransaction) = try await AppTransaction.shared {
+                return appTransaction.originalPurchaseDate
+            }
+        } catch {
+            // No receipt / unverifiable — fall back to the local stamp below.
+        }
+        let stamp = defaults.double(forKey: Self.firstLaunchKey)
+        return Date(timeIntervalSince1970: stamp)
     }
 
     // MARK: - License state
@@ -89,7 +107,7 @@ final class StoreManager {
             }
         }
 
-        let remaining = trialDaysRemaining
+        let remaining = Self.trialDaysRemaining(firstLaunch: await trialStartDate())
         return remaining > 0 ? .trial(daysRemaining: remaining) : .expired
     }
 

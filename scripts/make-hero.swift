@@ -160,3 +160,11 @@ let og = renderOG()
 try og.representation(using: .png, properties: [:])!
     .write(to: outDir.appendingPathComponent("og.png"))
 print("wrote og.png (1200×630)")
+
+// Transparent product render for the website showcase section (1x + 2x).
+for (name, scale) in [("hero-mac.png", CGFloat(1)), ("hero-mac@2x.png", CGFloat(2))] {
+    let rep = render(scale: scale)
+    try rep.representation(using: .png, properties: [:])!
+        .write(to: outDir.appendingPathComponent(name))
+    print("wrote \(name) (\(Int(W * scale))×\(Int(H * scale)))")
+}

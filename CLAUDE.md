@@ -37,10 +37,13 @@ Free download on the Mac App Store, 5-day full trial, then in-app purchase:
 
 Purchases are per-Apple-ID (App Store rule — per-device licensing is not
 possible on MAS; marketed as "one purchase, all your Macs"). `StoreManager`
-implements StoreKit 2 entitlement checks + purchases; the trial clock is
-first-launch date in UserDefaults (v1 — receipt original-purchase-date is the
-robust upgrade, see TODO). The paywall gates *turning the boost on*; turning it
-OFF and quitting are never gated (kill-switch invariant).
+implements StoreKit 2 entitlement checks + purchases; the trial clock uses the
+App Store receipt's original purchase date (`AppTransaction.shared`,
+tamper-proof) and falls back to the UserDefaults first-launch date when no
+receipt is present (dev builds). The paywall gates *turning the boost on*;
+turning it OFF and quitting are never gated (kill-switch invariant). On a
+display with no EDR headroom, clicking the icon shows a "no boost available"
+explanation instead of a fake on-state.
 
 DEBUG builds bypass the paywall so `swift run` stays usable; set
 `MAXCANDELA_FORCE_PAYWALL=1` to test paywall flows in debug.
@@ -432,13 +435,13 @@ does disabling instantly restore it) is required before claiming it works.
   - [x] Set the App Privacy label: **"Usage Data → Analytics, not linked to
         identity"** (NOT "data not collected" — the app sends anonymous GA4).
         Note: adding AdSense to the *website* doesn't change the *app's* label.
-  - [ ] **Create + upload screenshots**: App Store product screenshots (Mac
+  - [x] **Create + upload screenshots**: App Store product screenshots (Mac
         sizes, e.g. 2880×1800) showing the menu-bar toggle + brightness effect,
         AND an IAP review screenshot (the paywall / purchase menu) per product.
-  - [ ] **Archive & upload**: Xcode → Product → Archive → Distribute App →
+  - [x] **Archive & upload**: Xcode → Product → Archive → Distribute App →
         App Store Connect (auto-signing creates the cert + profile — no manual
         certs/`.pkg` needed). CLI `.pkg` + Transporter is the fallback.
-  - [ ] **Submit for App Review.**
+  - [x] **Submit for App Review.**
 
 ### Analytics / ads
 
@@ -470,10 +473,17 @@ does disabling instantly restore it) is required before claiming it works.
 - [x] Web deployment: LIVE at https://maxcandela.com via GitHub Pages +
       Actions (`.github/workflows/deploy-web.yml`), custom domain + HTTPS.
       Pushes to `main` touching `apps/web/**` auto-rebuild/redeploy.
-- [ ] Update / refresh the website UI — visual design pass on the current dark
+- [x] Update / refresh the website UI — visual design pass on the current dark
       theme (hero, sections, spacing, imagery) to make it feel more polished.
-- [ ] After the next deploy, verify ownership in **Google Search Console** and
+- [x] After the next deploy, verify ownership in **Google Search Console** and
       submit `https://maxcandela.com/sitemap.xml` (this is what gets indexed).
+- [x] Trial clock hardening: uses the App Store receipt's original purchase
+      date (`AppTransaction.shared`) as the trial start, tamper-proof, with a
+      UserDefaults first-launch fallback for dev builds.
+- [x] Graceful behavior on non-EDR displays: clicking the icon on a display
+      with no EDR headroom shows a "no boost available" explanation instead of
+      flipping to a do-nothing on-state.
+- [ ] Need to add the link to the apple store url for the try now and when the prices are clicked.
 - [ ] Real App Store badge asset + store URL on the web page (CTAs are
       placeholders until the app is live).
 - [ ] Support email is hello+maxcandela@nelera.net (constant in
@@ -481,10 +491,7 @@ does disabling instantly restore it) is required before claiming it works.
 - [ ] GDPR/ePrivacy: GA **and AdSense** cookies are now LIVE on the site → an
       EU consent banner is needed (AdSense legally requires a certified CMP for
       EU traffic). Options: add a consent banner, or drop ads + switch to a
-      cookieless analytics provider.
-- [ ] Trial clock hardening: use the receipt original-purchase-date instead of
-      the UserDefaults first-launch (resettable today).
-- [ ] Graceful behavior on non-EDR displays (disable, explain in menu).
+      cookieless analytics provider. - we dont have the ad sense so leave it for now
 
 Keep this list current as work lands.
 

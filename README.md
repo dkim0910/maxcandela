@@ -48,8 +48,9 @@ whole thing.
 Best on **MacBook Pro 14″ / 16″ (2021 and later)** with the Liquid Retina XDR
 display, and on the **Pro Display XDR** — where it can reach roughly 1,000 nits
 instead of the usual ~600. It also works on other EDR-capable displays to
-varying degrees. On a display with no HDR headroom, there's simply nothing to
-unlock. Requires macOS 15.6 or later.
+varying degrees. On a display with no HDR headroom there's simply nothing to
+unlock — and MaxCandela tells you so instead of pretending to work. Requires
+macOS 15.6 or later.
 
 ## Pricing
 

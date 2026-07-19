@@ -4,6 +4,7 @@ import Link from 'next/link';
 import NavBar from '@/components/NavBar';
 import SiteFooter from '@/components/SiteFooter';
 import ScrollLink from '@/components/ScrollLink';
+import BeforeAfter from '@/components/BeforeAfter';
 import { useBoost } from '@/components/BoostProvider';
 
 const FEATURES = [
@@ -49,6 +50,10 @@ const FAQS = [
     a: 'MaxCandela looks after it. As your Mac warms up it eases the boost off, and if it gets genuinely hot it lowers brightness a little to help it cool — the same way phones do — then brings everything back once the temperature drops. It all happens automatically, and you can turn the boost off any time.',
   },
   {
+    q: 'When I turn the boost off, does my screen stay dimmed?',
+    a: 'No. Turning MaxCandela off puts your display back exactly where it was — at your normal brightness, with nothing dimmed. MaxCandela never lowers your baseline; it only adds brightness on top while it’s on, then hands everything back untouched. If the screen looks a little dim for a second right after, that’s just your eyes adjusting from the brighter level — the display itself is unchanged. (The only time it dips below normal is the automatic thermal protection above, which restores itself too.)',
+  },
+  {
     q: 'Which Macs are supported?',
     a: 'Any Mac with an EDR-capable display. Best results on MacBook Pro 14″/16″ (2021 and later) with the Liquid Retina XDR display, and on the Pro Display XDR — up to ~1,000 nits sustained instead of the usual ~600.',
   },
@@ -81,7 +86,9 @@ export default function Home() {
           : { cls: 'status-off', text: 'Boost off — normal brightness' };
 
   return (
-    <>
+    // Wrapper (normal flow) so Next's scroll restoration targets this, not the
+    // fixed <NavBar> — avoids the "Skipping auto-scroll" console warning.
+    <div>
       <NavBar />
 
       <main className="main">
@@ -107,10 +114,38 @@ export default function Home() {
             </ScrollLink>
             <span className="cta-note">Free · 5-day full trial</span>
           </div>
+          <div className="trust-row">
+            <span>macOS 15.6+</span>
+            <span>Apple silicon &amp; Intel</span>
+            <span>Colors preserved</span>
+            <span>No account needed</span>
+          </div>
+        </section>
+
+        {/* ---- Product showcase: before/after ---- */}
+        <section className="showcase">
+          <span className="section-eyebrow">See the difference</span>
+          <h2>How dark it is now vs. how bright it gets</h2>
+          <p className="demo-copy">
+            Drag the slider — the left is your screen at its normal cap, the
+            right is the same desktop with MaxCandela on.
+          </p>
+          <BeforeAfter
+            before="/compare-normal.jpg"
+            after="/compare-boosted.jpg"
+            beforeLabel="Now"
+            afterLabel="With MaxCandela"
+            alt="A Mac desktop shown at normal brightness versus brightened with MaxCandela"
+          />
+          <p className="device-caption">
+            Same Mac, same wallpaper — only the brightness changes. The app
+            boosts every app and window, system-wide.
+          </p>
         </section>
 
         {/* ---- Live demo ---- */}
         <section className="demo" id="demo">
+          <span className="section-eyebrow">Try it free</span>
           <h2>Don’t take our word for it — feel it</h2>
           <p className="demo-copy">
             This page can boost itself the same way, right in your browser.
@@ -140,7 +175,10 @@ export default function Home() {
 
         {/* ---- Features ---- */}
         <section className="features" id="features">
-          <h2>Built for one job, done right</h2>
+          <div className="section-head">
+            <span className="section-eyebrow">Why MaxCandela</span>
+            <h2>Built for one job, done right</h2>
+          </div>
           <div className="cards">
             {FEATURES.map((f) => (
               <div className="card" key={f.title}>
@@ -154,10 +192,13 @@ export default function Home() {
 
         {/* ---- Pricing ---- */}
         <section className="pricing" id="pricing">
-          <h2>Simple pricing</h2>
-          <p className="pricing-sub">
-            Free for 5 days, everything unlocked. Then pick what suits you.
-          </p>
+          <div className="section-head">
+            <span className="section-eyebrow">Pricing</span>
+            <h2>Simple pricing</h2>
+            <p className="section-sub">
+              Free for 5 days, everything unlocked. Then pick what suits you.
+            </p>
+          </div>
           <div className="price-cards">
             <div className="price-card">
               <h3>Monthly</h3>
@@ -201,7 +242,10 @@ export default function Home() {
 
         {/* ---- FAQ ---- */}
         <section className="faq" id="faq">
-          <h2>Questions, answered</h2>
+          <div className="section-head">
+            <span className="section-eyebrow">FAQ</span>
+            <h2>Questions, answered</h2>
+          </div>
           {FAQS.map((f) => (
             <details key={f.q}>
               <summary>{f.q}</summary>
@@ -212,6 +256,6 @@ export default function Home() {
       </main>
 
       <SiteFooter />
-    </>
+    </div>
   );
 }

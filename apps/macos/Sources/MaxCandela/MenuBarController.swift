@@ -186,6 +186,12 @@ final class MenuBarController {
             refresh()
             return
         }
+        // No EDR headroom on this display → there's nothing to boost. Explain
+        // rather than flip to a fake "on" state that does nothing.
+        if !brightness.canBoost() {
+            showNoHeadroomAlert()
+            return
+        }
         Task { @MainActor in
             licenseState = await store.currentState()
             switch licenseState {
@@ -240,6 +246,16 @@ final class MenuBarController {
         case .alertSecondButtonReturn: buyMonthly()
         default: break
         }
+    }
+
+    private func showNoHeadroomAlert() {
+        let alert = NSAlert()
+        alert.icon = Self.brandIcon
+        alert.messageText = "No brightness boost available"
+        alert.informativeText = "This display doesn’t have the HDR (EDR) headroom MaxCandela needs, so there’s nothing to unlock. It works on the built-in screen of a MacBook Pro 14″/16″ (2021 or later), the Pro Display XDR, and other HDR-capable displays."
+        alert.addButton(withTitle: "OK")
+        NSApp.activate(ignoringOtherApps: true)
+        alert.runModal()
     }
 
     @objc private func buyLifetime() { purchase(productID: StoreManager.lifetimeProductID) }
