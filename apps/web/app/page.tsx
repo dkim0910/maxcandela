@@ -191,7 +191,7 @@ export default function Home() {
           </div>
           <p className="pricing-fineprint">
             Purchases via Apple. One purchase covers every Mac on your Apple
-            ID. Requires macOS 13+ and an EDR-capable display. Subscriptions
+            ID. Requires macOS 15.6+ and an EDR-capable display. Subscriptions
             renew monthly and can be cancelled anytime in App Store →
             Subscriptions; payment is charged to your Apple Account. See our{' '}
             <Link href="/terms/">Terms of Use</Link> and{' '}

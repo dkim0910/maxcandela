@@ -62,8 +62,12 @@ final class EDROverlayWindow: NSWindow {
     override var canBecomeMain: Bool { false }
 
     func activate() {
-        renderer.start()
+        // Order on screen first so the hosting view has a window/screen for its
+        // display link, then start the render loop from that view.
         orderFrontRegardless()
+        if let view = contentView {
+            renderer.start(view: view)
+        }
     }
 
     func deactivate() {

@@ -7,7 +7,7 @@ name: MaxCandela
 options:
   bundleIdPrefix: com.maxcandela
   deploymentTarget:
-    macOS: "13.0"
+    macOS: "15.6"
   createIntermediateGroups: true
 
 settings:

@@ -251,7 +251,8 @@ DisplayManager         → enumerates NSScreens, reports EDR capability per scre
 EDROverlayWindow       → ~4×4 px borderless click-through corner window per
                          screen; hosts the CAMetalLayer EDR trigger patch
 MetalRenderer          → owns MTLDevice/queue; drives the CAMetalLayer render
-                         loop (CVDisplayLink); clears drawable to EDR white ×boost
+                         loop (CADisplayLink via NSView.displayLink); clears
+                         drawable to EDR white ×boost
 Preferences            → UserDefaults-backed enabled flag + boost level
 ```
 
@@ -321,6 +322,42 @@ by `#if SWIFT_PACKAGE` so it compiles under both SwiftPM and Xcode.
 
 The CLI path (`scripts/bundle-macos.sh --pkg`) still exists as an alternative.
 
+### Submitting to the App Store (Xcode Archive — like iOS)
+
+Full walkthrough, since SwiftPM has no Archive button and this is easy to forget.
+
+**Prerequisites**
+- Signed into the Apple ID in Xcode → Settings → Accounts (team YU66583SCF).
+- App Store Connect app record exists (bundle `com.maxcandela.MaxCandela`).
+
+**Open the project**
+```bash
+open /Users/daniel/Codes/maxcandela/apps/macos/MaxCandela.xcodeproj
+# regenerate first if project.yml changed:  cd apps/macos && xcodegen generate
+```
+
+**One-time signing setup (in Xcode)**
+1. Select the **MaxCandela** target → **Signing & Capabilities**.
+2. Check **Automatically manage signing** → pick the **Team**. Xcode
+   auto-creates the Apple Distribution cert + App Store provisioning profile —
+   no manual cert/profile downloads (the big win over the CLI path).
+3. **App Sandbox** already shows (from the entitlements file) — leave as-is.
+
+**Archive & upload (same as iOS)**
+4. Set the run destination to **Any Mac** (not a specific device).
+5. **Product → Archive**, wait for the build.
+6. Organizer opens → **Distribute App** → **App Store Connect** → **Upload** →
+   click through defaults → **Upload**.
+7. Xcode signs with the distribution profile and uploads.
+
+**After upload (App Store Connect)**
+8. Build appears under the app after a few minutes of processing.
+9. Finish: both IAP products, screenshots (product + IAP review), App Privacy
+   label ("Usage Data → Analytics, not linked to identity"), attach the build
+   to the version → **Submit for Review**.
+
+The CLI `.pkg` + Transporter path is the fallback if Xcode signing ever fails.
+
 ### Verifying a brightness change actually works
 
 Unit tests can't observe backlight. To verify boost behavior you must run the
@@ -331,7 +368,12 @@ does disabling instantly restore it) is required before claiming it works.
 
 ## Conventions
 
-- Swift 5.9, macOS 13+ deployment target. Prefer public frameworks (AppKit,
+- Shipping deployment target is **macOS 15.6** (Info.plist + project.yml). The
+  SwiftPM `Package.swift` stays at macOS 14 for dev (`.v15` would force Swift 6
+  tools / strict concurrency). The code uses no APIs newer than 14
+  (`NSView.displayLink`); raising the target higher buys nothing but loses users
+  — flagged to Daniel.
+- Swift 5.9. Prefer public frameworks (AppKit,
   Metal, QuartzCore, CoreGraphics). Flag any private API in this file first.
 - AppKit, not SwiftUI, for the menu-bar surface (finer control over
   status-item/overlay window behavior). Overlay windows are `NSWindow`, not
@@ -377,34 +419,42 @@ does disabling instantly restore it) is required before claiming it works.
 
 ### App Store submission — remaining (Daniel drives, Apple-side)
 
+- [x] Xcode project generated (XcodeGen, `apps/macos/project.yml`) — builds &
+      archives for the App Store; icon asset catalog, entitlements, GA-secret
+      injection all wired. Full Archive steps in the "Submitting to the App
+      Store" section above.
 - [~] App Store Connect setup — IN PROGRESS: app record created (bundle
       `com.maxcandela.MaxCandela`, SKU `maxcandela-macos-001`), keywords set,
       content-rights/age answered (4+). Still to do:
-  - [ ] Finish both IAP products: `com.maxcandela.pro.lifetime` ($9.99
+  - [x] Finish both IAP products: `com.maxcandela.pro.lifetime` ($9.99
         non-consumable) + `com.maxcandela.pro.monthly` ($0.99/mo subscription
         in a "MaxCandela Pro" group) — product IDs must match the code exactly.
-  - [ ] Set the App Privacy label: **"Usage Data → Analytics, not linked to
+  - [x] Set the App Privacy label: **"Usage Data → Analytics, not linked to
         identity"** (NOT "data not collected" — the app sends anonymous GA4).
+        Note: adding AdSense to the *website* doesn't change the *app's* label.
   - [ ] **Create + upload screenshots**: App Store product screenshots (Mac
         sizes, e.g. 2880×1800) showing the menu-bar toggle + brightness effect,
         AND an IAP review screenshot (the paywall / purchase menu) per product.
-  - [ ] Certificates (Xcode): Apple Distribution + Mac Installer Distribution.
-  - [ ] Provisioning profile (Mac App Store) → download → build the `.pkg`:
-        `SIGN_IDENTITY=… INSTALLER_IDENTITY=… PROVISIONING_PROFILE=… \
-        scripts/bundle-macos.sh --pkg`, upload via Transporter.
+  - [ ] **Archive & upload**: Xcode → Product → Archive → Distribute App →
+        App Store Connect (auto-signing creates the cert + profile — no manual
+        certs/`.pkg` needed). CLI `.pkg` + Transporter is the fallback.
   - [ ] **Submit for App Review.**
 
-### Google Analytics — remaining
+### Analytics / ads
 
-- [ ] Create a GA4 property, then fill credentials (both ship DISABLED until
-      the `G-XXXX` placeholders are replaced):
-      - web Measurement ID → `apps/web/lib/analytics.ts`
-      - app Measurement ID + API secret → env vars `GA_MEASUREMENT_ID` /
-        `GA_API_SECRET` (injected into Info.plist by `bundle-macos.sh`; never
-        committed). GA4 admin → Data Streams → Measurement Protocol secrets.
-      App events: app_launch, boost_enabled/boost_disabled, paywall_shown,
-      purchase_completed; web: page views + boost_enabled/boost_disabled.
-      DEBUG never sends. Keep the /privacy page in sync with any event changes.
+- [x] Google Analytics configured & LIVE. Web Measurement ID `G-2E5J2Q7FC8` in
+      `apps/web/lib/analytics.ts`; app uses the same ID (baked into
+      `Resources/Info.plist`) + API secret injected from the gitignored `.env`
+      (Xcode build-phase and the CLI bundler). App events: app_launch,
+      boost_enabled/boost_disabled, paywall_shown, purchase_completed; web:
+      page views + boost toggle. DEBUG never sends. `/privacy` discloses it.
+- [x] Google AdSense loader added (`ca-pub-7400069037778721` in `layout.tsx`) +
+      `/privacy` disclosure. NOTE: no ad units placed yet; won't show ads until
+      AdSense approves the site; adds ad cookies (see EU-consent item). Ads on a
+      paid-app landing page are questionable — flagged to Daniel.
+- [x] App menu polish: trial countdown (`Free trial — N days left`) + hover
+      tooltip on the ☀️; menu now shows the *real live* headroom instead of the
+      inflated theoretical max; brand logo in the paywall + welcome dialogs.
 - [x] Web legal pages: /privacy, /terms (incl. subscription disclosures),
       /support, /about — shared footer links from every page. App Store
       Connect requires the Privacy Policy + Support URLs, so the site must be
@@ -415,7 +465,8 @@ does disabling instantly restore it) is required before claiming it works.
       warms and — at critical — actively **dims below native** (`criticalDim`
       0.8) to shed heat; fan control documented as impossible in-sandbox.
 - [x] SEO: domain maxcandela.com wired (`lib/site.ts`), canonical + OG/Twitter
-      tags + `og.png`, `sitemap.xml` + `robots.txt` generated at build.
+      tags + `og.png`, `sitemap.xml` + `robots.txt`, JSON-LD SoftwareApplication
+      structured data (with prices, no fake ratings), per-page meta descriptions.
 - [x] Web deployment: LIVE at https://maxcandela.com via GitHub Pages +
       Actions (`.github/workflows/deploy-web.yml`), custom domain + HTTPS.
       Pushes to `main` touching `apps/web/**` auto-rebuild/redeploy.
@@ -427,8 +478,10 @@ does disabling instantly restore it) is required before claiming it works.
       placeholders until the app is live).
 - [ ] Support email is hello+maxcandela@nelera.net (constant in
       app/support/page.tsx) — swap for a dedicated address if desired.
-- [ ] GDPR/ePrivacy: GA cookies need an EU consent banner — decide before
-      turning analytics on (banner, or a cookieless provider).
+- [ ] GDPR/ePrivacy: GA **and AdSense** cookies are now LIVE on the site → an
+      EU consent banner is needed (AdSense legally requires a certified CMP for
+      EU traffic). Options: add a consent banner, or drop ads + switch to a
+      cookieless analytics provider.
 - [ ] Trial clock hardening: use the receipt original-purchase-date instead of
       the UserDefaults first-launch (resettable today).
 - [ ] Graceful behavior on non-EDR displays (disable, explain in menu).

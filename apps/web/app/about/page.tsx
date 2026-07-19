@@ -34,12 +34,13 @@ export default function AboutPage() {
 
       <h2>The Mac app</h2>
       <p>
-        A tiny menu-bar utility for macOS 13+. It engages the display’s
+        A tiny menu-bar utility for macOS 15.6+. It engages the display’s
         Extended Dynamic Range (EDR) headroom — the same mechanism macOS uses
         for HDR movies — and lifts all your content into it with a
         color-calibrated transform, so everything gets brighter without
         washing out. It respects the system’s thermal and battery limits at
-        all times, collects zero data, and never sees what’s on your screen.
+        all times, collects no personal data, and never sees what’s on your
+        screen.
         Free for 5 days, then $9.99 once or $0.99/month.
       </p>
 

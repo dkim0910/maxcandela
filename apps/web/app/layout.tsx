@@ -72,7 +72,7 @@ const softwareSchema = {
   '@type': 'SoftwareApplication',
   name: 'MaxCandela',
   applicationCategory: 'UtilitiesApplication',
-  operatingSystem: 'macOS 13.0 or later',
+  operatingSystem: 'macOS 15.6 or later',
   url: SITE_URL,
   image: `${SITE_URL}/og.png`,
   description:

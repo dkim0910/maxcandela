@@ -18,7 +18,7 @@ final class MetalRenderer {
 
     private let device: MTLDevice
     private let commandQueue: MTLCommandQueue
-    private var displayLink: CVDisplayLink?
+    private var displayLink: CADisplayLink?
 
     /// Live boost multiplier. Clamped by BrightnessController before it lands
     /// here, so we render exactly what we're told.
@@ -49,34 +49,29 @@ final class MetalRenderer {
 
     // MARK: - Render loop
 
-    func start() {
+    /// Drive the render loop from the hosting view's display link (the modern
+    /// replacement for CVDisplayLink, which Apple deprecated in macOS 15). The
+    /// link is tied to the view's screen and paced to its refresh rate.
+    func start(view: NSView) {
         guard displayLink == nil else { return }
-        var link: CVDisplayLink?
-        CVDisplayLinkCreateWithActiveCGDisplays(&link)
-        guard let link else { return }
-
-        let context = Unmanaged.passUnretained(self).toOpaque()
-        CVDisplayLinkSetOutputCallback(link, { (_, _, _, _, _, userInfo) -> CVReturn in
-            let renderer = Unmanaged<MetalRenderer>.fromOpaque(userInfo!).takeUnretainedValue()
-            renderer.renderFrame()
-            return kCVReturnSuccess
-        }, context)
-
-        CVDisplayLinkStart(link)
+        let link = view.displayLink(target: self, selector: #selector(step))
+        link.add(to: .main, forMode: .common)
         displayLink = link
     }
 
     func stop() {
-        if let link = displayLink {
-            CVDisplayLinkStop(link)
-        }
+        displayLink?.invalidate()
         displayLink = nil
     }
 
-    /// The display-link callback holds an *unretained* pointer to self; it must
-    /// never outlive us, even if a caller forgets deactivate().
+    /// CADisplayLink retains its target, so invalidate on teardown/dealloc to
+    /// break the cycle and stop the loop.
     deinit {
         stop()
+    }
+
+    @objc private func step(_ sender: CADisplayLink) {
+        renderFrame()
     }
 
     private func renderFrame() {
