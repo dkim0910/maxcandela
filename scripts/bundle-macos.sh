@@ -23,6 +23,13 @@ DIST="$REPO_ROOT/dist"
 APP="$DIST/MaxCandela.app"
 SIGN_IDENTITY="${SIGN_IDENTITY:--}"   # "-" = ad-hoc
 
+# Load secrets (GA_API_SECRET, signing identities, …) from a gitignored .env at
+# the repo root if present, so they never live in the repo or the shell history.
+if [[ -f "$REPO_ROOT/.env" ]]; then
+    set -a; source "$REPO_ROOT/.env"; set +a
+    echo "==> Loaded $REPO_ROOT/.env"
+fi
+
 echo "==> Building release binary (universal)…"
 cd "$MACOS_DIR"
 swift build -c release --arch arm64 --arch x86_64

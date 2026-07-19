@@ -3,6 +3,8 @@ import LegalShell from '@/components/LegalShell';
 
 export const metadata: Metadata = {
   title: 'Support — MaxCandela',
+  description:
+    'Help with MaxCandela: which Macs are supported, why the boost may look different, managing your subscription, restoring purchases, and how to get in touch.',
 };
 
 // TODO: replace with a dedicated support address before launch if preferred.

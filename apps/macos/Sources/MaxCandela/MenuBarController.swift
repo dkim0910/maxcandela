@@ -214,10 +214,14 @@ final class MenuBarController {
     /// so NSAlert falls back to a generic file/document icon). Falls back to the
     /// app icon in a normal bundled launch.
     private static let brandIcon: NSImage? = {
+        #if SWIFT_PACKAGE
+        // `swift run` has no app icon, so load the bundled resource explicitly.
         if let url = Bundle.module.url(forResource: "AppIcon", withExtension: "png"),
            let image = NSImage(contentsOf: url) {
             return image
         }
+        #endif
+        // Xcode/App Store build: the asset-catalog app icon is the real thing.
         return NSApp.applicationIconImage
     }()
 

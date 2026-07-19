@@ -12,9 +12,9 @@ npm-debug.log*
 .eslintcache
 
 # Xcode
-*.xcodeproj/*
-!*.xcodeproj/project.pbxproj
-!*.xcodeproj/xcshareddata/
+# Xcode project is generated from apps/macos/project.yml by XcodeGen — don't
+# commit it; regenerate with `xcodegen generate`.
+*.xcodeproj
 xcuserdata/
 DerivedData/
 *.xcworkspace/xcuserdata/

@@ -299,6 +299,28 @@ gated on the App Store — that's why the trial/paywall don't show without a fla
 There is no CI yet. When adding it, run `swift build`/`swift test` (in
 `apps/macos`) and `npm run build` (in `apps/web`) on macOS-latest.
 
+### App Store build (Xcode project via XcodeGen)
+
+SwiftPM has no Archive flow, so the App Store build uses a generated Xcode
+project. `apps/macos/project.yml` is the source of truth; the `.xcodeproj` is
+gitignored and regenerated:
+
+```bash
+cd apps/macos
+brew install xcodegen          # once
+xcodegen generate              # → MaxCandela.xcodeproj
+open MaxCandela.xcodeproj      # then Product → Archive → Distribute
+```
+
+The project reuses the same `Sources/MaxCandela` code, `Resources/Info.plist`,
+`Resources/MaxCandela.entitlements` (sandbox + network), and an app-icon asset
+catalog at `Resources/Assets.xcassets` (generated from `make-icon.swift`'s
+PNGs). A post-build script injects `GA_API_SECRET` from the repo-root `.env`
+before signing (same as the CLI bundler). `Bundle.module` (icon load) is guarded
+by `#if SWIFT_PACKAGE` so it compiles under both SwiftPM and Xcode.
+
+The CLI path (`scripts/bundle-macos.sh --pkg`) still exists as an alternative.
+
 ### Verifying a brightness change actually works
 
 Unit tests can't observe backlight. To verify boost behavior you must run the

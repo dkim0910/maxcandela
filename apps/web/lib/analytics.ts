@@ -1,7 +1,7 @@
 // Google Analytics 4 configuration for the website.
-// TODO: replace with the real Measurement ID (GA4 admin → Data Streams).
-// Analytics stays completely disabled while the placeholder is in place.
-export const GA_ID = 'G-XXXXXXXXXX';
+// Measurement IDs are public (they ship in client-side JS), so this is safe to
+// commit. Analytics is disabled automatically if this is ever a placeholder.
+export const GA_ID = 'G-2E5J2Q7FC8';
 
 export const gaConfigured = !GA_ID.includes('XXXX');
 

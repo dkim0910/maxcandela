@@ -1,0 +1,52 @@
+# XcodeGen spec for the App Store build. Generates MaxCandela.xcodeproj from the
+# same Swift sources the SwiftPM package uses, so you get Xcode's familiar
+# Archive → Distribute flow. Regenerate any time with:  xcodegen generate
+#
+# Requires: brew install xcodegen
+name: MaxCandela
+options:
+  bundleIdPrefix: com.maxcandela
+  deploymentTarget:
+    macOS: "13.0"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    MARKETING_VERSION: "1.0.0"
+    CURRENT_PROJECT_VERSION: "1"
+    DEVELOPMENT_TEAM: YU66583SCF          # your Apple Developer team
+    SWIFT_VERSION: "5.9"
+
+targets:
+  MaxCandela:
+    type: application
+    platform: macOS
+    sources:
+      - path: Sources/MaxCandela          # all the .swift + the SPM AppIcon.png
+      - path: Resources/Assets.xcassets    # the app-icon asset catalog
+    settings:
+      base:
+        PRODUCT_NAME: MaxCandela
+        PRODUCT_BUNDLE_IDENTIFIER: com.maxcandela.MaxCandela
+        INFOPLIST_FILE: Resources/Info.plist
+        GENERATE_INFOPLIST_FILE: NO        # use our Info.plist verbatim
+        CODE_SIGN_ENTITLEMENTS: Resources/MaxCandela.entitlements
+        CODE_SIGN_STYLE: Automatic
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ENABLE_HARDENED_RUNTIME: YES
+        COMBINE_HIDPI_IMAGES: YES
+    postBuildScripts:
+      # Inject the GA API secret from the repo-root .env (gitignored) into the
+      # built app's Info.plist, before code signing. No .env / secret ⇒ analytics
+      # stays off. Keeps the secret out of the repo, same as the CLI bundler.
+      - name: Inject GA API secret
+        basedOnDependencyAnalysis: false
+        script: |
+          ENV_FILE="$SRCROOT/../../.env"
+          [ -f "$ENV_FILE" ] || { echo "no .env — skipping GA secret"; exit 0; }
+          set -a; source "$ENV_FILE"; set +a
+          [ -n "${GA_API_SECRET:-}" ] || { echo "no GA_API_SECRET — skipping"; exit 0; }
+          PLIST="$BUILT_PRODUCTS_DIR/$INFOPLIST_PATH"
+          /usr/libexec/PlistBuddy -c "Set :GAApiSecret $GA_API_SECRET" "$PLIST" \
+            || /usr/libexec/PlistBuddy -c "Add :GAApiSecret string $GA_API_SECRET" "$PLIST"
+          echo "Injected GA_API_SECRET into $PLIST"

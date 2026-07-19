@@ -1,8 +1,12 @@
 import type { Metadata } from 'next';
+import Script from 'next/script';
 import Analytics from '@/components/Analytics';
 import BoostProvider from '@/components/BoostProvider';
 import { SITE_URL } from '@/lib/site';
 import './globals.css';
+
+// Google AdSense publisher ID (public — ships in the client script).
+const ADSENSE_CLIENT = 'ca-pub-7400069037778721';
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -43,9 +47,38 @@ export default function RootLayout({
     // on these two elements — real hydration bugs elsewhere still surface.
     <html lang="en" data-scroll-behavior="smooth" suppressHydrationWarning>
       <body suppressHydrationWarning>
+        {/* Structured data: tells Google this is a Mac app with these prices,
+            so search can show a rich app result. No aggregateRating until we
+            have real reviews (fabricating one violates Google's guidelines). */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareSchema) }}
+        />
         <Analytics />
+        <Script
+          async
+          src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_CLIENT}`}
+          crossOrigin="anonymous"
+          strategy="afterInteractive"
+        />
         <BoostProvider>{children}</BoostProvider>
       </body>
     </html>
   );
 }
+
+const softwareSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'SoftwareApplication',
+  name: 'MaxCandela',
+  applicationCategory: 'UtilitiesApplication',
+  operatingSystem: 'macOS 13.0 or later',
+  url: SITE_URL,
+  image: `${SITE_URL}/og.png`,
+  description:
+    'MaxCandela unlocks the full brightness of MacBook Pro XDR displays — pushing everyday content past the ~600 nit cap macOS enforces, with one click in the menu bar.',
+  offers: [
+    { '@type': 'Offer', name: 'Lifetime', price: '9.99', priceCurrency: 'USD' },
+    { '@type': 'Offer', name: 'Monthly', price: '0.99', priceCurrency: 'USD' },
+  ],
+};

@@ -4,6 +4,8 @@ import LegalShell from '@/components/LegalShell';
 
 export const metadata: Metadata = {
   title: 'About — MaxCandela',
+  description:
+    'Why MaxCandela exists: your MacBook Pro’s XDR display is rated for ~1,000 nits but macOS caps everyday content near 600. We hand that reserve back to you.',
 };
 
 export default function AboutPage() {
