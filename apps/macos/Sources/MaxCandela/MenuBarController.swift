@@ -329,6 +329,10 @@ final class MenuBarController {
                 showStoreUnavailableAlert()
                 return
             }
+            // An accessory app is never "active", and macOS parks the StoreKit
+            // payment sheet behind other windows unless the app is — activate
+            // first so the sheet actually appears in front of the user.
+            NSApp.activate(ignoringOtherApps: true)
             do {
                 if try await store.purchase(product) {
                     licenseState = .licensed
@@ -337,6 +341,7 @@ final class MenuBarController {
                 }
             } catch {
                 NSLog("MaxCandela: purchase failed: \(error.localizedDescription)")
+                showPurchaseFailedAlert(error)
             }
         }
     }
@@ -346,6 +351,16 @@ final class MenuBarController {
             await store.restorePurchases()
             refreshLicense()
         }
+    }
+
+    private func showPurchaseFailedAlert(_ error: Error) {
+        let alert = NSAlert()
+        alert.icon = Self.brandIcon
+        alert.messageText = "Purchase didn’t go through"
+        alert.informativeText = "The App Store reported: \(error.localizedDescription)\n\nNothing was charged. Please try again."
+        alert.addButton(withTitle: "OK")
+        NSApp.activate(ignoringOtherApps: true)
+        alert.runModal()
     }
 
     private func showStoreUnavailableAlert() {
