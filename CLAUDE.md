@@ -303,16 +303,42 @@ running instance first (`pkill -x MaxCandela`) to avoid two menu-bar icons.
 
 | Flag | Effect |
 |---|---|
-| `MAXCANDELA_FORCE_TRIAL=5\|4\|3\|2\|1` | Trial with N days left (countdown + tooltip) |
-| `MAXCANDELA_FORCE_TRIAL=expired` (or `0`) | Trial ended → paywall on click |
-| `MAXCANDELA_FORCE_TRIAL=trial\|licensed` | Full trial / Pro-unlocked |
-| `MAXCANDELA_FORCE_PAYWALL=1` | Skip the debug auto-unlock, hit the real trial-clock path |
-| `MAXCANDELA_FORCE_WELCOME=1` | Re-show the first-run welcome popover |
-| `MAXCANDELA_FORCE_THERMAL=nominal\|fair\|serious\|critical` | Force a thermal state (eases/dims the boost) |
-| `MAXCANDELA_FORCE_NO_HEADROOM=1` | Pretend no display has EDR headroom → preview the "no boost available" alert (what App Review saw on a MacBook Air) |
+| `MAXCANDELA_FORCE_TRIAL=5\|4\|3\|2\|1 swift run MaxCandela` | Trial with N days left (countdown +   tooltip) |
+| `MAXCANDELA_FORCE_TRIAL=expired swift run MaxCandela` (or `0`) | Trial ended → paywall on click |
+| `MAXCANDELA_FORCE_TRIAL=trial\|licensed swift run MaxCandela` | Full trial / Pro-unlocked |
+| `MAXCANDELA_FORCE_PAYWALL=1 swift run MaxCandela` | Skip the debug auto-unlock and run the **real** entitlement + trial-clock code (see below — this is not a way to force a paywall) |
+| `MAXCANDELA_FORCE_WELCOME=1 swift run MaxCandela` | Re-show the first-run welcome popover |
+| `MAXCANDELA_FORCE_THERMAL=nominal\|fair\|serious\|critical swift run MaxCandela` | Force a thermal state (eases/dims the boost) |
+| `MAXCANDELA_FORCE_NO_HEADROOM=1 swift run MaxCandela` | Pretend no display has EDR headroom → preview the "no boost available" alert (what App Review saw on a MacBook Air) |
 
 Note: plain `swift run` (DEBUG) auto-unlocks (returns `.licensed`) so dev isn't
 gated on the App Store — that's why the trial/paywall don't show without a flag.
+
+#### `FORCE_TRIAL=expired` vs `FORCE_PAYWALL=1` — they are not the same
+
+Easy to confuse, since both are "about the paywall". They exercise opposite
+things (`StoreManager.currentState()`):
+
+- **`MAXCANDELA_FORCE_TRIAL=expired`** returns `.expired` immediately
+  (`StoreManager.swift:86`). StoreKit is never consulted, the receipt is never
+  read, the clock never runs. It fakes the *answer* — use it to test the
+  paywall **UI**. Deterministic, so this is the one for **App Store IAP review
+  screenshots**.
+- **`MAXCANDELA_FORCE_PAYWALL=1`** forces no state at all. It only disables the
+  debug auto-unlock, letting execution fall through to the **real production
+  path**: `Transaction.currentEntitlements` → `AppTransaction.shared` →
+  `trialDaysRemaining(firstLaunch:)`. Use it to verify the licensing **logic**.
+
+Consequences worth remembering:
+
+- `FORCE_PAYWALL=1` usually shows **no paywall**. Under `swift run` there's no
+  App Store receipt, so it falls back to the `com.maxcandela.firstLaunchDate`
+  UserDefaults stamp; if this Mac first ran the app under 5 days ago the real
+  answer is `.trial`. That's correct behaviour, not a bug.
+- **`FORCE_TRIAL` wins if both are set** — it returns before the `FORCE_PAYWALL`
+  check is reached.
+- Only `FORCE_PAYWALL=1` can catch a broken trial clock or receipt read; the
+  forced states bypass that code entirely, so ship-check with it at least once.
 
 There is no CI yet. When adding it, run `swift build`/`swift test` (in
 `apps/macos`) and `npm run build` (in `apps/web`) on macOS-latest.
@@ -525,6 +551,8 @@ does disabling instantly restore it) is required before claiming it works.
       trial/pricing in the App Description (2.3.2), and add the standard Apple
       EULA link to the description (3.1.2(c)). Checklist + reply text in
       `docs/app-review-reply.md`.
+- [x] Need to update the image in our web
+- [ ] Need to update the image in the app
 - [ ] Need to add the link to the apple store url for the try now and when the prices are clicked.
 - [ ] Real App Store badge asset + store URL on the web page 
       (CTAs are placeholders until the app is live).
