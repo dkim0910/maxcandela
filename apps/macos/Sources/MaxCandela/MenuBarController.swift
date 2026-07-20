@@ -333,8 +333,12 @@ final class MenuBarController {
             // payment sheet behind other windows unless the app is — activate
             // first so the sheet actually appears in front of the user.
             NSApp.activate(ignoringOtherApps: true)
+            // Anchor the sheet to an invisible centered window so it opens in
+            // the middle of the screen instead of a system-guessed corner.
+            let anchor = Self.makePurchaseAnchor()
+            defer { anchor?.close() }
             do {
-                if try await store.purchase(product) {
+                if try await store.purchase(product, confirmIn: anchor) {
                     licenseState = .licensed
                     refresh()
                     Analytics.track("purchase_completed", params: ["product": productID])
@@ -351,6 +355,27 @@ final class MenuBarController {
             await store.restorePurchases()
             refreshLicense()
         }
+    }
+
+    /// A tiny invisible window centered on the main screen, used purely as the
+    /// anchor for the StoreKit purchase sheet (see StoreManager.purchase).
+    private static func makePurchaseAnchor() -> NSWindow? {
+        guard let screen = NSScreen.main else { return nil }
+        let visible = screen.visibleFrame
+        // Base designated init only — the screen: variant traps in subclasses
+        // on newer macOS (see CLAUDE.md gotchas); global coordinates instead.
+        let window = NSWindow(
+            contentRect: NSRect(x: visible.midX - 1, y: visible.midY + 120, width: 2, height: 2),
+            styleMask: .borderless,
+            backing: .buffered,
+            defer: false
+        )
+        window.isOpaque = false
+        window.backgroundColor = .clear
+        window.level = .floating
+        window.isReleasedWhenClosed = false
+        window.orderFrontRegardless()
+        return window
     }
 
     private func showPurchaseFailedAlert(_ error: Error) {

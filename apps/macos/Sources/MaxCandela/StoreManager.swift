@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import StoreKit
 
@@ -129,8 +130,16 @@ final class StoreManager {
     }
 
     /// Purchase a product. Returns true if the user now holds the entitlement.
-    func purchase(_ product: Product) async throws -> Bool {
-        let result = try await product.purchase()
+    /// `confirmIn` anchors the StoreKit confirmation sheet to a window; without
+    /// it the system guesses a position, which for a menu-bar app with no
+    /// windows lands wherever it pleases.
+    func purchase(_ product: Product, confirmIn window: NSWindow? = nil) async throws -> Bool {
+        let result: Product.PurchaseResult
+        if #available(macOS 15.2, *), let window {
+            result = try await product.purchase(confirmIn: window)
+        } else {
+            result = try await product.purchase()
+        }
         switch result {
         case .success(let verification):
             if case .verified(let transaction) = verification {
