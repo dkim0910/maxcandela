@@ -15,8 +15,8 @@ const FEATURES = [
   },
   {
     icon: '⚡',
-    title: 'One menu, no setup',
-    text: 'Click the ☀️ in your menu bar and turn the boost on or off. No sliders to calibrate, nothing to configure — that’s the whole UI.',
+    title: 'One click',
+    text: 'A single ☀️ toggle in your menu bar. Click to unlock full brightness, click again to go back. Double-click for status, purchases and quit — that’s the whole UI.',
   },
   {
     icon: '🎨',

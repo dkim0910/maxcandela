@@ -33,8 +33,9 @@ whole thing.
 ## Why people like it
 
 - **Your whole Mac, brighter** — not just one window or one app.
-- **One menu, no setup** — click the ☀️ in your menu bar to turn the boost on
-  or off. No settings, no sliders, nothing to calibrate.
+- **One click** — click the ☀️ in your menu bar to turn the boost on, click
+  again to turn it off. Double-click for the menu. No sliders, nothing to
+  calibrate.
 - **True colors** — a color-calibrated boost that keeps your display's profile
   intact. Brighter, never washed out.
 - **Panel-safe** — it never pushes past the limits macOS itself allows for HDR,

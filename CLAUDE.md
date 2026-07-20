@@ -18,10 +18,12 @@ It's a monorepo with two apps:
 
 - **`apps/macos/`** — native menu-bar app, Swift + AppKit + Metal. Build system
   is **Swift Package Manager** (no `.xcodeproj` — SwiftPM drives everything).
-  Clicking the ☀️ status icon opens a menu with the boost toggle, live status,
-  license/purchase items, Legal links, and Quit. (Left-click used to toggle
-  directly with everything else behind a right-click — App Review rejected that
-  as undiscoverable, 2026-07-20; see `docs/app-review-reply-1.0.4.md`.) There is
+  Single-clicking the ☀️ status icon toggles full brightness; double-click or
+  right-click opens the menu (status, purchases, Legal ▸ Get Support, Quit).
+  On a display with no EDR headroom a single click opens the menu instead —
+  App Review rejected a build where the menu was right-click-only and the
+  reviewer's MacBook Air hit a dead end (2026-07-20; see
+  `docs/app-review-reply.md`). There is
   deliberately **no boost slider** (removed 2026-07 — toggle always targets the
   panel's max headroom; a manual level didn't add value and confused testing).
 - **`apps/web/`** — Next.js 15 (App Router, TypeScript, static export) site
@@ -229,6 +231,8 @@ deliberately lives in the demo section); `components/LegalShell.tsx` +
   `layout.tsx` — Next rejects non-standard layout exports; hence `lib/site.ts`.
 - **Brand mark**: `app/icon.png` (favicon), `app/apple-icon.png` (touch icon),
   `public/brand.png` (nav + footer), all from `scripts/make-icon.swift`.
+  Favicon + nav mark are transparent; the touch icon is opaque on purpose —
+  iOS composites alpha to black on the home screen.
 - **Analytics**: GA4. Web = `lib/analytics.ts` (`GA_ID`) + `components/
   Analytics.tsx` (gtag, IP-anonymized, ad signals off); events fire via
   `trackEvent`. App = `Analytics.swift` (Measurement Protocol, anonymous
@@ -243,12 +247,14 @@ deliberately lives in the demo section); `components/LegalShell.tsx` +
 ```
 main.swift            → NSApplication bootstrap, .accessory activation policy
 AppDelegate           → lifecycle; owns MenuBarController + BrightnessController
-MenuBarController      → NSStatusItem; any click opens the menu: "Turn Boost
-                         On/Off" (gated by license) + live "Boosting N×" line,
-                         purchase/restore items, Get Support, Legal, Quit.
-                         No slider.
-                         Restore Purchases stays visible in every license
-                         state (Guideline 3.1.1).
+MenuBarController      → NSStatusItem. Single click = instant toggle; double
+                         click / right-click = menu; single click on a
+                         no-headroom display = menu (so Quit stays reachable
+                         where the boost can't work — the App Review path).
+                         Menu: "Turn Boost On/Off", live "Boosting N×" line,
+                         purchase/restore items, Legal ▸ (Terms, Privacy, Get
+                         Support), Quit. No slider. Restore Purchases stays
+                         visible in every license state (Guideline 3.1.1).
 SupportMessages        → user-facing "which Macs are supported" copy, kept
                          out of the UI layer so it's unit-testable
 BrightnessController   → orchestrator: tiny EDR trigger per boost-capable
@@ -415,10 +421,18 @@ does disabling instantly restore it) is required before claiming it works.
       resource). Debug: `MAXCANDELA_FORCE_TRIAL`, `MAXCANDELA_FORCE_WELCOME`.
 - [x] First-run onboarding: welcome popover anchored to the ☀️ status item
       ("MaxCandela lives up here") so users find the menu-bar-only app.
-- [x] Brand mark everywhere: `make-icon.swift` draws the blazing-MacBook logo
-      (same visual language as `make-hero.swift`, hero image on the site);
-      used as the .icns app icon, the web favicon/touch icon (`app/icon.png`,
-      `app/apple-icon.png`), and the nav-bar brand (`public/brand.png`).
+- [x] Brand mark everywhere, from **one source of truth**:
+      `assets/brand/MaxCandela_Logo.png` (transparent MacBook + starburst,
+      1254², supplied artwork). `scripts/make-icon.swift <out.iconset> --all`
+      resamples it into the macOS iconset, `Assets.xcassets`, the SPM
+      `Resources/AppIcon.png` (dialogs), and the web icons;
+      `scripts/make-hero.swift apps/web/public` renders `og.png`.
+      **Both scripts used to *draw* the mark procedurally** — replacing the
+      PNG alone would have been silently overwritten on the next
+      `bundle-macos.sh` run, so they now read the source file instead.
+      macOS icons get a dark rounded tile (`tile: true`): the artwork's laptop
+      is near-black, so on transparency it disappears against dark wallpapers
+      in the Dock at 16–32 px. Web assets stay transparent.
 - [x] Packaging: Info.plist, sandbox entitlements, generated icon,
       `bundle-macos.sh` (.app verified locally with ad-hoc signing; --pkg for
       App Store).
@@ -499,14 +513,18 @@ does disabling instantly restore it) is required before claiming it works.
       terms with clickable Terms of Use / Privacy Policy links (NSTextView
       accessory); right-click menu gained Terms of Use + Privacy Policy items
       and a renewal tooltip on Subscribe. Reply draft for the rejection lives
-      in `docs/app-review-reply-2.1.md`.
-- [~] 1.0.4 rejection (2026-07-20, 5 issues) — app-side fixes DONE: every click
-      opens the menu (Guideline 4, Quit discoverable) and Restore Purchases is
-      always visible (3.1.1). REMAINING, all App Store Connect metadata:
+      in `docs/app-review-reply.md` (superseded by the 1.0.4 reply in the same file).
+- [~] 1.0.4 rejection (2026-07-20, 5 issues) — app-side fixes DONE, shipping as
+      **1.0.7 (7)**: Quit + Restore Purchases are reachable without knowing to
+      right-click (Guideline 4 / 3.1.1) — double-click opens the menu, and on a
+      no-headroom display (the reviewer's MacBook Air) a *single* click does,
+      so that path can't dead-end again. Restore stays visible in every license
+      state. A "Get Support" link was added under Legal.
+      REMAINING, all App Store Connect metadata:
       attach + submit both IAPs with review screenshots (2.1(b)), state the
       trial/pricing in the App Description (2.3.2), and add the standard Apple
       EULA link to the description (3.1.2(c)). Checklist + reply text in
-      `docs/app-review-reply-1.0.4.md`. Needs a version bump to 1.0.5 (5).
+      `docs/app-review-reply.md`.
 - [ ] Need to add the link to the apple store url for the try now and when the prices are clicked.
 - [ ] Real App Store badge asset + store URL on the web page 
       (CTAs are placeholders until the app is live).

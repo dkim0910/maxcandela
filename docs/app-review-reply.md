@@ -11,18 +11,23 @@ right-click the reviewer never tried.
 
 ---
 
-## 1. Code changes (done — needs a new build number)
+## 1. Code changes (done — shipping as 1.0.7 build 7)
 
-- **Guideline 4 (no way to quit)** and **3.1.1 (no Restore Purchases)**: every
-  click on the status item now opens the menu. "Turn Boost On/Off" is the first
-  item; Quit MaxCandela (⌘Q) and Restore Purchases are always visible, one click
-  from the icon. The instant left-click toggle is gone.
+- **Guideline 4 (no way to quit)** and **3.1.1 (no Restore Purchases)**: the
+  menu no longer hides behind a right-click. **Double-clicking** the status
+  item opens it, and on a display with **no EDR headroom — the reviewer's
+  MacBook Air — a single click opens it**, so the exact path they took now
+  lands on a menu containing Quit MaxCandela (⌘Q) and Restore Purchases
+  instead of a dead-end alert. A single click on a supported Mac still toggles
+  the boost instantly.
 - **Restore Purchases** is no longer hidden once the license is active
   (`MenuBarController.refresh()`), so it is present in every state.
-- First-run welcome copy updated to describe the menu instead of right-click.
+- **Get Support** added under Legal, linking maxcandela.com/support.
+- First-run welcome copy updated to teach single-click / double-click.
 
-Bump `CFBundleShortVersionString` / `CFBundleVersion` (→ 1.0.5 / 5) in
-`apps/macos/Resources/Info.plist` + `project.yml`, then Archive and upload.
+Version is already set to 1.0.7 (7) in `apps/macos/Resources/Info.plist` +
+`project.yml` — regenerate the Xcode project (`xcodegen generate`) before
+archiving, since the `.xcodeproj` is gitignored.
 
 ## 2. App Store Connect checklist (must be done by hand)
 
@@ -55,8 +60,10 @@ Thank you for the detailed review. We have addressed all five items.
 
 **Guideline 4 — quitting the app.** The app always had a Quit item, but it was
 only reachable by right-clicking the menu bar icon, which was not discoverable.
-In this build, any click on the menu bar icon opens the menu, and "Quit
-MaxCandela" (⌘Q) is always visible at the bottom.
+In this build the menu also opens on a **double-click**, and — importantly for
+your test — on any display without HDR headroom, such as the MacBook Air used
+for this review, a **single click opens the menu** rather than showing an
+alert. "Quit MaxCandela" (⌘Q) is always visible at the bottom of that menu.
 
 **Guideline 3.1.1 — Restore Purchases.** A distinct "Restore Purchases" item is
 now permanently visible in that same menu, in every license state, and calls

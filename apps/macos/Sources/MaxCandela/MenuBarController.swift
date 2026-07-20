@@ -1,15 +1,20 @@
 import AppKit
 import StoreKit
 
-/// The menu-bar surface. Clicking the ☀️ status icon opens the menu: boost
-/// toggle, live headroom info, license status/purchases, Restore, Legal, Quit.
+/// The menu-bar surface on the ☀️ status icon:
 ///
-/// The toggle used to fire directly on left-click, with everything else behind
-/// a right-click. App Review (2026-07-20, Guidelines 4 + 3.1.1) rejected that:
-/// the reviewer's MacBook Air has no EDR headroom, so left-click only produced
-/// the "no boost available" alert and they never discovered the right-click
-/// menu — reported as "no way to quit the app" and "no Restore Purchases".
-/// Every click now opens the menu, so Quit and Restore are always one click away.
+/// - single click  → toggle the boost instantly (license permitting)
+/// - double click  → open the menu (undoing the first click's toggle)
+/// - right-click   → open the menu
+/// - single click on a display with no EDR headroom → open the menu, since a
+///   toggle there would do nothing
+///
+/// App Review (2026-07-20, Guidelines 4 + 3.1.1) rejected an earlier build
+/// where the menu was reachable *only* by right-click: the reviewer's MacBook
+/// Air has no EDR headroom, so clicking produced a dead-end alert and they
+/// never found Quit or Restore Purchases. The no-headroom rule above keeps
+/// that path open — on the Macs where the boost can't work, one click still
+/// reaches the whole menu.
 final class MenuBarController {
     private let statusItem: NSStatusItem
     private let brightness: BrightnessController
@@ -34,6 +39,13 @@ final class MenuBarController {
     /// Deliberately the support *page*, not a mailto: — the address can then
     /// change on the site without shipping an app update through review.
     private static let supportURL = URL(string: "https://maxcandela.com/support/")!
+
+    /// When the last toggle was applied, so the second click of a double-click
+    /// can undo it (see `revertFirstClickToggle`).
+    private var lastToggleAppliedAt: Date?
+    /// Set when a double-click is detected, so an in-flight entitlement check
+    /// doesn't toggle after the user has asked for the menu.
+    private var suppressPendingToggle = false
 
     /// Last observed license state; refreshed on launch and every menu open.
     private var licenseState: StoreManager.LicenseState = .trial(daysRemaining: StoreManager.shared.trialDaysRemaining)
@@ -224,7 +236,46 @@ final class MenuBarController {
     // MARK: - Actions
 
     @objc private func statusButtonClicked() {
-        showMenu()
+        guard let event = NSApp.currentEvent else { return }
+
+        // Right-click / Control-click: always the menu.
+        if event.type == .rightMouseUp || event.modifierFlags.contains(.control) {
+            showMenu()
+            return
+        }
+
+        // Nothing to toggle on this display, so a toggle would be a dead end —
+        // give the user the menu (with Quit and Restore) instead. This is also
+        // the App Review path: their MacBook Air has no headroom, so a single
+        // click still lands them somewhere useful.
+        if !brightness.canBoost() {
+            showMenu()
+            return
+        }
+
+        // Second click of a double-click: the user wanted the menu, not a
+        // toggle. Undo what the first click did rather than making them
+        // click again. Deliberately no delay on the single click — waiting
+        // out the double-click interval would make every toggle feel laggy.
+        if event.clickCount >= 2 {
+            suppressPendingToggle = true
+            revertFirstClickToggle()
+            showMenu()
+            return
+        }
+
+        suppressPendingToggle = false
+        toggleBoost()
+    }
+
+    /// Undo a toggle applied moments ago by the first click of a double-click.
+    private func revertFirstClickToggle() {
+        guard let applied = lastToggleAppliedAt,
+              Date().timeIntervalSince(applied) < NSEvent.doubleClickInterval + 0.25
+        else { return }
+        lastToggleAppliedAt = nil
+        brightness.toggle()
+        refresh()
     }
 
     @objc private func toggleBoost() {
@@ -232,6 +283,7 @@ final class MenuBarController {
         // the paywall. Turning ON requires a valid trial or license.
         if brightness.isEnabled {
             brightness.toggle()
+            lastToggleAppliedAt = Date()
             refresh()
             return
         }
@@ -243,9 +295,13 @@ final class MenuBarController {
         }
         Task { @MainActor in
             licenseState = await store.currentState()
+            // A second click landed while the entitlement check was in flight —
+            // the user asked for the menu, so don't toggle behind them.
+            guard !suppressPendingToggle else { return }
             switch licenseState {
             case .licensed, .trial:
                 brightness.toggle()
+                lastToggleAppliedAt = Date()
             case .expired:
                 showPaywallAlert()
             }
