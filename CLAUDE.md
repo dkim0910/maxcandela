@@ -18,8 +18,10 @@ It's a monorepo with two apps:
 
 - **`apps/macos/`** — native menu-bar app, Swift + AppKit + Metal. Build system
   is **Swift Package Manager** (no `.xcodeproj` — SwiftPM drives everything).
-  Left-clicking the ☀️ status icon toggles full brightness on/off; right-click
-  opens a menu with live status, license/purchase items, and Quit. There is
+  Clicking the ☀️ status icon opens a menu with the boost toggle, live status,
+  license/purchase items, Legal links, and Quit. (Left-click used to toggle
+  directly with everything else behind a right-click — App Review rejected that
+  as undiscoverable, 2026-07-20; see `docs/app-review-reply-1.0.4.md`.) There is
   deliberately **no boost slider** (removed 2026-07 — toggle always targets the
   panel's max headroom; a manual level didn't add value and confused testing).
 - **`apps/web/`** — Next.js 15 (App Router, TypeScript, static export) site
@@ -241,9 +243,13 @@ deliberately lives in the demo section); `components/LegalShell.tsx` +
 ```
 main.swift            → NSApplication bootstrap, .accessory activation policy
 AppDelegate           → lifecycle; owns MenuBarController + BrightnessController
-MenuBarController      → NSStatusItem; left-click = instant toggle (gated by
-                         license), right-click menu w/ live "Boosting N×" line,
-                         purchase/restore items, Quit. No slider.
+MenuBarController      → NSStatusItem; any click opens the menu: "Turn Boost
+                         On/Off" (gated by license) + live "Boosting N×" line,
+                         purchase/restore items, Legal, Quit. No slider.
+                         Restore Purchases stays visible in every license
+                         state (Guideline 3.1.1).
+SupportMessages        → user-facing "which Macs are supported" copy, kept
+                         out of the UI layer so it's unit-testable
 BrightnessController   → orchestrator: tiny EDR trigger per boost-capable
                          screen; 1 s headroom poll; gamma lift fades via 30 Hz
                          animator; toggle-on targets max headroom
@@ -296,6 +302,7 @@ running instance first (`pkill -x MaxCandela`) to avoid two menu-bar icons.
 | `MAXCANDELA_FORCE_PAYWALL=1` | Skip the debug auto-unlock, hit the real trial-clock path |
 | `MAXCANDELA_FORCE_WELCOME=1` | Re-show the first-run welcome popover |
 | `MAXCANDELA_FORCE_THERMAL=nominal\|fair\|serious\|critical` | Force a thermal state (eases/dims the boost) |
+| `MAXCANDELA_FORCE_NO_HEADROOM=1` | Pretend no display has EDR headroom → preview the "no boost available" alert (what App Review saw on a MacBook Air) |
 
 Note: plain `swift run` (DEBUG) auto-unlocks (returns `.licensed`) so dev isn't
 gated on the App Store — that's why the trial/paywall don't show without a flag.
@@ -391,7 +398,7 @@ does disabling instantly restore it) is required before claiming it works.
 
 - [x] Project scaffold: SwiftPM manifest, docs, source skeleton, tests.
 - [x] Monorepo layout: `apps/macos` + `apps/web` + `scripts/`.
-- [x] Menu-bar icon = instant toggle (left-click); right-click menu w/ slider.
+- [x] Menu-bar icon opens the menu (toggle, status, purchases, Legal, Quit).
 - [x] Web app: Next.js static export, nav-bar toggle, HDR video assets
       (`scripts/generate-hdr-video.sh`), `dynamic-range` detection.
 - [x] Web boost verified on hardware (fullscreen multiply-blend; 3 nit levels).
@@ -482,13 +489,23 @@ does disabling instantly restore it) is required before claiming it works.
       UserDefaults first-launch fallback for dev builds.
 - [x] Graceful behavior on non-EDR displays: clicking the icon on a display
       with no EDR headroom shows a "no boost available" explanation instead of
-      flipping to a do-nothing on-state.
+      flipping to a do-nothing on-state. Copy lives in `SupportMessages` and is
+      model-specific — **never write "M1 or newer"**, an M1/M3 MacBook Air has
+      no XDR panel and never boosts (this exact confusion cost the 1.0.4
+      review). `SupportMessagesTests` fails the build on a bare "M1" claim.
 - [x] Guideline 3.1.2 compliance (2026-07-20, after the 2.1 info-request
       rejection): paywall alert now spells out title/length/price + auto-renewal
       terms with clickable Terms of Use / Privacy Policy links (NSTextView
       accessory); right-click menu gained Terms of Use + Privacy Policy items
       and a renewal tooltip on Subscribe. Reply draft for the rejection lives
       in `docs/app-review-reply-2.1.md`.
+- [~] 1.0.4 rejection (2026-07-20, 5 issues) — app-side fixes DONE: every click
+      opens the menu (Guideline 4, Quit discoverable) and Restore Purchases is
+      always visible (3.1.1). REMAINING, all App Store Connect metadata:
+      attach + submit both IAPs with review screenshots (2.1(b)), state the
+      trial/pricing in the App Description (2.3.2), and add the standard Apple
+      EULA link to the description (3.1.2(c)). Checklist + reply text in
+      `docs/app-review-reply-1.0.4.md`. Needs a version bump to 1.0.5 (5).
 - [ ] Need to add the link to the apple store url for the try now and when the prices are clicked.
 - [ ] Real App Store badge asset + store URL on the web page 
       (CTAs are placeholders until the app is live).

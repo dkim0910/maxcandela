@@ -12,8 +12,8 @@ options:
 
 settings:
   base:
-    MARKETING_VERSION: "1.0.4"
-    CURRENT_PROJECT_VERSION: "4"
+    MARKETING_VERSION: "1.0.5"
+    CURRENT_PROJECT_VERSION: "5"
     DEVELOPMENT_TEAM: YU66583SCF          # your Apple Developer team
     SWIFT_VERSION: "5.9"
 

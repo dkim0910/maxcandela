@@ -33,10 +33,8 @@ final class WelcomeViewController: NSViewController {
 
         let body = makeLabel(
             "There’s no window or Dock icon — just this sun in your menu bar.\n\n"
-            + "Click it to unlock your display’s full brightness, and click "
-            + "again to go back.\n\n"
-            + "Right-click (or Control-click) it for your trial status, "
-            + "purchase options, and Quit.",
+            + "Click it to open the menu: turn the boost on or off, see your "
+            + "trial status and purchase options, and quit the app.",
             size: 13, weight: .regular)
         body.textColor = .secondaryLabelColor
         body.preferredMaxLayoutWidth = 260

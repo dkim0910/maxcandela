@@ -1,13 +1,20 @@
 import AppKit
 import StoreKit
 
-/// The menu-bar surface. Left-clicking the ☀️ status icon toggles the boost
-/// instantly (license permitting); right-clicking opens a menu with headroom
-/// info, license status/purchases, and Quit.
+/// The menu-bar surface. Clicking the ☀️ status icon opens the menu: boost
+/// toggle, live headroom info, license status/purchases, Restore, Legal, Quit.
+///
+/// The toggle used to fire directly on left-click, with everything else behind
+/// a right-click. App Review (2026-07-20, Guidelines 4 + 3.1.1) rejected that:
+/// the reviewer's MacBook Air has no EDR headroom, so left-click only produced
+/// the "no boost available" alert and they never discovered the right-click
+/// menu — reported as "no way to quit the app" and "no Restore Purchases".
+/// Every click now opens the menu, so Quit and Restore are always one click away.
 final class MenuBarController {
     private let statusItem: NSStatusItem
     private let brightness: BrightnessController
     private let store = StoreManager.shared
+    private let boostItem: NSMenuItem
     private let headroomItem: NSMenuItem
     private let licenseItem: NSMenuItem
     private let lifetimeItem: NSMenuItem
@@ -31,6 +38,7 @@ final class MenuBarController {
     init(brightness: BrightnessController) {
         self.brightness = brightness
         self.statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        self.boostItem = NSMenuItem(title: "Turn Boost On", action: nil, keyEquivalent: "b")
         self.headroomItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
         self.licenseItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
         self.lifetimeItem = NSMenuItem(title: "Unlock Lifetime — $9.99", action: nil, keyEquivalent: "")
@@ -78,11 +86,16 @@ final class MenuBarController {
         guard let button = statusItem.button else { return }
         button.target = self
         button.action = #selector(statusButtonClicked)
-        // Receive both left and right clicks so we can toggle vs. show menu.
+        // Either button opens the menu — Quit and Restore must never depend on
+        // the user knowing to right-click (see the type comment).
         button.sendAction(on: [.leftMouseUp, .rightMouseUp])
     }
 
     private func buildMenu() {
+        boostItem.target = self
+        boostItem.action = #selector(toggleBoost)
+        menu.addItem(boostItem)
+
         headroomItem.isEnabled = false
         menu.addItem(headroomItem)
 
@@ -132,6 +145,9 @@ final class MenuBarController {
             button.image = NSImage(systemSymbolName: symbol, accessibilityDescription: "MaxCandela")
             button.image?.isTemplate = true
         }
+        boostItem.title = brightness.isEnabled ? "Turn Boost Off" : "Turn Boost On"
+        boostItem.state = brightness.isEnabled ? .on : .off
+
         if let live = brightness.liveStatus() {
             // On: real live numbers.
             let base = String(format: "Boosting %.2f× (headroom %.2f×)",
@@ -143,7 +159,7 @@ final class MenuBarController {
                                                       live.applied * 100)
             }
         } else if !brightness.canBoost() {
-            headroomItem.title = "No EDR headroom on this display"
+            headroomItem.title = SupportMessages.noHeadroomMenuLine
         } else {
             // Off: the panel's live headroom is ~1.0 until we engage EDR, and
             // the theoretical max overstates reality — so show the real current
@@ -157,7 +173,10 @@ final class MenuBarController {
         switch licenseState {
         case .licensed:
             licenseItem.title = "MaxCandela Pro — unlocked"
-            [lifetimeItem, monthlyItem, restoreItem].forEach { $0.isHidden = true }
+            [lifetimeItem, monthlyItem].forEach { $0.isHidden = true }
+            // Guideline 3.1.1: Restore Purchases stays visible at all times,
+            // including when already unlocked.
+            restoreItem.isHidden = false
             statusItem.button?.toolTip = "MaxCandela Pro"
         case .trial(let days):
             let dayText = "\(days) day\(days == 1 ? "" : "s")"
@@ -195,12 +214,10 @@ final class MenuBarController {
     // MARK: - Actions
 
     @objc private func statusButtonClicked() {
-        guard let event = NSApp.currentEvent else { return }
-        if event.type == .rightMouseUp || event.modifierFlags.contains(.control) {
-            showMenu()
-            return
-        }
+        showMenu()
+    }
 
+    @objc private func toggleBoost() {
         // Turning OFF is always allowed — the kill switch never sits behind
         // the paywall. Turning ON requires a valid trial or license.
         if brightness.isEnabled {
@@ -229,9 +246,9 @@ final class MenuBarController {
     private func showMenu() {
         refreshLicense()
         refresh()
-        // Assign the menu just long enough to pop it up, then detach so plain
-        // left-clicks keep reaching statusButtonClicked (an attached menu
-        // hijacks all clicks on the status item).
+        // Assign the menu just long enough to pop it up, then detach so the
+        // next click keeps reaching statusButtonClicked (a permanently
+        // attached menu hijacks the click before we can refresh its contents).
         statusItem.menu = menu
         statusItem.button?.performClick(nil)
         statusItem.menu = nil
@@ -310,8 +327,8 @@ final class MenuBarController {
     private func showNoHeadroomAlert() {
         let alert = NSAlert()
         alert.icon = Self.brandIcon
-        alert.messageText = "No brightness boost available"
-        alert.informativeText = "This display doesn’t have the HDR (EDR) headroom MaxCandela needs, so there’s nothing to unlock. It works on the built-in screen of a MacBook Pro 14″/16″ (2021 or later), the Pro Display XDR, and other HDR-capable displays."
+        alert.messageText = SupportMessages.noHeadroomTitle
+        alert.informativeText = SupportMessages.noHeadroomBody
         alert.addButton(withTitle: "OK")
         NSApp.activate(ignoringOtherApps: true)
         alert.runModal()

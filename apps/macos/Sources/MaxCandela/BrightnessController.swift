@@ -114,7 +114,14 @@ final class BrightnessController {
 
     /// Whether any attached display can be boosted at all.
     func canBoost() -> Bool {
-        displayManager.bestPotentialHeadroom() > 1.0
+        #if DEBUG
+        // MAXCANDELA_FORCE_NO_HEADROOM=1 pretends every display is a MacBook
+        // Air, so the "no boost available" path can be reviewed on an XDR Mac.
+        if ProcessInfo.processInfo.environment["MAXCANDELA_FORCE_NO_HEADROOM"] == "1" {
+            return false
+        }
+        #endif
+        return displayManager.bestPotentialHeadroom() > 1.0
     }
 
     /// The real, live headroom across displays right now (not the theoretical

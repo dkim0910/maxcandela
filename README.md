@@ -33,24 +33,38 @@ whole thing.
 ## Why people like it
 
 - **Your whole Mac, brighter** — not just one window or one app.
-- **One click** — no settings, no sliders, no setup.
+- **One menu, no setup** — click the ☀️ in your menu bar to turn the boost on
+  or off. No settings, no sliders, nothing to calibrate.
 - **True colors** — a color-calibrated boost that keeps your display's profile
   intact. Brighter, never washed out.
 - **Panel-safe** — it never pushes past the limits macOS itself allows for HDR,
   and it automatically eases off when your Mac runs hot.
 - **Private** — no accounts, no screen recording. The app never sees what's on
-  your screen; it only makes it brighter.
+  your screen; it only makes it brighter. Anonymous usage statistics only, as
+  described in the [privacy policy](https://maxcandela.com/privacy/).
 - **Instantly reversible** — turn it off, or just quit, and your display returns
   to exactly where it was.
 
 ## Will it work on my Mac?
 
-Best on **MacBook Pro 14″ / 16″ (2021 and later)** with the Liquid Retina XDR
-display, and on the **Pro Display XDR** — where it can reach roughly 1,000 nits
-instead of the usual ~600. It also works on other EDR-capable displays to
-varying degrees. On a display with no HDR headroom there's simply nothing to
-unlock — and MaxCandela tells you so instead of pretending to work. Requires
-macOS 15.6 or later.
+You need a display with HDR headroom to unlock:
+
+- **MacBook Pro 14″ / 16″** with an M1 Pro / M1 Max chip or newer (2021 and
+  later), with the Liquid Retina XDR display
+- **Pro Display XDR**
+
+On those, MaxCandela can reach roughly 1,000 nits instead of the usual ~600.
+Some other HDR displays have smaller amounts of headroom and work to varying
+degrees.
+
+**MacBook Air, iMac, and standard external monitors are not supported** — they
+have no reserve brightness to release, no matter how new the chip is. (An M3
+MacBook Air can't be boosted; a 2021 MacBook Pro can.) On those Macs MaxCandela
+tells you so instead of pretending to work. You can check your own display for
+free at [maxcandela.com](https://maxcandela.com) before buying — if the browser
+demo doesn't brighten your screen, the app won't either.
+
+Requires macOS 15.6 or later.
 
 ## Pricing
 

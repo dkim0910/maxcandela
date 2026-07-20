@@ -15,8 +15,8 @@ const FEATURES = [
   },
   {
     icon: '⚡',
-    title: 'One click',
-    text: 'A single ☀️ toggle in your menu bar. Click to unlock full brightness, click to go back. That’s the whole UI.',
+    title: 'One menu, no setup',
+    text: 'Click the ☀️ in your menu bar and turn the boost on or off. No sliders to calibrate, nothing to configure — that’s the whole UI.',
   },
   {
     icon: '🎨',
@@ -36,7 +36,7 @@ const FEATURES = [
   {
     icon: '🔒',
     title: 'Private by default',
-    text: 'No screen recording, no analytics, no account. The app never sees your screen content — it only lifts it.',
+    text: 'No screen recording, no account, no personal data. The app never sees your screen content — it only lifts it. Anonymous usage stats only, as described in our privacy policy.',
   },
 ];
 
@@ -55,7 +55,7 @@ const FAQS = [
   },
   {
     q: 'Which Macs are supported?',
-    a: 'Any Mac with an EDR-capable display. Best results on MacBook Pro 14″/16″ (2021 and later) with the Liquid Retina XDR display, and on the Pro Display XDR — up to ~1,000 nits sustained instead of the usual ~600.',
+    a: 'You need a Mac with an HDR-capable display: a MacBook Pro 14″ or 16″ (2021 or later) with the Liquid Retina XDR display, or a Pro Display XDR — those go up to ~1,000 nits sustained instead of the usual ~600. MacBook Air, iMac, and ordinary external monitors have no HDR headroom to unlock, so MaxCandela can’t brighten them. The app tells you straight away if your display isn’t supported, and the browser demo above is an honest test — if it doesn’t brighten your screen, the app won’t either.',
   },
   {
     q: 'Will it drain my battery?',
@@ -80,7 +80,10 @@ export default function Home() {
     supported === null
       ? { cls: 'status-off', text: 'Checking your display…' }
       : !supported
-        ? { cls: 'status-unsupported', text: 'This display/browser has no HDR headroom — the demo needs an XDR Mac' }
+        ? {
+            cls: 'status-unsupported',
+            text: 'No HDR headroom on this display — MaxCandela needs a MacBook Pro 14″/16″ (M1 Pro/Max or newer) or a Pro Display XDR. MacBook Air and standard monitors aren’t supported.',
+          }
         : enabled
           ? { cls: 'status-on', text: 'Boost active — this page is now brighter than macOS normally allows' }
           : { cls: 'status-off', text: 'Boost off — normal brightness' };
@@ -114,9 +117,12 @@ export default function Home() {
             </ScrollLink>
             <span className="cta-note">Free · 5-day full trial</span>
           </div>
+          {/* Hardware requirement sits with the CTA, not buried in the FAQ —
+              the boost does nothing without HDR headroom, so nobody should
+              reach the App Store link without knowing that. */}
           <div className="trust-row">
+            <span>Needs an XDR display — MacBook Pro 14″/16″ (2021+)</span>
             <span>macOS 15.6+</span>
-            <span>Apple silicon &amp; Intel</span>
             <span>Colors preserved</span>
             <span>No account needed</span>
           </div>
@@ -203,6 +209,8 @@ export default function Home() {
             <h2>Simple pricing</h2>
             <p className="section-sub">
               Free for 5 days, everything unlocked. Then pick what suits you.
+              Requires a MacBook Pro 14″/16″ (2021 or later) or Pro Display XDR
+              — check with the demo above before you buy.
             </p>
           </div>
           <div className="price-cards">
@@ -238,7 +246,8 @@ export default function Home() {
           </div>
           <p className="pricing-fineprint">
             Purchases via Apple. One purchase covers every Mac on your Apple
-            ID. Requires macOS 15.6+ and an EDR-capable display. Subscriptions
+            ID. Requires macOS 15.6+ and an HDR/XDR display (MacBook Pro
+            14″/16″ 2021 or later, or Pro Display XDR). Subscriptions
             renew monthly and can be cancelled anytime in App Store →
             Subscriptions; payment is charged to your Apple Account. See our{' '}
             <Link href="/terms/">Terms of Use</Link> and{' '}
