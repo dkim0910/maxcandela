@@ -19,6 +19,12 @@ final class MenuBarController {
     private var welcomePopover: NSPopover?
     private static let welcomeSeenKey = "com.maxcandela.hasSeenWelcome"
 
+    /// Legal pages on the marketing site. App Store Review Guideline 3.1.2
+    /// requires functional Terms of Use + privacy policy links anywhere the
+    /// auto-renewable subscription is offered (menu and paywall alert).
+    private static let termsURL = URL(string: "https://maxcandela.com/terms/")!
+    private static let privacyURL = URL(string: "https://maxcandela.com/privacy/")!
+
     /// Last observed license state; refreshed on launch and every menu open.
     private var licenseState: StoreManager.LicenseState = .trial(daysRemaining: StoreManager.shared.trialDaysRemaining)
 
@@ -91,11 +97,27 @@ final class MenuBarController {
 
         monthlyItem.target = self
         monthlyItem.action = #selector(buyMonthly)
+        // Guideline 3.1.2: the renewal terms must be visible where the
+        // subscription is offered.
+        monthlyItem.toolTip = "MaxCandela Pro Monthly — auto-renews every month until cancelled in your App Store account settings."
         menu.addItem(monthlyItem)
 
         restoreItem.target = self
         restoreItem.action = #selector(restorePurchases)
         menu.addItem(restoreItem)
+
+        // Single "Legal" item; Terms + Privacy live in its submenu (3.1.2
+        // still satisfied — the links stay reachable from the purchase menu).
+        let legalItem = NSMenuItem(title: "Legal", action: nil, keyEquivalent: "")
+        let legalMenu = NSMenu()
+        let termsItem = NSMenuItem(title: "Terms of Use", action: #selector(openTerms), keyEquivalent: "")
+        termsItem.target = self
+        legalMenu.addItem(termsItem)
+        let privacyItem = NSMenuItem(title: "Privacy Policy", action: #selector(openPrivacy), keyEquivalent: "")
+        privacyItem.target = self
+        legalMenu.addItem(privacyItem)
+        legalItem.submenu = legalMenu
+        menu.addItem(legalItem)
 
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: "Quit MaxCandela",
@@ -236,7 +258,18 @@ final class MenuBarController {
         let alert = NSAlert()
         alert.icon = Self.brandIcon
         alert.messageText = "Your free trial has ended"
-        alert.informativeText = "Keep the full brightness of your display with MaxCandela Pro: $9.99 once, or $0.99/month. One purchase works on all your Macs."
+        // Guideline 3.1.2: title, length, and price of each purchase, spelled
+        // out, with the renewal terms. Localized prices when the store loaded.
+        let lifetimePrice = store.product(id: StoreManager.lifetimeProductID)?.displayPrice ?? "$9.99"
+        let monthlyPrice = store.product(id: StoreManager.monthlyProductID)?.displayPrice ?? "$0.99"
+        alert.informativeText = """
+        Keep the full brightness of your display with MaxCandela Pro. One purchase works on all your Macs.
+
+        MaxCandela Pro Lifetime — \(lifetimePrice), one-time purchase.
+
+        MaxCandela Pro Monthly — \(monthlyPrice) per month. Auto-renews every month until cancelled in your App Store account settings.
+        """
+        alert.accessoryView = Self.makeLegalLinksView()
         alert.addButton(withTitle: "Unlock Lifetime")
         alert.addButton(withTitle: "Subscribe Monthly")
         alert.addButton(withTitle: "Not Now")
@@ -246,6 +279,32 @@ final class MenuBarController {
         case .alertSecondButtonReturn: buyMonthly()
         default: break
         }
+    }
+
+    /// Clickable Terms of Use / Privacy Policy links shown under the paywall
+    /// text (Guideline 3.1.2 requires both wherever the subscription is sold).
+    private static func makeLegalLinksView() -> NSView {
+        let base: [NSAttributedString.Key: Any] = [
+            .font: NSFont.systemFont(ofSize: NSFont.smallSystemFontSize),
+            .foregroundColor: NSColor.secondaryLabelColor,
+        ]
+        func link(_ title: String, _ url: URL) -> NSAttributedString {
+            var attrs = base
+            attrs[.link] = url
+            return NSAttributedString(string: title, attributes: attrs)
+        }
+        let text = NSMutableAttributedString()
+        text.append(link("Terms of Use", termsURL))
+        text.append(NSAttributedString(string: "   ·   ", attributes: base))
+        text.append(link("Privacy Policy", privacyURL))
+
+        let textView = NSTextView(frame: NSRect(x: 0, y: 0, width: 240, height: 16))
+        textView.textStorage?.setAttributedString(text)
+        textView.alignment = .center
+        textView.isEditable = false
+        textView.isSelectable = true // links are only clickable when selectable
+        textView.drawsBackground = false
+        return textView
     }
 
     private func showNoHeadroomAlert() {
@@ -260,6 +319,8 @@ final class MenuBarController {
 
     @objc private func buyLifetime() { purchase(productID: StoreManager.lifetimeProductID) }
     @objc private func buyMonthly() { purchase(productID: StoreManager.monthlyProductID) }
+    @objc private func openTerms() { NSWorkspace.shared.open(Self.termsURL) }
+    @objc private func openPrivacy() { NSWorkspace.shared.open(Self.privacyURL) }
 
     private func purchase(productID: String) {
         Task { @MainActor in

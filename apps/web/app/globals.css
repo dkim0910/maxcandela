@@ -194,10 +194,19 @@ h2 {
 }
 
 .toggle-big {
-  margin: 4px auto 22px;
+  margin: 0 auto;
   padding: 16px 34px 16px 18px;
   font-size: 18px;
   gap: 14px;
+}
+
+/* Each on its own centered line so the button sits ABOVE the status pill. */
+.demo-toggle-row {
+  margin-top: 20px;
+}
+
+.demo-status-row {
+  margin-top: 24px;
 }
 
 .toggle-big .toggle-dot {

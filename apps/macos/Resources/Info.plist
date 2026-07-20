@@ -4,6 +4,8 @@
 <dict>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
+	<key>CFBundleDisplayName</key>
+	<string>MaxCandela</string>
 	<key>CFBundleExecutable</key>
 	<string>MaxCandela</string>
 	<key>CFBundleIconFile</key>
@@ -14,31 +16,25 @@
 	<string>6.0</string>
 	<key>CFBundleName</key>
 	<string>MaxCandela</string>
-	<key>CFBundleDisplayName</key>
-	<string>MaxCandela</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.0.0</string>
+	<string>1.0.1</string>
 	<key>CFBundleVersion</key>
-	<string>1</string>
-	<key>LSMinimumSystemVersion</key>
-	<string>15.6</string>
+	<string>2</string>
+	<key>GAApiSecret</key>
+	<string></string>
+	<key>GAMeasurementID</key>
+	<string>G-2E5J2Q7FC8</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.utilities</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>15.6</string>
 	<key>LSUIElement</key>
 	<true/>
 	<key>NSHumanReadableCopyright</key>
 	<string>Copyright © 2026 MaxCandela. All rights reserved.</string>
-	<key>ITSAppUsesNonExemptEncryption</key>
-	<false/>
-	<!-- GA4 credentials. The Measurement ID is public (it also ships in the
-	     website's JS), so it's committed. The API secret is NOT — it's injected
-	     by scripts/bundle-macos.sh from GA_API_SECRET at release-build time and
-	     never committed. Empty secret = analytics off. -->
-	<key>GAMeasurementID</key>
-	<string>G-2E5J2Q7FC8</string>
-	<key>GAApiSecret</key>
-	<string></string>
 </dict>
 </plist>

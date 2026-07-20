@@ -151,18 +151,24 @@ export default function Home() {
             This page can boost itself the same way, right in your browser.
             Press the button and imagine your whole Mac like this.
           </p>
-          <button
-            className={`toggle toggle-big ${enabled ? 'toggle-on' : ''}`}
-            onClick={toggle}
-            disabled={supported !== true}
-            aria-pressed={enabled}
-          >
-            <span className="toggle-dot" aria-hidden="true" />
-            {enabled ? 'Boost on — press to restore' : 'Try the boost'}
-          </button>
-          <div className={`status ${status.cls}`} role="status">
-            <span className="status-dot" aria-hidden="true" />
-            {status.text}
+          {/* Wrapper forces the button onto its own line so the status pill
+              sits BELOW it, not beside it (both are inline-flex). */}
+          <div className="demo-toggle-row">
+            <button
+              className={`toggle toggle-big ${enabled ? 'toggle-on' : ''}`}
+              onClick={toggle}
+              disabled={supported !== true}
+              aria-pressed={enabled}
+            >
+              <span className="toggle-dot" aria-hidden="true" />
+              {enabled ? 'Boost on — press to restore' : 'Try the boost'}
+            </button>
+          </div>
+          <div className="demo-status-row">
+            <div className={`status ${status.cls}`} role="status">
+              <span className="status-dot" aria-hidden="true" />
+              {status.text}
+            </div>
           </div>
           {enabled && unlocker?.error && (
             <p className="diag">⚠️ {unlocker.error}</p>

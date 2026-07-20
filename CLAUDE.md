@@ -483,9 +483,15 @@ does disabling instantly restore it) is required before claiming it works.
 - [x] Graceful behavior on non-EDR displays: clicking the icon on a display
       with no EDR headroom shows a "no boost available" explanation instead of
       flipping to a do-nothing on-state.
+- [x] Guideline 3.1.2 compliance (2026-07-20, after the 2.1 info-request
+      rejection): paywall alert now spells out title/length/price + auto-renewal
+      terms with clickable Terms of Use / Privacy Policy links (NSTextView
+      accessory); right-click menu gained Terms of Use + Privacy Policy items
+      and a renewal tooltip on Subscribe. Reply draft for the rejection lives
+      in `docs/app-review-reply-2.1.md`.
 - [ ] Need to add the link to the apple store url for the try now and when the prices are clicked.
-- [ ] Real App Store badge asset + store URL on the web page (CTAs are
-      placeholders until the app is live).
+- [ ] Real App Store badge asset + store URL on the web page 
+      (CTAs are placeholders until the app is live).
 - [ ] Support email is hello+maxcandela@nelera.net (constant in
       app/support/page.tsx) — swap for a dedicated address if desired.
 - [ ] GDPR/ePrivacy: GA **and AdSense** cookies are now LIVE on the site → an
