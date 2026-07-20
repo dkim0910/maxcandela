@@ -245,7 +245,8 @@ main.swift            → NSApplication bootstrap, .accessory activation policy
 AppDelegate           → lifecycle; owns MenuBarController + BrightnessController
 MenuBarController      → NSStatusItem; any click opens the menu: "Turn Boost
                          On/Off" (gated by license) + live "Boosting N×" line,
-                         purchase/restore items, Legal, Quit. No slider.
+                         purchase/restore items, Get Support, Legal, Quit.
+                         No slider.
                          Restore Purchases stays visible in every license
                          state (Guideline 3.1.1).
 SupportMessages        → user-facing "which Macs are supported" copy, kept
@@ -509,8 +510,10 @@ does disabling instantly restore it) is required before claiming it works.
 - [ ] Need to add the link to the apple store url for the try now and when the prices are clicked.
 - [ ] Real App Store badge asset + store URL on the web page 
       (CTAs are placeholders until the app is live).
-- [ ] Support email is hello+maxcandela@nelera.net (constant in
-      app/support/page.tsx) — swap for a dedicated address if desired.
+- [x] Support address is `hello+maxcandela@nelera.net` (`SUPPORT_EMAIL` in
+      `apps/web/app/support/page.tsx`; the `+` is percent-encoded in the
+      mailto). The app links the support *page*, not a mailto, so the address
+      can change without an app update. Verify the alias actually delivers.
 - [ ] GDPR/ePrivacy: GA **and AdSense** cookies are now LIVE on the site → an
       EU consent banner is needed (AdSense legally requires a certified CMP for
       EU traffic). Options: add a consent banner, or drop ads + switch to a

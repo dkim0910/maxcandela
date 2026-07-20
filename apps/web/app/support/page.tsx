@@ -7,8 +7,10 @@ export const metadata: Metadata = {
     'Help with MaxCandela: which Macs are supported, why the boost may look different, managing your subscription, restoring purchases, and how to get in touch.',
 };
 
-// TODO: replace with a dedicated support address before launch if preferred.
 const SUPPORT_EMAIL = 'hello+maxcandela@nelera.net';
+// The "+" must be percent-encoded in a mailto: URL — several mail clients
+// decode a bare "+" as a space and mangle the address.
+const SUPPORT_MAILTO = `mailto:${SUPPORT_EMAIL.replace('+', '%2B')}?subject=MaxCandela%20support`;
 
 export default function SupportPage() {
   return (
@@ -20,7 +22,7 @@ export default function SupportPage() {
       <h2>Contact</h2>
       <p>
         Email us at{' '}
-        <a href={`mailto:${SUPPORT_EMAIL}?subject=MaxCandela%20support`}>
+        <a href={SUPPORT_MAILTO}>
           {SUPPORT_EMAIL}
         </a>
         . Include your macOS version and Mac model if you’re reporting a

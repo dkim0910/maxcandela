@@ -31,6 +31,9 @@ final class MenuBarController {
     /// auto-renewable subscription is offered (menu and paywall alert).
     private static let termsURL = URL(string: "https://maxcandela.com/terms/")!
     private static let privacyURL = URL(string: "https://maxcandela.com/privacy/")!
+    /// Deliberately the support *page*, not a mailto: — the address can then
+    /// change on the site without shipping an app update through review.
+    private static let supportURL = URL(string: "https://maxcandela.com/support/")!
 
     /// Last observed license state; refreshed on launch and every menu open.
     private var licenseState: StoreManager.LicenseState = .trial(daysRemaining: StoreManager.shared.trialDaysRemaining)
@@ -119,8 +122,9 @@ final class MenuBarController {
         restoreItem.action = #selector(restorePurchases)
         menu.addItem(restoreItem)
 
-        // Single "Legal" item; Terms + Privacy live in its submenu (3.1.2
-        // still satisfied — the links stay reachable from the purchase menu).
+        // Single "Legal" item; Terms + Privacy + Support live in its submenu
+        // (3.1.2 still satisfied — the links stay reachable from the purchase
+        // menu).
         let legalItem = NSMenuItem(title: "Legal", action: nil, keyEquivalent: "")
         let legalMenu = NSMenu()
         let termsItem = NSMenuItem(title: "Terms of Use", action: #selector(openTerms), keyEquivalent: "")
@@ -129,6 +133,12 @@ final class MenuBarController {
         let privacyItem = NSMenuItem(title: "Privacy Policy", action: #selector(openPrivacy), keyEquivalent: "")
         privacyItem.target = self
         legalMenu.addItem(privacyItem)
+        // Separated from the two legal documents — it's a help link, not a
+        // policy, and the gap keeps that distinction readable.
+        legalMenu.addItem(.separator())
+        let supportItem = NSMenuItem(title: "Get Support", action: #selector(openSupport), keyEquivalent: "")
+        supportItem.target = self
+        legalMenu.addItem(supportItem)
         legalItem.submenu = legalMenu
         menu.addItem(legalItem)
 
@@ -338,6 +348,7 @@ final class MenuBarController {
     @objc private func buyMonthly() { purchase(productID: StoreManager.monthlyProductID) }
     @objc private func openTerms() { NSWorkspace.shared.open(Self.termsURL) }
     @objc private func openPrivacy() { NSWorkspace.shared.open(Self.privacyURL) }
+    @objc private func openSupport() { NSWorkspace.shared.open(Self.supportURL) }
 
     private func purchase(productID: String) {
         Task { @MainActor in
@@ -401,8 +412,12 @@ final class MenuBarController {
         alert.messageText = "Purchase didn’t go through"
         alert.informativeText = "The App Store reported: \(error.localizedDescription)\n\nNothing was charged. Please try again."
         alert.addButton(withTitle: "OK")
+        // Money is involved here — offer a way to reach a human directly.
+        alert.addButton(withTitle: "Get Support")
         NSApp.activate(ignoringOtherApps: true)
-        alert.runModal()
+        if alert.runModal() == .alertSecondButtonReturn {
+            NSWorkspace.shared.open(Self.supportURL)
+        }
     }
 
     private func showStoreUnavailableAlert() {

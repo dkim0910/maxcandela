@@ -89,7 +89,8 @@ off any time to go back to normal.
 - 🌐 Website — [maxcandela.com](https://maxcandela.com)
 - 🔒 [Privacy Policy](https://maxcandela.com/privacy/)
 - 📄 [Terms of Use](https://maxcandela.com/terms/)
-- 💬 [Support](https://maxcandela.com/support/)
+- 💬 [Support](https://maxcandela.com/support/) — or email
+  [hello+maxcandela@nelera.net](mailto:hello%2Bmaxcandela@nelera.net)
 
 ## License
 
