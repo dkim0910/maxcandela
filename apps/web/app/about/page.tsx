@@ -59,8 +59,10 @@ export default function AboutPage() {
         <li><strong>Honest engineering.</strong> We never push the panel past
           what macOS itself allows — no hacks that fight the operating
           system’s safety limits.</li>
-        <li><strong>Zero data.</strong> No analytics, no accounts, no screen
-          access. There is nothing to leak because nothing is collected.</li>
+        <li><strong>Minimal data.</strong> No accounts, no personal data, no
+          screen access — the app never sees what you&rsquo;re looking at. The
+          only thing collected is a handful of anonymous usage stats, exactly
+          as our privacy policy spells out.</li>
         <li><strong>Instant reversibility.</strong> Toggling off — or simply
           quitting the app — returns your display to exactly its previous
           state, always.</li>

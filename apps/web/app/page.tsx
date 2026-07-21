@@ -82,7 +82,7 @@ export default function Home() {
       : !supported
         ? {
             cls: 'status-unsupported',
-            text: 'No HDR headroom on this display — MaxCandela needs a MacBook Pro 14″/16″ (M1 Pro/Max or newer) or a Pro Display XDR. MacBook Air and standard monitors aren’t supported.',
+            text: 'No HDR headroom on this display — MaxCandela needs a MacBook Pro 14″/16″ (2021 or later) or a Pro Display XDR. MacBook Air and standard monitors aren’t supported.',
           }
         : enabled
           ? { cls: 'status-on', text: 'Boost active — this page is now brighter than macOS normally allows' }

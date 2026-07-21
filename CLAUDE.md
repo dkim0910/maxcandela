@@ -26,7 +26,7 @@ It's a monorepo with two apps:
   `docs/app-review-reply.md`). There is
   deliberately **no boost slider** (removed 2026-07 — toggle always targets the
   panel's max headroom; a manual level didn't add value and confused testing).
-- **`apps/web/`** — Next.js 15 (App Router, TypeScript, static export) site
+- **`apps/web/`** — Next.js 16 (App Router, TypeScript, static export) site
   with a brightness toggle in its top nav bar. Unlocks brightness inside the
   browser via the HDR-video trick (see below).
 
@@ -233,14 +233,14 @@ deliberately lives in the demo section); `components/LegalShell.tsx` +
   `public/brand.png` (nav + footer), all from `scripts/make-icon.swift`.
   Favicon + nav mark are transparent; the touch icon is opaque on purpose —
   iOS composites alpha to black on the home screen.
-- **Analytics**: GA4. Web = `lib/analytics.ts` (`GA_ID`) + `components/
-  Analytics.tsx` (gtag, IP-anonymized, ad signals off); events fire via
-  `trackEvent`. App = `Analytics.swift` (Measurement Protocol, anonymous
-  per-install UUID, nothing in DEBUG). Both **disabled until the `G-XXXX`
-  placeholders are replaced**. Adding analytics changed the privacy posture —
-  keep `/privacy` and the App Store privacy label ("Usage Data → Analytics,
-  not linked to identity") in sync. GA cookies imply an EU consent-banner
-  decision before launch (see TODO).
+- **Analytics**: GA4 — **LIVE** with real ID `G-2E5J2Q7FC8` (the `G-XXXX`
+  placeholder era is over; `gaConfigured` in `lib/analytics.ts` now passes).
+  Web = `lib/analytics.ts` (`GA_ID`) + `components/Analytics.tsx` (gtag,
+  IP-anonymized, ad signals off); events fire via `trackEvent`. App =
+  `Analytics.swift` (Measurement Protocol, anonymous per-install UUID, nothing
+  in DEBUG). Analytics changed the privacy posture — keep `/privacy` and the
+  App Store privacy label ("Usage Data → Analytics, not linked to identity")
+  in sync. GA cookies imply an EU consent-banner decision (see TODO).
 
 ## Native app architecture (apps/macos)
 
@@ -434,7 +434,9 @@ does disabling instantly restore it) is required before claiming it works.
 - [x] Menu-bar icon opens the menu (toggle, status, purchases, Legal, Quit).
 - [x] Web app: Next.js static export, nav-bar toggle, HDR video assets
       (`scripts/generate-hdr-video.sh`), `dynamic-range` detection.
-- [x] Web boost verified on hardware (fullscreen multiply-blend; 3 nit levels).
+- [x] Web boost verified on hardware (fullscreen multiply-blend; verified with
+      3 nit levels at the time — the selector was since removed, single
+      1000-nit clip remains).
 - [x] Native trigger + gamma lift implemented; live 1 s headroom poll/clamp.
 - [x] Native gamma lift verified on hardware — table path with >1.0 values
       works. Color washout fixed via encoded-gain math + calibration-preserving
@@ -469,6 +471,11 @@ does disabling instantly restore it) is required before claiming it works.
       the codesigned `dist/MaxCandela.app` (boost + thermal work sandboxed).
 
 ### App Store submission — remaining (Daniel drives, Apple-side)
+
+> **Status check 2026-07-21:** the app is **not yet live** on the Mac App Store
+> (iTunes Search API returns no results for MaxCandela). So the web CTAs
+> correctly remain ScrollLinks to #pricing, and the "add the App Store URL"
+> TODOs below stay open until the app is published.
 
 - [x] Xcode project generated (XcodeGen, `apps/macos/project.yml`) — builds &
       archives for the App Store; icon asset catalog, entitlements, GA-secret
@@ -521,6 +528,15 @@ does disabling instantly restore it) is required before claiming it works.
 - [x] Web deployment: LIVE at https://maxcandela.com via GitHub Pages +
       Actions (`.github/workflows/deploy-web.yml`), custom domain + HTTPS.
       Pushes to `main` touching `apps/web/**` auto-rebuild/redeploy.
+      *(2026-07-21: workflow moved off EOL Node 20 → Node 24 LTS; `checkout@v7`
+      + `setup-node@v6` for the node24 runner runtime — Node 20 is removed from
+      GitHub runners 2026-09-16. `@types/node` bumped ^22 → ^24 to match.
+      Pages actions stay at v3/v4 — no newer majors exist yet. Same day:
+      **Next 15.5 → 16.2.10** + React 19.2.7 — tsc + static export verified.
+      **TypeScript 7 was tried and REVERTED to 5.9.3**: TS 7's own `tsc
+      --noEmit` passes, but `next build` crashes in Next's TS integration
+      ("The id argument must be of type string") — retry when Next supports
+      TS 7.)*
 - [x] Update / refresh the website UI — visual design pass on the current dark
       theme (hero, sections, spacing, imagery) to make it feel more polished.
 - [x] After the next deploy, verify ownership in **Google Search Console** and
@@ -560,10 +576,12 @@ does disabling instantly restore it) is required before claiming it works.
       `apps/web/app/support/page.tsx`; the `+` is percent-encoded in the
       mailto). The app links the support *page*, not a mailto, so the address
       can change without an app update. Verify the alias actually delivers.
-- [ ] GDPR/ePrivacy: GA **and AdSense** cookies are now LIVE on the site → an
-      EU consent banner is needed (AdSense legally requires a certified CMP for
-      EU traffic). Options: add a consent banner, or drop ads + switch to a
-      cookieless analytics provider. - we dont have the ad sense so leave it for now
+- [ ] GDPR/ePrivacy: GA cookies are live; the AdSense **loader script** is on
+      the site but AdSense is not approved and serves no ads yet. An EU consent
+      banner will be needed once ads serve (AdSense requires a certified CMP for
+      EU traffic). Options: consent banner, or drop ads + switch to cookieless
+      analytics. *(Daniel, 2026-07-21: AdSense isn't active — leave this for
+      now; revisit when/if AdSense approves.)*
 
 Keep this list current as work lands.
 
