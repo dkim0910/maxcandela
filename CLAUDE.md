@@ -575,6 +575,7 @@ does disabling instantly restore it) is required before claiming it works.
 - [x] Need to update the image in the app
 - [x] Real App Store badge asset + store URL on the web page 
       (CTAs are placeholders until the app is live).
+- [ ] Tell the users how to redeam promo code and tell them it will be applied after the 5day free trial ends
 - [ ] GDPR/ePrivacy: GA cookies are live; the AdSense **loader script** is on
       the site but AdSense is not approved and serves no ads yet. An EU consent
       banner will be needed once ads serve (AdSense requires a certified CMP for
