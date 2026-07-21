@@ -6,6 +6,7 @@ import SiteFooter from '@/components/SiteFooter';
 import ScrollLink from '@/components/ScrollLink';
 import BeforeAfter from '@/components/BeforeAfter';
 import { useBoost } from '@/components/BoostProvider';
+import { APP_STORE_URL } from '@/lib/site';
 
 const FEATURES = [
   {
@@ -109,9 +110,15 @@ export default function Home() {
             in your menu bar. Full brightness, true colors, zero setup.
           </p>
           <div className="cta-row">
-            <ScrollLink targetId="pricing" className="cta cta-primary">
-               Download on the Mac App Store
-            </ScrollLink>
+            <a className="app-store-link" href={APP_STORE_URL} aria-label="Download on the Mac App Store">
+              <img
+                className="app-store-badge"
+                src="/download-on-mac-app-store.svg"
+                alt="Download on the Mac App Store"
+                width={156}
+                height={40}
+              />
+            </a>
             <ScrollLink targetId="demo" className="cta cta-secondary">
               Try it in your browser ↓
             </ScrollLink>
@@ -224,9 +231,9 @@ export default function Home() {
                 <li>✓ All future updates</li>
                 <li>✓ Cancel anytime in the App Store</li>
               </ul>
-              <ScrollLink targetId="demo" className="cta cta-secondary">
+              <a className="cta cta-secondary" href={APP_STORE_URL}>
                 Start free trial
-              </ScrollLink>
+              </a>
             </div>
             <div className="price-card price-card-best">
               <span className="badge">Best value</span>
@@ -239,9 +246,9 @@ export default function Home() {
                 <li>✓ All future updates</li>
                 <li>✓ Pays for itself in 11 months</li>
               </ul>
-              <ScrollLink targetId="demo" className="cta cta-primary">
+              <a className="cta cta-primary" href={APP_STORE_URL}>
                 Start free trial
-              </ScrollLink>
+              </a>
             </div>
           </div>
           <p className="pricing-fineprint">

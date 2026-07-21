@@ -247,6 +247,24 @@ h2 {
   transform: translateY(-2px);
 }
 
+.app-store-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+  transition: transform 0.15s ease;
+}
+
+.app-store-link:hover {
+  transform: translateY(-2px);
+}
+
+.app-store-badge {
+  display: block;
+  width: 195px;
+  height: auto;
+}
+
 /* ---- Page body ---- */
 
 .main {

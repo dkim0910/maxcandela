@@ -39,6 +39,7 @@ final class MenuBarController {
     /// Deliberately the support *page*, not a mailto: — the address can then
     /// change on the site without shipping an app update through review.
     private static let supportURL = URL(string: "https://maxcandela.com/support/")!
+    private static let appStoreURL = URL(string: "https://apps.apple.com/us/app/maxcandela/id6792267034?mt=12")!
 
     /// When the last toggle was applied, so the second click of a double-click
     /// can undo it (see `revertFirstClickToggle`).
@@ -133,6 +134,10 @@ final class MenuBarController {
         restoreItem.target = self
         restoreItem.action = #selector(restorePurchases)
         menu.addItem(restoreItem)
+
+        let appStoreItem = NSMenuItem(title: "View in Mac App Store", action: #selector(openAppStore), keyEquivalent: "")
+        appStoreItem.target = self
+        menu.addItem(appStoreItem)
 
         // Single "Legal" item; Terms + Privacy + Support live in its submenu
         // (3.1.2 still satisfied — the links stay reachable from the purchase
@@ -405,6 +410,7 @@ final class MenuBarController {
     @objc private func openTerms() { NSWorkspace.shared.open(Self.termsURL) }
     @objc private func openPrivacy() { NSWorkspace.shared.open(Self.privacyURL) }
     @objc private func openSupport() { NSWorkspace.shared.open(Self.supportURL) }
+    @objc private func openAppStore() { NSWorkspace.shared.open(Self.appStoreURL) }
 
     private func purchase(productID: String) {
         Task { @MainActor in
