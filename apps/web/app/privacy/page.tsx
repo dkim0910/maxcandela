@@ -10,12 +10,12 @@ export const metadata: Metadata = {
 
 export default function PrivacyPage() {
   return (
-    <LegalShell title="Privacy Policy" updated="July 19, 2026">
+    <LegalShell title="Privacy Policy" updated="July 21, 2026">
       <p>
         MaxCandela is built to collect as little as possible. <strong>The Mac
         app collects no personal data</strong> and never sees your screen. This
-        <strong> website</strong> uses analytics and shows Google ads, which set
-        cookies — details below.
+        <strong> website</strong> uses analytics and includes Google ad code
+        (ads may appear), which can set cookies — details below.
       </p>
 
       <h2>The Mac app</h2>
@@ -56,7 +56,8 @@ export default function PrivacyPage() {
           this purpose; see{' '}
           <a href="https://policies.google.com/privacy">Google’s Privacy
           Policy</a> for how Google processes this data.</li>
-        <li>Shows ads served by Google AdSense. Google and its partners may use
+        <li>Includes Google AdSense code, and ads may be served through it.
+          Google and its partners may use
           cookies and similar technologies to serve and personalize ads based on
           your visits to this and other sites. You can review and control ad
           personalization at{' '}

@@ -6,12 +6,19 @@ import { SITE_URL } from '@/lib/site';
 export const dynamic = 'force-static';
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const routes = ['', '/about/', '/privacy/', '/terms/', '/support/'];
-  const now = new Date();
-  return routes.map((path) => ({
-    url: `${SITE_URL}${path}`,
-    lastModified: now,
+  // Explicitly defining the priority per route is the cleanest approach
+  const routes = [
+    { path: '', priority: 1, lastMod: '2026-07-21' },
+    { path: '/about/', priority: 0.6, lastMod: '2026-07-21' },
+    { path: '/privacy/', priority: 0.6, lastMod: '2026-07-21' },
+    { path: '/terms/', priority: 0.6, lastMod: '2026-07-21' },
+    { path: '/support/', priority: 0.6, lastMod: '2026-07-21' },
+  ];
+
+  return routes.map((route) => ({
+    url: `${SITE_URL}${route.path}`,
+    lastModified: new Date(route.lastMod),
     changeFrequency: 'monthly',
-    priority: path === '' ? 1 : 0.6,
+    priority: route.priority, // Clean and scalable
   }));
 }
