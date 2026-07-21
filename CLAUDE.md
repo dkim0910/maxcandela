@@ -556,7 +556,7 @@ does disabling instantly restore it) is required before claiming it works.
       accessory); right-click menu gained Terms of Use + Privacy Policy items
       and a renewal tooltip on Subscribe. Reply draft for the rejection lives
       in `docs/app-review-reply.md` (superseded by the 1.0.4 reply in the same file).
-- [~] 1.0.4 rejection (2026-07-20, 5 issues) — app-side fixes DONE, shipping as
+- [x] 1.0.4 rejection (2026-07-20, 5 issues) — app-side fixes DONE, shipping as
       **1.0.7 (7)**: Quit + Restore Purchases are reachable without knowing to
       right-click (Guideline 4 / 3.1.1) — double-click opens the menu, and on a
       no-headroom display (the reviewer's MacBook Air) a *single* click does,
@@ -573,14 +573,13 @@ does disabling instantly restore it) is required before claiming it works.
       can change without an app update. Verify the alias actually delivers.
 - [x] Need to update the image in our web
 - [x] Need to update the image in the app
-- [ ] Need to add the link to the apple store url for the try now and when the prices are clicked.
-- [ ] Real App Store badge asset + store URL on the web page 
+- [x] Real App Store badge asset + store URL on the web page 
       (CTAs are placeholders until the app is live).
 - [ ] GDPR/ePrivacy: GA cookies are live; the AdSense **loader script** is on
       the site but AdSense is not approved and serves no ads yet. An EU consent
       banner will be needed once ads serve (AdSense requires a certified CMP for
       EU traffic). Options: consent banner, or drop ads + switch to cookieless
-      analytics. *(Daniel, 2026-07-21: AdSense isn't active — leave this for
+      analytics. *(2026-07-21: AdSense isn't active — leave this for
       now; revisit when/if AdSense approves.)*
 
 Keep this list current as work lands.
