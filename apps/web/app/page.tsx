@@ -27,12 +27,12 @@ const FEATURES = [
   {
     icon: '🌡️',
     title: 'Looks after your Mac',
-    text: 'Never exceeds the limits macOS enforces for HDR. As your Mac warms up it eases the boost off, and if it gets genuinely hot it briefly dims the screen below normal to help it cool — then restores everything.',
+    text: 'Never exceeds the limits macOS enforces for HDR. Because a bright screen makes heat, MaxCandela tracks how hard and how long it has been driving your display and eases the boost down as it warms — and cuts it entirely if it gets too hot, restoring it once things cool.',
   },
   {
     icon: '🔆',
     title: 'Nothing to configure',
-    text: 'Follows your display’s live headroom automatically — including thermal dips and recovery. Set it, forget it.',
+    text: 'Follows your display’s live headroom automatically, and settles at a brightness your Mac can hold instead of running flat out. Set it, forget it.',
   },
   {
     icon: '🔒',
@@ -44,15 +44,15 @@ const FEATURES = [
 const FAQS = [
   {
     q: 'Is this safe for my display?',
-    a: 'Yes. MaxCandela uses the same HDR headroom macOS itself uses for HDR video, and never exceeds the limit the OS reports. If your Mac gets hot, MaxCandela follows the OS down automatically.',
+    a: 'Yes. MaxCandela uses the same HDR headroom macOS itself uses for HDR video, and never exceeds the limit the OS reports. On top of that it runs its own heat protection, because a sustained bright screen warms the panel in a way macOS doesn’t step in for on its own.',
   },
   {
-    q: 'What happens if my Mac gets hot?',
-    a: 'MaxCandela looks after it. As your Mac warms up it eases the boost off, and if it gets genuinely hot it lowers brightness a little to help it cool — the same way phones do — then brings everything back once the temperature drops. It all happens automatically, and you can turn the boost off any time.',
+    q: 'Does the screen get warm — and what does MaxCandela do about it?',
+    a: 'It does: brightness is power, and power is heat, so a boosted display runs warmer than usual. MaxCandela keeps track of how hard and how long it has been driving your panel and steadily lowers the boost as that adds up, settling at a level your Mac can hold rather than running flat out indefinitely. If things go further — a genuinely hot machine — it cuts the boost completely and hands the display back to macOS, then brings it back once you’ve cooled down. The menu tells you which of those is happening, and you can switch the boost off yourself at any time.',
   },
   {
     q: 'When I turn the boost off, does my screen stay dimmed?',
-    a: 'No. Turning MaxCandela off puts your display back exactly where it was — at your normal brightness, with nothing dimmed. MaxCandela never lowers your baseline; it only adds brightness on top while it’s on, then hands everything back untouched. If the screen looks a little dim for a second right after, that’s just your eyes adjusting from the brighter level — the display itself is unchanged. (The only time it dips below normal is the automatic thermal protection above, which restores itself too.)',
+    a: 'No. Turning MaxCandela off puts your display back exactly where it was — at your normal brightness, with nothing dimmed. MaxCandela never lowers your baseline; it only adds brightness on top while it’s on, then hands everything back untouched. If the screen looks a little dim for a second right after, that’s just your eyes adjusting from the brighter level — the display itself is unchanged. (The one exception is if macOS itself reports critical thermal pressure, when MaxCandela dims slightly below normal to help — and that restores itself too.)',
   },
   {
     q: 'Which Macs are supported?',
@@ -64,7 +64,11 @@ const FAQS = [
   },
   {
     q: 'How does the free trial work?',
-    a: 'Download free from the Mac App Store and get 5 days with everything unlocked. After that, keep it for $0.99/month or unlock it forever for $9.99. One purchase works on all Macs signed into your Apple ID.',
+    a: 'Download free from the Mac App Store and get 5 days with everything unlocked. The clock starts when your Apple ID first downloads MaxCandela, so open it soon after installing to get the full five days. After that, keep it for $0.99/month or unlock it forever for $9.99. One purchase works on all Macs signed into your Apple ID.',
+  },
+  {
+    q: 'I have a promo code — how do I use it?',
+    a: 'Open the ☀️ menu (right-click or double-click the icon) and choose “Redeem Code…”, or redeem it at apps.apple.com/redeem with the same Apple ID. A code unlocks MaxCandela straight away — it does not wait for your free trial to run out, and it replaces the trial rather than being added on to the end of it. If the menu still shows a trial afterwards, choose “Restore Purchases”.',
   },
   {
     q: 'Why doesn’t macOS just allow this?',

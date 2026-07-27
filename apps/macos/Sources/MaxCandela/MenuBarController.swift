@@ -40,6 +40,11 @@ final class MenuBarController {
     /// change on the site without shipping an app update through review.
     private static let supportURL = URL(string: "https://maxcandela.com/support/")!
     private static let appStoreURL = URL(string: "https://apps.apple.com/us/app/maxcandela/id6792267034?mt=12")!
+    /// Apple's redemption page. Used as the fallback for the in-app sheet, and
+    /// it covers the case the sheet doesn't: `presentOfferCodeRedeemSheet` takes
+    /// *subscription offer codes*, while the promo codes App Store Connect
+    /// generates for the lifetime purchase are redeemed here.
+    private static let redeemURL = URL(string: "https://apps.apple.com/redeem")!
 
     /// When the last toggle was applied, so the second click of a double-click
     /// can undo it (see `revertFirstClickToggle`).
@@ -47,6 +52,16 @@ final class MenuBarController {
     /// Set when a double-click is detected, so an in-flight entitlement check
     /// doesn't toggle after the user has asked for the menu.
     private var suppressPendingToggle = false
+
+    /// So the trial-ended paywall interrupts once per launch rather than on
+    /// every entitlement refresh (every menu open triggers one).
+    private var hasShownExpiryPaywall = false
+
+    /// The trial has to end even if nobody touches the app. Enforcement
+    /// otherwise only ran at launch and on menu interactions, so a Mac left
+    /// running across the expiry moment kept boosting indefinitely.
+    private var licenseTimer: Timer?
+    private var wakeObserver: NSObjectProtocol?
 
     /// Last observed license state; refreshed on launch and every menu open.
     private var licenseState: StoreManager.LicenseState = .trial(daysRemaining: StoreManager.shared.trialDaysRemaining)
@@ -66,7 +81,34 @@ final class MenuBarController {
         buildMenu()
         refresh()
         refreshLicense()
+        startLicenseWatch()
         showWelcomeIfFirstRun()
+    }
+
+    deinit {
+        licenseTimer?.invalidate()
+        if let wakeObserver {
+            NSWorkspace.shared.notificationCenter.removeObserver(wakeObserver)
+        }
+    }
+
+    /// Re-check the licence periodically and on wake, so an expiry that happens
+    /// while the app sits untouched actually stops the boost. Cheap: reading
+    /// `Transaction.currentEntitlements` is local, with no network round-trip.
+    private func startLicenseWatch() {
+        let timer = Timer(timeInterval: 30 * 60, repeats: true) { [weak self] _ in
+            self?.refreshLicense()
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        licenseTimer = timer
+
+        // Sleeping through the boundary is the usual way it happens — catch it
+        // on wake instead of waiting out the rest of the interval.
+        wakeObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didWakeNotification, object: nil, queue: .main
+        ) { [weak self] _ in
+            self?.refreshLicense()
+        }
     }
 
     // MARK: - First-run welcome
@@ -135,6 +177,12 @@ final class MenuBarController {
         restoreItem.action = #selector(restorePurchases)
         menu.addItem(restoreItem)
 
+        // Redemption previously had no entry point at all — codes worked, but
+        // only if the user already knew to go to the App Store app themselves.
+        let redeemItem = NSMenuItem(title: "Redeem Code…", action: #selector(redeemCode), keyEquivalent: "")
+        redeemItem.target = self
+        menu.addItem(redeemItem)
+
         let appStoreItem = NSMenuItem(title: "View in Mac App Store", action: #selector(openAppStore), keyEquivalent: "")
         appStoreItem.target = self
         menu.addItem(appStoreItem)
@@ -182,6 +230,7 @@ final class MenuBarController {
             switch brightness.thermalStatus {
             case .normal: headroomItem.title = base
             case .eased:  headroomItem.title = base + " · eased for heat"
+            case .paused: headroomItem.title = "Paused — Mac too hot, resumes when it cools"
             case .dimmed: headroomItem.title = String(format: "Dimmed to %.0f%% — Mac too hot",
                                                       live.applied * 100)
             }
@@ -223,10 +272,33 @@ final class MenuBarController {
         refreshLicense()
     }
 
+    /// Act on the resolved licence state: restore the boost the user left on,
+    /// or stop it if the trial has run out.
+    ///
+    /// This is what makes the trial actually end. Before it existed the boost
+    /// was restored straight from `BrightnessController.init` with no
+    /// entitlement check, so anyone who simply left it switched on kept full
+    /// brightness forever and never saw the paywall again.
+    private func enforceLicense() {
+        switch licenseState {
+        case .licensed, .trial:
+            brightness.restorePersistedBoostIfWanted()
+        case .expired:
+            let wasBoosting = brightness.isEnabled || brightness.wantsPersistedBoost
+            brightness.suspendForLicense()
+            // Interrupt once per launch, not on every entitlement refresh.
+            if wasBoosting && !hasShownExpiryPaywall {
+                hasShownExpiryPaywall = true
+                showPaywallAlert()
+            }
+        }
+    }
+
     /// Re-check entitlements and localized prices off the main thread.
     private func refreshLicense() {
         Task { @MainActor in
             licenseState = await store.currentState()
+            enforceLicense()
             await store.loadProducts()
             if let lifetime = store.product(id: StoreManager.lifetimeProductID) {
                 lifetimeItem.title = "Unlock Lifetime — \(lifetime.displayPrice)"
@@ -437,6 +509,34 @@ final class MenuBarController {
                 NSLog("MaxCandela: purchase failed: \(error.localizedDescription)")
                 showPurchaseFailedAlert(error)
             }
+        }
+    }
+
+    /// Redeem a promo / offer code. The native sheet keeps the user in the app
+    /// where it's available; everything else falls through to Apple's
+    /// redemption page, which also handles IAP promo codes the sheet won't.
+    @objc private func redeemCode() {
+        Task { @MainActor in
+            NSApp.activate(ignoringOtherApps: true)
+            // macOS 15+ only, and the SwiftPM dev build targets 14 — the
+            // shipping Xcode build (15.6) always takes the sheet path.
+            if #available(macOS 15.0, *) {
+                let anchor = Self.makePurchaseAnchor()
+                let host = NSViewController()
+                host.view = NSView(frame: NSRect(x: 0, y: 0, width: 2, height: 2))
+                anchor?.contentViewController = host
+                defer { anchor?.close() }
+                do {
+                    try await AppStore.presentOfferCodeRedeemSheet(from: host)
+                    // The entitlement also arrives via Transaction.updates, but
+                    // refresh now so the menu is right as the sheet closes.
+                    refreshLicense()
+                    return
+                } catch {
+                    NSLog("MaxCandela: offer code sheet unavailable: \(error.localizedDescription)")
+                }
+            }
+            NSWorkspace.shared.open(Self.redeemURL)
         }
     }
 

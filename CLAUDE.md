@@ -127,24 +127,68 @@ private APIs without a clearly documented reason here.
 
 The boost is a heat source. The app **cannot control fans**: SMC access needs
 root or a privileged kernel helper, which the App Store sandbox forbids (apps
-like Macs Fan Control ship outside the App Store for this reason). Instead
-`ThermalMonitor` reads `ProcessInfo.thermalState` and eases the boost down as
-the Mac heats up:
+like Macs Fan Control ship outside the App Store for this reason). Shedding our
+own heat is the only lever, and `ThermalMonitor` decides how much to shed.
 
-- Mapping (`ThermalMonitor.limits(for:)` → `Limits{boostCeiling, dimTo}`):
-  nominal/fair → full boost, no dim; serious → half the extra boost, no dim;
-  **critical → no boost AND an active safety dim to `criticalDim` (0.8 = 80%
-  of normal)**. The boostCeiling scales only the boost above native; `dimTo`,
-  when set, caps the result *below* native to shed heat (phone-style thermal
-  dimming).
-- `targetScale(requested:currentHeadroom:thermalCeiling:dimTo:)` folds it in;
-  the 30 Hz animator fades the change (including down below 1.0) smoothly. The
-  gamma path already handles scale < 1.0 (dims the calibration tables).
-- `thermalStateDidChangeNotification` triggers immediate re-eval. Menu via
-  `thermalStatus` (.normal/.eased/.dimmed): "· eased for heat" at serious,
-  "Dimmed to N% — Mac too hot" at critical.
-- DEBUG: `MAXCANDELA_FORCE_THERMAL=serious|critical|fair|nominal` forces a
-  state (real thermal state can't be triggered on demand).
+**Why it is not `ProcessInfo.thermalState` (measured 2026-07-27).** That
+property tracks *SoC* pressure and the boost's heat lands in the panel. On an
+M1 Pro 16": `pmset -g therm` → "No thermal warning level has been recorded",
+seven days of `thermalmonitord` logs → zero level transitions, live state
+`.nominal` throughout a verified 4.0× boost. The original ladder hung off it
+alone was **unreachable in the exact scenario it existed for**. Two more dead
+ends, both measured, so don't re-litigate them: there is no panel thermometer
+in the sandbox (`AppleCLCD2` has only a boot-time `InitialPanelTemperature`,
+`PDCGlobalTemp` = 0), and live EDR headroom does *not* decay with panel heat
+(pinned at 4.000 for 28 min).
+
+So heat is judged on three axes, **lowest ceiling wins**:
+
+- **`exposure`** (0…1) — the panel-heat estimate, and the only axis that
+  responds to the heat the boost itself makes. It *relaxes* toward how hard the
+  backlight is currently driven (`advanceExposure`, Newton's law, exponential
+  so any tick length is exact). The response is **proportional**:
+  `exposureCeiling` slides the ceiling from full at `easeAboveExposure` (0.5) to
+  zero at `protectAboveExposure` (0.85).
+- **`ChassisTemperature`** — battery sensor via IORegistry (public API, verified
+  readable under the shipping entitlements). Real degrees, but **blind to
+  display-only heat**: 20 min at 4.0× moved it 30.23 → 30.22 °C. It is there to
+  catch a genuinely hot *machine*, not a hot screen. Hysteresis via
+  `recoveryMarginC`; `nil` on desktop Macs silences this axis only.
+- **`ProcessInfo.thermalState`** — kept for the case where something *else* is
+  cooking the SoC while we add to it.
+
+**The ceiling must be proportional, not stepped — do not "simplify" this back.**
+A stepped ceiling over a linear heat integrator was built first and **pulsed on
+hardware**: cut out → cool → return at half → climb → cut out, every ~25 min at
+shipping constants. At the eased level the panel still accumulates heat, so any
+fixed step re-reaches the cut-out threshold forever. Sliding the ceiling makes
+driving harder always cost headroom, so the loop settles wherever supply meets
+demand. Verified on hardware at an accelerated time constant: full 4.00× held,
+then ceiling 1.00 → 0.95 → … → 0.67, settling at gamma gain **1.6196** (model
+predicted 1.620) and dead steady for 3 min, with **zero** cut-outs.
+`testClosedLoopSettlesInsteadOfPulsing` is the regression guard.
+
+- `Limits{boostCeiling, dimTo, engagesEDR}`. `boostCeiling` scales only the
+  boost above native. **`engagesEDR: false` is what actually sheds heat** — the
+  trigger windows come down so the panel leaves HDR mode. A gamma dim alone
+  leaves the compositor in EDR with the backlight budget open, so the screen
+  only *looks* dimmer while it keeps heating. (That was a real bug: the ceiling
+  reached the gamma lift but never the trigger.) Ordering matters — the gamma
+  fade must land **before** the triggers drop, or headroom collapses under
+  lifted pixels and clips them to white.
+- `dimTo` caps *below* native and is set **only** by the OS's own `.critical`;
+  our own heat ladder stops at "boost off". `targetScale(requested:
+  currentHeadroom:thermalCeiling:dimTo:)` folds it in and the 30 Hz animator
+  fades it.
+- `thermalStateDidChangeNotification` triggers immediate re-eval. It is posted
+  **on the global dispatch queue** (NSProcessInfo.h), so the callback hops to
+  main — the controller touches NSScreen and main-thread-only state.
+- Menu via `thermalStatus` (.normal/.eased/.paused/.dimmed).
+- Tuning dials live together under "Panel-exposure model" in `ThermalMonitor`.
+- DEBUG: `MAXCANDELA_FORCE_THERMAL=serious|critical|fair|nominal`,
+  `MAXCANDELA_FORCE_TEMP=43.5` force each axis. For the exposure axis, shrink
+  `thermalTimeConstantMinutes` temporarily — that is how the runs above were
+  done.
 
 **Future direction (not built):** a *non-sandboxed direct-download* build could
 add real fan control via a privileged helper (`SMAppService`/`SMJobBless`, runs
@@ -252,14 +296,23 @@ MenuBarController      → NSStatusItem. Single click = instant toggle; double
                          no-headroom display = menu (so Quit stays reachable
                          where the boost can't work — the App Review path).
                          Menu: "Turn Boost On/Off", live "Boosting N×" line,
-                         purchase/restore items, Legal ▸ (Terms, Privacy, Get
-                         Support), Quit. No slider. Restore Purchases stays
-                         visible in every license state (Guideline 3.1.1).
+                         purchase/restore items, Redeem Code…, Legal ▸ (Terms,
+                         Privacy, Get Support), Quit. No slider. Restore
+                         Purchases stays visible in every license state
+                         (Guideline 3.1.1). Owns licence *enforcement*:
+                         enforceLicense() restores or suspends the boost once
+                         currentState() resolves — see the trial-enforcement
+                         note in the status list.
 SupportMessages        → user-facing "which Macs are supported" copy, kept
                          out of the UI layer so it's unit-testable
 BrightnessController   → orchestrator: tiny EDR trigger per boost-capable
                          screen; 1 s headroom poll; gamma lift fades via 30 Hz
                          animator; toggle-on targets max headroom
+ThermalMonitor         → the heat guard: panel-exposure model + chassis
+                         temperature + OS thermal state → Limits{boostCeiling,
+                         dimTo, engagesEDR}. See "Thermal handling".
+ChassisTemperature     → battery-sensor °C via IORegistry (public API,
+                         sandbox-safe); nil on Macs with no battery
 GammaController        → per-display SDR→EDR lift via transfer tables
                          (table w/ >1.0 values, formula fallback); restoreAll()
 DisplayManager         → enumerates NSScreens, reports EDR capability per screen,
@@ -308,7 +361,8 @@ running instance first (`pkill -x MaxCandela`) to avoid two menu-bar icons.
 | `MAXCANDELA_FORCE_TRIAL=trial\|licensed swift run MaxCandela` | Full trial / Pro-unlocked |
 | `MAXCANDELA_FORCE_PAYWALL=1 swift run MaxCandela` | Skip the debug auto-unlock and run the **real** entitlement + trial-clock code (see below — this is not a way to force a paywall) |
 | `MAXCANDELA_FORCE_WELCOME=1 swift run MaxCandela` | Re-show the first-run welcome popover |
-| `MAXCANDELA_FORCE_THERMAL=nominal\|fair\|serious\|critical swift run MaxCandela` | Force a thermal state (eases/dims the boost) |
+| `MAXCANDELA_FORCE_THERMAL=nominal\|fair\|serious\|critical swift run MaxCandela` | Force an OS thermal state (eases/cuts the boost) |
+| `MAXCANDELA_FORCE_TEMP=43.5 swift run MaxCandela` | Fake the chassis thermometer → walk the ease/protect ladder without cooking the Mac |
 | `MAXCANDELA_FORCE_NO_HEADROOM=1 swift run MaxCandela` | Pretend no display has EDR headroom → preview the "no boost available" alert (what App Review saw on a MacBook Air) |
 
 Note: plain `swift run` (DEBUG) auto-unlocks (returns `.licensed`) so dev isn't
@@ -522,6 +576,16 @@ does disabling instantly restore it) is required before claiming it works.
 - [x] Thermal-aware protection: `ThermalMonitor` eases the boost as the Mac
       warms and — at critical — actively **dims below native** (`criticalDim`
       0.8) to shed heat; fan control documented as impossible in-sandbox.
+- [x] **Thermal protection actually reachable (2026-07-27).** Users reported a
+      hot screen with no protection, and they were right: it hung off
+      `ProcessInfo.thermalState`, which never leaves `.nominal` for display
+      heat, and the ceiling reached only the gamma lift, never the EDR trigger —
+      so even at critical the panel stayed in HDR mode and just *looked*
+      dimmer. Now a three-axis guard (panel-exposure model, chassis
+      thermometer, OS state) drives a proportional ceiling and drops EDR when
+      cut. Also fixed: the thermal notification ran `refreshTargets()` off the
+      main thread. Hardware-verified; see "Thermal handling".
+      Versioned as **1.0.9 (9)** — built and tested, still to be submitted.
 - [x] SEO: domain maxcandela.com wired (`lib/site.ts`), canonical + OG/Twitter
       tags + `og.png`, `sitemap.xml` + `robots.txt`, JSON-LD SoftwareApplication
       structured data (with prices, no fake ratings), per-page meta descriptions.
@@ -541,6 +605,32 @@ does disabling instantly restore it) is required before claiming it works.
       theme (hero, sections, spacing, imagery) to make it feel more polished.
 - [x] After the next deploy, verify ownership in **Google Search Console** and
       submit `https://maxcandela.com/sitemap.xml` (this is what gets indexed).
+- [x] **Trial enforcement (2026-07-27) — was a total paywall bypass.**
+      `BrightnessController.init` restored the persisted boost with **no
+      entitlement check**, so anyone who simply left the boost on kept full
+      brightness forever; the menu said "Trial ended" while the boost ran.
+      Verified by forcing `.expired` with the boost persisted on: gamma table
+      read 1.8779 (a live 4.0× boost). Fixed by splitting the restore out of
+      `init` into `restorePersistedBoostIfWanted()`, called from
+      `MenuBarController.enforceLicense()` *after* `currentState()` resolves;
+      expiry mid-session calls `suspendForLicense()` (stops boosting but keeps
+      the user's saved preference, so buying restores their setting) and shows
+      the paywall once per launch. `isEnabled` now means *actually running*,
+      distinct from the persisted `wantsPersistedBoost`. Re-verified on
+      hardware: expired → 1.0000 and zero boost events; 3-day trial → 1.8779.
+      Enforcement also runs on a 30-min timer + `didWakeNotification`, not only
+      at launch/menu-open — otherwise a Mac left running across the expiry
+      moment kept boosting. Versioned as **1.0.9 (9)** — built and tested,
+      still to be submitted.
+- [~] Trial *starts at download*, not first open (`AppTransaction
+      .originalPurchaseDate`). Someone who downloads today and opens in a week
+      gets a short trial; open it 6 days later and they get none. This is the
+      inherent cost of a tamper-proof anchor — first-launch dates stored
+      locally can be reset for a fresh trial, so the two goals genuinely
+      conflict without a server. Left as-is deliberately; now disclosed on
+      `/terms` and in the home FAQ. Revisit only with a decision on which side
+      to favour (keychain-stored first launch would fix fairness but reopens
+      the reset hole).
 - [x] Trial clock hardening: uses the App Store receipt's original purchase
       date (`AppTransaction.shared`) as the trial start, tamper-proof, with a
       UserDefaults first-launch fallback for dev builds.
@@ -575,7 +665,18 @@ does disabling instantly restore it) is required before claiming it works.
 - [x] Need to update the image in the app
 - [x] Real App Store badge asset + store URL on the web page 
       (CTAs are placeholders until the app is live).
-- [ ] Tell the users how to redeam promo code and tell them it will be applied after the 5day free trial ends
+- [x] Promo codes: told the users how to redeem, **and corrected the premise**.
+      This item used to read "tell them it will be applied after the 5day free
+      trial ends" — that is **false**. `currentState()` checks
+      `Transaction.currentEntitlements` *first* and returns `.licensed`
+      immediately, so a redeemed code unlocks on the spot and simply replaces
+      the trial; the two never interact (our trial is a private app-side clock,
+      not an Apple introductory offer, so Apple has nothing to defer a code
+      behind). Menu gained **"Redeem Code…"**
+      (`AppStore.presentOfferCodeRedeemSheet(from:)`, macOS 15+, guarded because
+      SwiftPM dev targets 14; falls back to `apps.apple.com/redeem`, which is
+      also the *only* route for non-consumable IAP promo codes — the sheet takes
+      subscription offer codes). `/support` + home FAQ document it.
 - [ ] GDPR/ePrivacy: GA cookies are live; the AdSense **loader script** is on
       the site but AdSense is not approved and serves no ads yet. An EU consent
       banner will be needed once ads serve (AdSense requires a certified CMP for
