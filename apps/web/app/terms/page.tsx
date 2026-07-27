@@ -21,7 +21,9 @@ export default function TermsPage() {
         MaxCandela increases your display’s effective brightness by using the
         Extended Dynamic Range (EDR) headroom that macOS exposes to
         applications. It never exceeds the limits macOS itself enforces, and
-        macOS remains in control of thermal and power protection at all times.
+        macOS remains in control of system thermal and power management at all
+        times. MaxCandela additionally reduces and, where necessary, stops the
+        boost on its own as your Mac heats up.
       </p>
 
       <h2>License</h2>
@@ -38,7 +40,8 @@ export default function TermsPage() {
       <h2>Trial, pricing, and subscriptions</h2>
       <ul>
         <li>The app is free to download and fully functional for a 5-day
-          trial.</li>
+          trial. The trial period is measured from the date your Apple Account
+          first downloads MaxCandela.</li>
         <li>After the trial, continued use of the brightness boost requires
           either a one-time lifetime purchase (<strong>$9.99</strong>) or a
           monthly subscription (<strong>$0.99/month</strong>).</li>
@@ -62,6 +65,10 @@ export default function TermsPage() {
         <li>macOS may reduce the available boost under thermal load, on low
           battery, or on displays without EDR headroom. The achievable boost
           depends on your hardware.</li>
+        <li>MaxCandela also lowers the boost by itself the longer and harder it
+          runs, and suspends it entirely if your Mac becomes too hot, restoring
+          it once the Mac cools. Sustained maximum brightness is therefore not
+          guaranteed for any given length of time.</li>
         <li>MaxCandela requires a Mac with an EDR-capable display for any
           visible effect (see the compatibility list on the home page).</li>
       </ul>

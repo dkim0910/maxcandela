@@ -55,6 +55,16 @@ final class BoostLogicTests: XCTestCase {
         XCTAssertEqual(StoreManager.trialDaysRemaining(firstLaunch: start, now: yearLater), 0)
     }
 
+    func testTrialExpiresExactlyAtTheEndOfDayFive() {
+        // The precise boundary the paywall hangs off, pinned so a refactor of
+        // the day arithmetic can't quietly hand out a sixth day (or steal one).
+        let start = Date()
+        XCTAssertEqual(StoreManager.trialDaysRemaining(firstLaunch: start,
+                                                       now: start.addingTimeInterval(5 * 86_400 - 1)), 1)
+        XCTAssertEqual(StoreManager.trialDaysRemaining(firstLaunch: start,
+                                                       now: start.addingTimeInterval(5 * 86_400)), 0)
+    }
+
     func testTrialLenientWhenClockRolledBack() {
         let start = Date()
         let past = start.addingTimeInterval(-86_400)
@@ -81,13 +91,198 @@ final class BoostLogicTests: XCTestCase {
     // MARK: - Thermal limits
 
     func testThermalLimitsMapping() {
-        XCTAssertEqual(ThermalMonitor.limits(for: .nominal), .init(boostCeiling: 1.0, dimTo: nil))
-        XCTAssertEqual(ThermalMonitor.limits(for: .fair), .init(boostCeiling: 1.0, dimTo: nil))
-        XCTAssertEqual(ThermalMonitor.limits(for: .serious), .init(boostCeiling: 0.5, dimTo: nil))
-        // Critical: no boost AND an active safety dim below normal.
-        XCTAssertEqual(ThermalMonitor.limits(for: .critical),
-                       .init(boostCeiling: 0.0, dimTo: ThermalMonitor.criticalDim))
+        XCTAssertEqual(ThermalMonitor.limits(ceiling: 1.0, thermalState: .nominal),
+                       .init(boostCeiling: 1.0, dimTo: nil, engagesEDR: true))
+        XCTAssertEqual(ThermalMonitor.limits(ceiling: ThermalMonitor.easedCeiling, thermalState: .nominal),
+                       .init(boostCeiling: ThermalMonitor.easedCeiling, dimTo: nil, engagesEDR: true))
+        XCTAssertLessThan(ThermalMonitor.easedCeiling, 1.0)
+    }
+
+    func testProtectingCutsBoostAndDropsEDR() {
+        // The whole point: a gamma dim alone leaves the panel in HDR mode, so
+        // protecting must also disengage EDR.
+        let limits = ThermalMonitor.limits(ceiling: 0.0, thermalState: .nominal)
+        XCTAssertEqual(limits.boostCeiling, 0.0)
+        XCTAssertFalse(limits.engagesEDR)
+        // Heat alone never dims below native — that would surprise the user.
+        XCTAssertNil(limits.dimTo)
+    }
+
+    func testAnyLiveCeilingKeepsEDREngaged() {
+        // Only a zero ceiling drops EDR; easing must not, or the boost would
+        // blink out at the first sign of warmth.
+        XCTAssertTrue(ThermalMonitor.limits(ceiling: 0.05, thermalState: .nominal).engagesEDR)
+    }
+
+    func testOSCriticalAlsoDimsBelowNative() {
+        let limits = ThermalMonitor.limits(ceiling: 0.0, thermalState: .critical)
+        XCTAssertEqual(limits.dimTo, ThermalMonitor.criticalDim)
+        XCTAssertFalse(limits.engagesEDR)
         XCTAssertLessThan(ThermalMonitor.criticalDim, 1.0)
+    }
+
+    // MARK: - Heat staging
+
+    func testOSThermalStateMapsToStages() {
+        XCTAssertEqual(ThermalMonitor.stage(for: .nominal), .normal)
+        XCTAssertEqual(ThermalMonitor.stage(for: .fair), .normal)
+        XCTAssertEqual(ThermalMonitor.stage(for: .serious), .eased)
+        XCTAssertEqual(ThermalMonitor.stage(for: .critical), .protecting)
+    }
+
+    func testTemperatureLadderRises() {
+        let cool = ThermalMonitor.easeAboveC - 5
+        XCTAssertEqual(ThermalMonitor.temperatureStage(previous: .normal, temperatureC: cool), .normal)
+        XCTAssertEqual(ThermalMonitor.temperatureStage(previous: .normal,
+                                                       temperatureC: ThermalMonitor.easeAboveC), .eased)
+        XCTAssertEqual(ThermalMonitor.temperatureStage(previous: .normal,
+                                                       temperatureC: ThermalMonitor.protectAboveC), .protecting)
+        // A jump straight past both thresholds must not stop at .eased.
+        XCTAssertEqual(ThermalMonitor.temperatureStage(previous: .eased,
+                                                       temperatureC: ThermalMonitor.protectAboveC + 3), .protecting)
+    }
+
+    func testTemperatureLadderHasHysteresis() {
+        // Just below the entry threshold must NOT step back down — the sensor
+        // lags the panel by minutes, so a narrow band would oscillate.
+        let justUnderEase = ThermalMonitor.easeAboveC - 0.1
+        XCTAssertEqual(ThermalMonitor.temperatureStage(previous: .eased, temperatureC: justUnderEase), .eased)
+        let justUnderProtect = ThermalMonitor.protectAboveC - 0.1
+        XCTAssertEqual(ThermalMonitor.temperatureStage(previous: .protecting,
+                                                       temperatureC: justUnderProtect), .protecting)
+        // Clearing the margin does step back down.
+        XCTAssertEqual(
+            ThermalMonitor.temperatureStage(previous: .eased,
+                                            temperatureC: ThermalMonitor.easeAboveC
+                                                - ThermalMonitor.recoveryMarginC - 0.1),
+            .normal)
+        XCTAssertEqual(
+            ThermalMonitor.temperatureStage(previous: .protecting,
+                                            temperatureC: ThermalMonitor.protectAboveC
+                                                - ThermalMonitor.recoveryMarginC - 0.1),
+            .eased)
+    }
+
+    func testMissingThermometerSilencesTemperatureAxisOnly() {
+        // Desktop Macs have no battery sensor. That must not fake a safe
+        // reading for the OS axis.
+        XCTAssertEqual(ThermalMonitor.temperatureStage(previous: .protecting, temperatureC: nil), .normal)
+        XCTAssertEqual(ThermalMonitor.stage(for: .critical), .protecting)
+    }
+
+    func testWorstAxisWins() {
+        // Mirrors how the controller combines axes: the lowest ceiling across
+        // the proportional panel model and the discrete emergency signals.
+        func combined(exposure: Double, temperatureC: Double?,
+                      thermalState: ProcessInfo.ThermalState) -> ThermalMonitor.Stage {
+            let emergency = max(ThermalMonitor.temperatureStage(previous: .normal,
+                                                                temperatureC: temperatureC),
+                                ThermalMonitor.stage(for: thermalState))
+            return ThermalMonitor.stage(forCeiling: min(ThermalMonitor.exposureCeiling(exposure: exposure),
+                                                        ThermalMonitor.ceiling(for: emergency)))
+        }
+
+        // Cool panel and chassis, but the SoC is cooking → still eased.
+        XCTAssertEqual(combined(exposure: 0, temperatureC: 25, thermalState: .serious), .eased)
+        // Hot chassis while the OS is happy → the case the old code missed.
+        XCTAssertEqual(combined(exposure: 0, temperatureC: ThermalMonitor.protectAboveC + 1,
+                                thermalState: .nominal), .protecting)
+        // Everything cool except the panel model → the case that fires in
+        // normal use, and the one nothing else can see.
+        XCTAssertEqual(combined(exposure: ThermalMonitor.protectAboveExposure,
+                                temperatureC: 25, thermalState: .nominal), .protecting)
+        // All quiet → full boost.
+        XCTAssertEqual(combined(exposure: 0, temperatureC: 25, thermalState: .nominal), .normal)
+    }
+
+    // MARK: - Panel exposure model
+
+    /// Run the closed loop — ceiling sets brightness, brightness heats the
+    /// panel, heat lowers the ceiling — for `minutes`, returning the ceiling
+    /// each minute.
+    private func runLoop(headroom: CGFloat, minutes: Int) -> [CGFloat] {
+        var exposure = 0.0
+        var ceiling: CGFloat = 1.0
+        var history: [CGFloat] = []
+        for _ in 0..<minutes {
+            let applied = 1 + (headroom - 1) * ceiling
+            exposure = ThermalMonitor.advanceExposure(exposure, appliedBoost: applied, elapsed: 60)
+            ceiling = ThermalMonitor.exposureCeiling(exposure: exposure)
+            history.append(ceiling)
+        }
+        return history
+    }
+
+    func testClosedLoopSettlesInsteadOfPulsing() {
+        // Regression, found on hardware: a stepped ceiling over a linear heat
+        // integrator made the boost cut out, cool, come back at half, climb and
+        // cut out again — forever. Four hours in, the ceiling must be steady.
+        for headroom: CGFloat in [2.0, 4.0, 16.0] {
+            let history = runLoop(headroom: headroom, minutes: 4 * 60)
+            let settled = history.suffix(60)
+            let spread = (settled.max() ?? 0) - (settled.min() ?? 0)
+            XCTAssertLessThan(spread, 0.02,
+                              "ceiling should settle at headroom \(headroom), not oscillate")
+            XCTAssertGreaterThan(history.last ?? 0, 0,
+                                 "and should settle on a usable boost, not collapse to off")
+        }
+    }
+
+    func testFullBoostIsAllowedForAWhileBeforeEasing() {
+        // The boost must not start clawing itself back immediately — that reads
+        // as a broken app. Full ceiling for at least the first 15 minutes.
+        let history = runLoop(headroom: 4.0, minutes: 60)
+        XCTAssertEqual(history[14], 1.0, accuracy: 0.001)
+        // …and it must actually ease by the end of the hour.
+        XCTAssertLessThan(history[59], 1.0)
+    }
+
+    func testHarderDrivenPanelSettlesLower() {
+        // More headroom means more heat at the same ceiling, so the equilibrium
+        // has to sit lower.
+        let small = runLoop(headroom: 2.0, minutes: 4 * 60).last ?? 0
+        let large = runLoop(headroom: 16.0, minutes: 4 * 60).last ?? 0
+        XCTAssertLessThan(large, small)
+    }
+
+    func testExposureNeverAccumulatesAtNativeBrightness() {
+        var exposure = 0.0
+        for _ in 0..<600 {
+            exposure = ThermalMonitor.advanceExposure(exposure, appliedBoost: 1.0, elapsed: 60)
+        }
+        XCTAssertEqual(exposure, 0.0)
+    }
+
+    func testExposureDecaysOnceTheBoostIsOff() {
+        var exposure = 1.0
+        for _ in 0..<Int(ThermalMonitor.thermalTimeConstantMinutes * 5) {
+            exposure = ThermalMonitor.advanceExposure(exposure, appliedBoost: 1.0, elapsed: 60)
+        }
+        XCTAssertEqual(exposure, 0.0, accuracy: 0.01)
+    }
+
+    func testExposureIsClampedToUnitRange() {
+        // A long tick (clock jump, wake from sleep) must land in range, not
+        // overshoot the way a fixed-rate integrator would.
+        XCTAssertEqual(ThermalMonitor.advanceExposure(0.9, appliedBoost: 4.0, elapsed: 86_400),
+                       1.0, accuracy: 0.001)
+        XCTAssertEqual(ThermalMonitor.advanceExposure(0.1, appliedBoost: 1.0, elapsed: 86_400),
+                       0.0, accuracy: 0.001)
+    }
+
+    func testCeilingCurveSpansEaseToProtect() {
+        XCTAssertEqual(ThermalMonitor.exposureCeiling(exposure: 0), 1.0)
+        XCTAssertEqual(ThermalMonitor.exposureCeiling(exposure: ThermalMonitor.easeAboveExposure),
+                       1.0, accuracy: 0.001)
+        XCTAssertEqual(ThermalMonitor.exposureCeiling(exposure: ThermalMonitor.protectAboveExposure),
+                       0.0, accuracy: 0.001)
+        XCTAssertEqual(ThermalMonitor.exposureCeiling(exposure: 1.0), 0.0)
+    }
+
+    func testCeilingMapsBackToStages() {
+        XCTAssertEqual(ThermalMonitor.stage(forCeiling: 1.0), .normal)
+        XCTAssertEqual(ThermalMonitor.stage(forCeiling: 0.4), .eased)
+        XCTAssertEqual(ThermalMonitor.stage(forCeiling: 0.0), .protecting)
     }
 
     func testTargetScaleThermalCeilingScalesOnlyTheExtra() {

@@ -74,16 +74,28 @@ Free to download with a **5-day trial**, fully unlocked. After that:
 - **$9.99** once — yours for life, or
 - **$0.99 / month**
 
-One purchase covers every Mac on your Apple ID.
+One purchase covers every Mac on your Apple ID. The trial clock starts when your
+Apple ID first downloads the app, so open it soon after installing to get the
+full five days.
+
+Got a promo code? Use **Redeem Code…** in the ☀️ menu, or redeem it at
+[apps.apple.com/redeem](https://apps.apple.com/redeem). Codes unlock the app
+straight away — they don't wait for the trial to finish.
 
 ## A note on heat & battery
 
 More brightness uses more power and generates more heat — that's physics, the
-same as playing HDR video. MaxCandela watches your Mac's thermal state and looks
-after your machine automatically: it eases the boost down as things get warm,
-and if the Mac gets genuinely hot it will briefly **dim the screen below normal**
-to help it cool — then restores everything once the temperature drops. Turn it
-off any time to go back to normal.
+same as playing HDR video. A boosted display genuinely runs warm, so MaxCandela
+manages that for you rather than leaving it to the OS.
+
+It keeps track of how hard and how long it has been driving your panel and
+steadily **eases the boost down** as that adds up, settling at a brightness your
+Mac can hold instead of running flat out indefinitely. If the Mac gets genuinely
+hot it **stops boosting altogether** and hands the display back to macOS, then
+brings it back once things cool down. The ☀️ menu tells you which is happening.
+
+Turn it off any time to go back to normal — that's never blocked, whatever the
+temperature.
 
 ## Links
 
