@@ -695,12 +695,20 @@ final class MenuBarController {
     /// A tiny invisible window centered on the main screen, used purely as the
     /// anchor for the StoreKit purchase and offer-code sheets.
     private static func makePurchaseAnchor() -> NSWindow? {
-        guard let screen = NSScreen.main else { return nil }
-        let visible = screen.visibleFrame
+        // The screen the user is actually on — they just clicked the status
+        // item, so the pointer is the best signal. NSScreen.main follows the
+        // key window, which an accessory app doesn't have.
+        let pointer = NSEvent.mouseLocation
+        guard let screen = NSScreen.screens.first(where: { $0.frame.contains(pointer) })
+                ?? NSScreen.main
+        else { return nil }
+        let bounds = screen.frame
         // Base designated init only — the screen: variant traps in subclasses
         // on newer macOS (see CLAUDE.md gotchas); global coordinates instead.
+        // Starting position only; centerAttachedSheet does the real work once
+        // the sheet exists and its size is known.
         let window = NSWindow(
-            contentRect: NSRect(x: visible.midX - 1, y: visible.midY, width: 2, height: 2),
+            contentRect: NSRect(x: bounds.midX - 1, y: bounds.midY, width: 2, height: 2),
             styleMask: .borderless,
             backing: .buffered,
             defer: false
@@ -713,34 +721,69 @@ final class MenuBarController {
         return window
     }
 
-    /// Centre whatever sheet StoreKit attaches to `anchor`.
+    /// Keep whatever sheet StoreKit attaches to `anchor` centred on the screen.
     ///
     /// A sheet hangs from its parent window's top edge, so a fixed anchor
-    /// position only centres a sheet of one particular height — the redeem
-    /// sheet and the payment sheet are different sizes, and the anchor used to
-    /// carry a constant offset tuned for the latter. Instead, park the anchor
-    /// at the screen centre and shift it by the measured error once the sheet
-    /// exists; the sheet tracks its parent, so it moves with it.
+    /// position only centres a sheet of one particular size. Instead the anchor
+    /// is shifted by the measured error once the sheet exists; the sheet tracks
+    /// its parent, so it moves with it.
     ///
-    /// The sheet is presented asynchronously by StoreKit (out of process for
-    /// the payment sheet), hence the poll rather than a completion hook. It
-    /// runs for ~3 s and gives up quietly — a sheet that never arrives just
-    /// stays wherever the system put it.
-    private static func centerAttachedSheet(on anchor: NSWindow?, attemptsLeft: Int = 150) {
+    /// This keeps watching rather than correcting once. StoreKit's sheets are
+    /// remote views whose content loads asynchronously (the redeem sheet is a
+    /// web view), so they *resize after presenting* — a single correction
+    /// measures the pre-load size and leaves the finished sheet off-centre.
+    /// Re-centring on every size change is what actually holds it in the
+    /// middle. Runs ~5 s, then gives up quietly.
+    private static func centerAttachedSheet(on anchor: NSWindow?,
+                                            lastSize: CGSize = .zero,
+                                            attemptsLeft: Int = 100) {
         guard let anchor, attemptsLeft > 0 else { return }
-        guard let sheet = anchor.attachedSheet else {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.02) {
-                centerAttachedSheet(on: anchor, attemptsLeft: attemptsLeft - 1)
+
+        var seen = lastSize
+        if let sheet = anchor.attachedSheet, sheet.frame.size != lastSize {
+            seen = sheet.frame.size
+            recenter(sheet, parent: anchor)
+            NSLog("MaxCandela: centred StoreKit sheet, size %@ → %@",
+                  NSStringFromSize(sheet.frame.size), NSStringFromRect(sheet.frame))
+        }
+        guard attemptsLeft > 1 else {
+            // Whether StoreKit's remote sheets actually register as
+            // `attachedSheet` is the one thing this code can't assume. If they
+            // don't, nothing above ever runs and the sheet sits wherever the
+            // system put it — say so in the log rather than failing silently.
+            if seen == .zero {
+                NSLog("MaxCandela: no attached sheet seen — StoreKit positioned it itself")
             }
             return
         }
-        guard let screen = anchor.screen ?? NSScreen.main else { return }
-        let wanted = screen.visibleFrame.midY + sheet.frame.height / 2
-        let delta = wanted - sheet.frame.maxY
-        guard abs(delta) > 1 else { return }
-        var frame = anchor.frame
-        frame.origin.y += delta
-        anchor.setFrame(frame, display: false)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+            centerAttachedSheet(on: anchor, lastSize: seen, attemptsLeft: attemptsLeft - 1)
+        }
+    }
+
+    /// Move `parent` so its sheet lands in the middle of the monitor — the
+    /// full `frame`, not `visibleFrame`, so the result is optically centred
+    /// rather than nudged by whichever edge the Dock happens to occupy. Only
+    /// clamped back if the sheet is too tall to fit the usable area.
+    private static func recenter(_ sheet: NSWindow, parent: NSWindow) {
+        guard let screen = parent.screen ?? NSScreen.main else { return }
+        let bounds = screen.frame
+        let visible = screen.visibleFrame
+
+        var target = sheet.frame
+        target.origin.x = bounds.midX - target.width / 2
+        target.origin.y = bounds.midY - target.height / 2
+        if target.maxY > visible.maxY { target.origin.y = visible.maxY - target.height }
+        if target.minY < visible.minY { target.origin.y = visible.minY }
+
+        let dx = target.origin.x - sheet.frame.origin.x
+        let dy = target.origin.y - sheet.frame.origin.y
+        guard abs(dx) > 0.5 || abs(dy) > 0.5 else { return }
+
+        var frame = parent.frame
+        frame.origin.x += dx
+        frame.origin.y += dy
+        parent.setFrame(frame, display: false)
     }
 
     private func showPurchaseFailedAlert(_ error: Error) {

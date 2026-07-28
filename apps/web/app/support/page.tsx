@@ -60,13 +60,22 @@ export default function SupportPage() {
 
       <h3>I have a promo code — where do I enter it?</h3>
       <p>
-        Open the ☀️ menu (right-click or double-click the icon) and choose{' '}
-        <em>Purchases ▸ Redeem Code…</em>, or redeem it at{' '}
-        <a href="https://apps.apple.com/redeem">apps.apple.com/redeem</a> using
-        the same Apple Account you use for the App Store. A code takes effect{' '}
-        <strong>immediately</strong> — it does not wait for the 5-day free trial
-        to finish, and it replaces the trial rather than extending it. If the
-        menu still shows a trial after redeeming, choose{' '}
+        Redeem it at{' '}
+        <a href="https://apps.apple.com/redeem">apps.apple.com/redeem</a>, or in
+        the App Store app on your Mac → your name → <em>Redeem Gift Card or
+        Code</em>, using the same Apple Account you use for the App Store. That
+        route works for every kind of code, so start there.
+      </p>
+      <p>
+        The ☀️ menu also has <em>Purchases ▸ Redeem Code…</em>, but Apple’s
+        in-app sheet only accepts <strong>subscription offer codes</strong> — a
+        one-off code for the Lifetime unlock has to go through the App Store
+        instead, and the sheet will report it as invalid.
+      </p>
+      <p>
+        A code takes effect <strong>immediately</strong> — it does not wait for
+        the 5-day free trial to finish, and it replaces the trial rather than
+        extending it. If the menu still shows a trial after redeeming, choose{' '}
         <em>Purchases ▸ Restore Purchases</em>.
       </p>
 

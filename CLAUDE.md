@@ -734,18 +734,29 @@ does disabling instantly restore it) is required before claiming it works.
       SwiftPM dev targets 14; falls back to `apps.apple.com/redeem`, which is
       also the *only* route for non-consumable IAP promo codes — the sheet takes
       subscription offer codes). `/support` + home FAQ document it.
-- [~] **1.1.0 (10)** — version bumped 2026-07-28, built and tested, **not yet
-      submitted**. First minor bump (1.0.x → 1.1.0), keeping the 3-component
-      scheme. Contents: `AppMenu` (copy/paste in dialogs), StoreKit sheets
-      self-centre, Purchases ▸ submenu, "Redeem Code…" hides for lifetime
+- [~] **1.1.3 (13)** — the shipping version, set 2026-07-28, built and tested.
+      First minor bump off 1.0.x, keeping the 3-component scheme. (1.1.0–1.1.2
+      were bumped and superseded the same day; never uploaded, so the gap is
+      harmless — Apple only needs increasing numbers.) The store still served
+      **1.0.9** when last checked on 2026-07-28, which is expected until review
+      and propagation finish; re-check with the iTunes lookup API.
+      Contents: `AppMenu` (copy/paste in dialogs), StoreKit sheets self-centre
+      on both axes and re-centre as the sheet resizes (remote-view content
+      loads late), anchored to the screen under the pointer — ⚠️ **unverified**,
+      it depends on StoreKit's remote sheet registering as `attachedSheet`; the
+      code now logs which way it went, see "no attached sheet seen" in the log.
+      Purchases ▸ submenu, "Redeem Code…" hides for lifetime
       owners, menu figures restated as headroom *left* and reported **per
       display**, and live updating — 0.2 s ticker while the menu is open plus
       `pollInterval` 1 s → 0.25 s so the boost follows the brightness slider.
       Web copy updated to match (`/support` + home FAQ): menu paths now say
-      **Purchases ▸** and the headroom line describes "N× left". The promo-code
-      answer deliberately still leads with the in-app *Redeem Code…* route —
-      an attempt to demote it in favour of Apple's redeem page was rejected
-      2026-07-28. The site states no version number, so nothing to bump.
+      **Purchases ▸**, the headroom line describes "N× left", and the promo-code
+      answer leads with `apps.apple.com/redeem` (works for every code type),
+      naming the in-app sheet second with its subscription-offer-code limit.
+      ⚠️ That limit is **asserted, not tested** — see the redemption note in the
+      DEBUG-flags section; it can only be confirmed in the store-installed
+      build. Correct this copy if it turns out the sheet takes Lifetime codes.
+      The site states no version number, so nothing to bump.
 - [x] Promo codes, the practical version (2026-07-28). **App-level promo codes
       are useless here** — they grant a free *download*, and the app is already
       free; they grant no entitlement and Apple rejects them in the in-app
