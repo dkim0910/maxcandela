@@ -7,6 +7,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var menuBar: MenuBarController!
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // Invisible in an accessory app, but it is what makes ⌘X/⌘C/⌘V work in
+        // the text fields we present (redeem sheet, paywall). See AppMenu.
+        AppMenu.install(on: NSApplication.shared)
         brightness = BrightnessController()
         menuBar = MenuBarController(brightness: brightness)
         Analytics.track("app_launch")

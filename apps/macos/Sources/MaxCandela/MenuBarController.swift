@@ -25,7 +25,22 @@ final class MenuBarController {
     private let lifetimeItem: NSMenuItem
     private let monthlyItem: NSMenuItem
     private let restoreItem: NSMenuItem
+    private let redeemItem: NSMenuItem
     private let menu: NSMenu
+
+    /// One row per display, present only while more than one can boost.
+    private var perDisplayItems: [NSMenuItem] = []
+    /// The display set those rows were built for, so a refresh on an *open*
+    /// menu can retitle in place instead of rebuilding.
+    private var perDisplayNames: [String] = []
+
+    /// Refreshes the figures while the menu is on screen. Nil when closed —
+    /// there is nobody to show them to.
+    private var menuTicker: Timer?
+
+    /// Which SF Symbol the status item is currently showing, so a hot refresh
+    /// can skip rebuilding an identical image.
+    private var currentStatusSymbol: String?
 
     /// Held so the first-run welcome popover isn't deallocated while shown.
     private var welcomePopover: NSPopover?
@@ -75,6 +90,7 @@ final class MenuBarController {
         self.lifetimeItem = NSMenuItem(title: "Unlock Lifetime — $9.99", action: nil, keyEquivalent: "")
         self.monthlyItem = NSMenuItem(title: "Subscribe — $0.99/month", action: nil, keyEquivalent: "")
         self.restoreItem = NSMenuItem(title: "Restore Purchases", action: nil, keyEquivalent: "")
+        self.redeemItem = NSMenuItem(title: "Redeem Code…", action: nil, keyEquivalent: "")
         self.menu = NSMenu()
 
         configureStatusButton()
@@ -173,19 +189,34 @@ final class MenuBarController {
         monthlyItem.toolTip = "MaxCandela Pro Monthly — auto-renews every month until cancelled in your App Store account settings."
         menu.addItem(monthlyItem)
 
+        // The three App Store errands live together under one item, the same
+        // way Legal groups the two documents. The *buy* items stay at top
+        // level — those are the ones that need to be impossible to miss.
+        //
+        // Restore Purchases being one level down is a considered risk:
+        // Guideline 3.1.1 wants it present and reachable, and the 1.0.4
+        // rejection was about the whole menu being right-click-only, not about
+        // nesting. It stays visible in every licence state (see refresh()).
+        let purchasesItem = NSMenuItem(title: "Purchases", action: nil, keyEquivalent: "")
+        let purchasesMenu = NSMenu()
+
         restoreItem.target = self
         restoreItem.action = #selector(restorePurchases)
-        menu.addItem(restoreItem)
+        purchasesMenu.addItem(restoreItem)
 
         // Redemption previously had no entry point at all — codes worked, but
         // only if the user already knew to go to the App Store app themselves.
-        let redeemItem = NSMenuItem(title: "Redeem Code…", action: #selector(redeemCode), keyEquivalent: "")
+        // Hidden once the lifetime unlock is owned (see refresh()).
         redeemItem.target = self
-        menu.addItem(redeemItem)
+        redeemItem.action = #selector(redeemCode)
+        purchasesMenu.addItem(redeemItem)
 
         let appStoreItem = NSMenuItem(title: "View in Mac App Store", action: #selector(openAppStore), keyEquivalent: "")
         appStoreItem.target = self
-        menu.addItem(appStoreItem)
+        purchasesMenu.addItem(appStoreItem)
+
+        purchasesItem.submenu = purchasesMenu
+        menu.addItem(purchasesItem)
 
         // Single "Legal" item; Terms + Privacy + Support live in its submenu
         // (3.1.2 still satisfied — the links stay reachable from the purchase
@@ -215,36 +246,58 @@ final class MenuBarController {
 
     /// Sync the icon and info lines with the current state.
     private func refresh() {
-        if let button = statusItem.button {
-            let symbol = brightness.isEnabled ? "sun.max.fill" : "sun.min"
+        // Only when it actually changes: refresh() runs several times a second
+        // while the menu is open, and reassigning the image redraws the status
+        // item every time for no reason.
+        let symbol = brightness.isEnabled ? "sun.max.fill" : "sun.min"
+        if symbol != currentStatusSymbol, let button = statusItem.button {
             button.image = NSImage(systemSymbolName: symbol, accessibilityDescription: "MaxCandela")
             button.image?.isTemplate = true
+            currentStatusSymbol = symbol
         }
-        boostItem.title = brightness.isEnabled ? "Turn Boost Off" : "Turn Boost On"
         boostItem.state = brightness.isEnabled ? .on : .off
+        let action = brightness.isEnabled ? "Turn Boost Off" : "Turn Boost On"
 
-        if let live = brightness.liveStatus() {
-            // On: real live numbers.
-            let base = String(format: "Boosting %.2f× (headroom %.2f×)",
-                              live.applied, live.headroom)
-            switch brightness.thermalStatus {
-            case .normal: headroomItem.title = base
-            case .eased:  headroomItem.title = base + " · eased for heat"
-            case .paused: headroomItem.title = "Paused — Mac too hot, resumes when it cools"
-            case .dimmed: headroomItem.title = String(format: "Dimmed to %.0f%% — Mac too hot",
-                                                      live.applied * 100)
-            }
-        } else if !brightness.canBoost() {
-            headroomItem.title = SupportMessages.noHeadroomMenuLine
-        } else {
-            // Off: the panel's live headroom is ~1.0 until we engage EDR, and
-            // the theoretical max overstates reality — so show the real current
-            // value if something's already using EDR, else just invite a click.
-            let current = brightness.currentHeadroom()
-            headroomItem.title = current > 1.05
-                ? String(format: "Headroom available now: %.2f×", current)
-                : "Click the sun to boost"
+        // Headroom is per panel, so the figures are too. One display puts its
+        // number on the toggle row; several get a row each, because collapsing
+        // them into a best-of would report one monitor's ceiling as if it were
+        // every monitor's.
+        let statuses = brightness.displayStatuses()
+        var detail: String?
+        var note: String?
+
+        if statuses.isEmpty {
+            note = SupportMessages.noHeadroomMenuLine
+        } else if statuses.count == 1 {
+            detail = Self.remainingText(statuses[0])
         }
+        updatePerDisplayItems(statuses.count > 1 ? statuses : [])
+
+        // The second line is for what needs *explaining*, not for restating a
+        // number. Thermal state is machine-wide, so it stays a single line.
+        if brightness.isEnabled {
+            switch brightness.thermalStatus {
+            case .normal:
+                break
+            case .eased:
+                note = "Eased for heat"
+                detail = detail.map { "\($0) · eased" }
+            case .paused:
+                detail = nil
+                note = "Paused — Mac too hot, resumes when it cools"
+            case .dimmed:
+                // Below native, so "headroom left" would read as a large number
+                // while the screen is darker than normal — report the dim
+                // instead. dimTo is machine-wide, so one figure covers all.
+                detail = nil
+                note = String(format: "Dimmed to %.0f%% — Mac too hot",
+                              (statuses.map(\.applied).max() ?? 1.0) * 100)
+            }
+        }
+
+        setBoostTitle(action, detail: detail)
+        headroomItem.title = note ?? ""
+        headroomItem.isHidden = note == nil
 
         switch licenseState {
         case .licensed:
@@ -265,6 +318,70 @@ final class MenuBarController {
             [lifetimeItem, monthlyItem, restoreItem].forEach { $0.isHidden = false }
             statusItem.button?.toolTip = "MaxCandela — free trial ended"
         }
+
+        // Nothing left to redeem once the lifetime unlock is owned, however it
+        // was obtained — purchase or IAP promo code. Deliberately keyed on the
+        // lifetime entitlement rather than on `.licensed`: a *subscriber* is
+        // licensed too, and subscription offer codes (the only kind the in-app
+        // sheet accepts) are exactly what they might still want to redeem.
+        redeemItem.isHidden = store.ownsLifetime
+    }
+
+    /// How much lift this panel has left, or nil when live headroom is still
+    /// sitting at its EDR-disengaged ~1.0 and would only mislead.
+    private static func remainingText(_ status: BrightnessController.DisplayStatus) -> String? {
+        guard status.isMeaningful else { return nil }
+        return String(format: "%.2f× left", status.remaining)
+    }
+
+    /// One dimmed row per display, directly under the toggle.
+    ///
+    /// Rows are only inserted/removed when the set of displays actually
+    /// changes; otherwise they are retitled in place. This runs several times a
+    /// second while the menu is open, and removing an item from a menu the user
+    /// is looking at makes it flicker and can drop the highlight.
+    private func updatePerDisplayItems(_ statuses: [BrightnessController.DisplayStatus]) {
+        let names = statuses.map(\.name)
+        if names != perDisplayNames {
+            perDisplayItems.forEach(menu.removeItem)
+            perDisplayItems = []
+            perDisplayNames = names
+
+            let anchor = menu.index(of: boostItem)
+            guard !statuses.isEmpty, anchor >= 0 else { return }
+
+            for (offset, _) in statuses.enumerated() {
+                let item = NSMenuItem(title: "", action: nil, keyEquivalent: "")
+                item.isEnabled = false
+                item.indentationLevel = 1
+                menu.insertItem(item, at: anchor + 1 + offset)
+                perDisplayItems.append(item)
+            }
+        }
+
+        for (item, status) in zip(perDisplayItems, statuses) {
+            item.title = Self.remainingText(status).map { "\(status.name) — \($0)" } ?? status.name
+        }
+    }
+
+    /// Render the boost row as "Turn Boost Off   3.98×", with the figure in
+    /// secondary colour so the action still reads first. Plain `title` is kept
+    /// in sync for accessibility, which ignores `attributedTitle`.
+    private func setBoostTitle(_ action: String, detail: String?) {
+        guard let detail else {
+            boostItem.attributedTitle = nil
+            boostItem.title = action
+            return
+        }
+        boostItem.title = "\(action) — \(detail)"
+        let font = NSFont.menuFont(ofSize: 0)
+        let title = NSMutableAttributedString(
+            string: action,
+            attributes: [.font: font, .foregroundColor: NSColor.labelColor])
+        title.append(NSAttributedString(
+            string: "   \(detail)",
+            attributes: [.font: font, .foregroundColor: NSColor.secondaryLabelColor]))
+        boostItem.attributedTitle = title
     }
 
     /// External license changes (renewal, refund, purchase on another Mac).
@@ -393,8 +510,34 @@ final class MenuBarController {
         // next click keeps reaching statusButtonClicked (a permanently
         // attached menu hijacks the click before we can refresh its contents).
         statusItem.menu = menu
+        // performClick runs the menu's tracking loop synchronously, so these
+        // two lines bracket exactly the window in which the menu is on screen.
+        startMenuTicker()
         statusItem.button?.performClick(nil)
+        stopMenuTicker()
         statusItem.menu = nil
+    }
+
+    /// Keep the figures live while the menu is open, so changing brightness
+    /// with the keys updates the row instead of leaving a snapshot from
+    /// whenever the menu happened to open.
+    ///
+    /// Must be added in `.common` modes: menu tracking runs the run loop in
+    /// event-tracking mode, where a default-mode timer never fires — the whole
+    /// point of this timer is the one situation a plain `scheduledTimer` sleeps
+    /// through.
+    private func startMenuTicker() {
+        menuTicker?.invalidate()
+        let timer = Timer(timeInterval: 0.2, repeats: true) { [weak self] _ in
+            self?.refresh()
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        menuTicker = timer
+    }
+
+    private func stopMenuTicker() {
+        menuTicker?.invalidate()
+        menuTicker = nil
     }
 
     /// The MaxCandela logo for dialogs. Loaded from the bundled resource so it
@@ -498,6 +641,7 @@ final class MenuBarController {
             // Anchor the sheet to an invisible centered window so it opens in
             // the middle of the screen instead of a system-guessed corner.
             let anchor = Self.makePurchaseAnchor()
+            Self.centerAttachedSheet(on: anchor)
             defer { anchor?.close() }
             do {
                 if try await store.purchase(product, confirmIn: anchor) {
@@ -525,6 +669,7 @@ final class MenuBarController {
                 let host = NSViewController()
                 host.view = NSView(frame: NSRect(x: 0, y: 0, width: 2, height: 2))
                 anchor?.contentViewController = host
+                Self.centerAttachedSheet(on: anchor)
                 defer { anchor?.close() }
                 do {
                     try await AppStore.presentOfferCodeRedeemSheet(from: host)
@@ -548,14 +693,22 @@ final class MenuBarController {
     }
 
     /// A tiny invisible window centered on the main screen, used purely as the
-    /// anchor for the StoreKit purchase sheet (see StoreManager.purchase).
+    /// anchor for the StoreKit purchase and offer-code sheets.
     private static func makePurchaseAnchor() -> NSWindow? {
-        guard let screen = NSScreen.main else { return nil }
-        let visible = screen.visibleFrame
+        // The screen the user is actually on — they just clicked the status
+        // item, so the pointer is the best signal. NSScreen.main follows the
+        // key window, which an accessory app doesn't have.
+        let pointer = NSEvent.mouseLocation
+        guard let screen = NSScreen.screens.first(where: { $0.frame.contains(pointer) })
+                ?? NSScreen.main
+        else { return nil }
+        let bounds = screen.frame
         // Base designated init only — the screen: variant traps in subclasses
         // on newer macOS (see CLAUDE.md gotchas); global coordinates instead.
+        // Starting position only; centerAttachedSheet does the real work once
+        // the sheet exists and its size is known.
         let window = NSWindow(
-            contentRect: NSRect(x: visible.midX - 1, y: visible.midY + 120, width: 2, height: 2),
+            contentRect: NSRect(x: bounds.midX - 1, y: bounds.midY, width: 2, height: 2),
             styleMask: .borderless,
             backing: .buffered,
             defer: false
@@ -566,6 +719,93 @@ final class MenuBarController {
         window.isReleasedWhenClosed = false
         window.orderFrontRegardless()
         return window
+    }
+
+    /// Keep whatever sheet StoreKit attaches to `anchor` centred on the screen.
+    ///
+    /// A sheet hangs from its parent window's top edge, so a fixed anchor
+    /// position only centres a sheet of one particular size. Instead the anchor
+    /// is shifted by the measured error once the sheet exists; the sheet tracks
+    /// its parent, so it moves with it.
+    ///
+    /// This keeps watching rather than correcting once. StoreKit's sheets are
+    /// remote views whose content loads asynchronously (the redeem sheet is a
+    /// web view), so they *resize after presenting* — a single correction
+    /// measures the pre-load size and leaves the finished sheet off-centre.
+    /// Re-centring on every size change is what actually holds it in the
+    /// middle. Runs ~5 s, then gives up quietly.
+    private static func centerAttachedSheet(on anchor: NSWindow?,
+                                            lastSize: CGSize = .zero,
+                                            attemptsLeft: Int = 100) {
+        guard let anchor, attemptsLeft > 0 else { return }
+
+        var seen = lastSize
+        if let sheet = hostedWindow(of: anchor), sheet.frame.size != lastSize {
+            seen = sheet.frame.size
+            recenter(sheet, parent: anchor)
+            NSLog("MaxCandela: centred StoreKit window, size %@ → %@",
+                  NSStringFromSize(sheet.frame.size), NSStringFromRect(sheet.frame))
+        }
+        // One survey mid-flight, so a sheet we failed to find can still be
+        // identified from the log instead of guessing at its window class.
+        if attemptsLeft == 80 {
+            let others = NSApp.windows
+                .filter { $0 !== anchor && $0.isVisible }
+                .map { "\(type(of: $0)) \(NSStringFromRect($0.frame))" }
+            NSLog("MaxCandela: redeem survey — attachedSheet=%@ children=%d visibleWindows=[%@]",
+                  anchor.attachedSheet == nil ? "nil" : "yes",
+                  anchor.childWindows?.count ?? 0,
+                  others.joined(separator: ", "))
+        }
+        guard attemptsLeft > 1 else {
+            // Whether StoreKit's remote UI is reachable as a sheet or child
+            // window at all is the one thing this code can't assume. If it is
+            // not, nothing above runs and Apple positions it — say so in the
+            // log rather than failing silently.
+            if seen == .zero {
+                NSLog("MaxCandela: no hosted window seen — StoreKit positioned it itself")
+            }
+            return
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+            centerAttachedSheet(on: anchor, lastSize: seen, attemptsLeft: attemptsLeft - 1)
+        }
+    }
+
+    /// The window StoreKit put on top of `anchor`, if we can reach it at all.
+    ///
+    /// `attachedSheet` covers a true sheet (the payment sheet). The offer-code
+    /// sheet is drawn by `StoreKitUIServiceMac` out of process and was observed
+    /// *not* to register there, so a child window is checked too. If neither
+    /// finds it, the window belongs to another process and the sandbox gives us
+    /// no supported way to move it.
+    private static func hostedWindow(of anchor: NSWindow) -> NSWindow? {
+        anchor.attachedSheet ?? anchor.childWindows?.first { $0.isVisible }
+    }
+
+    /// Move `parent` so its sheet lands in the middle of the monitor — the
+    /// full `frame`, not `visibleFrame`, so the result is optically centred
+    /// rather than nudged by whichever edge the Dock happens to occupy. Only
+    /// clamped back if the sheet is too tall to fit the usable area.
+    private static func recenter(_ sheet: NSWindow, parent: NSWindow) {
+        guard let screen = parent.screen ?? NSScreen.main else { return }
+        let bounds = screen.frame
+        let visible = screen.visibleFrame
+
+        var target = sheet.frame
+        target.origin.x = bounds.midX - target.width / 2
+        target.origin.y = bounds.midY - target.height / 2
+        if target.maxY > visible.maxY { target.origin.y = visible.maxY - target.height }
+        if target.minY < visible.minY { target.origin.y = visible.minY }
+
+        let dx = target.origin.x - sheet.frame.origin.x
+        let dy = target.origin.y - sheet.frame.origin.y
+        guard abs(dx) > 0.5 || abs(dy) > 0.5 else { return }
+
+        var frame = parent.frame
+        frame.origin.x += dx
+        frame.origin.y += dy
+        parent.setFrame(frame, display: false)
     }
 
     private func showPurchaseFailedAlert(_ error: Error) {

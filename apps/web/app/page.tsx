@@ -68,7 +68,7 @@ const FAQS = [
   },
   {
     q: 'I have a promo code — how do I use it?',
-    a: 'Open the ☀️ menu (right-click or double-click the icon) and choose “Redeem Code…”, or redeem it at apps.apple.com/redeem with the same Apple ID. A code unlocks MaxCandela straight away — it does not wait for your free trial to run out, and it replaces the trial rather than being added on to the end of it. If the menu still shows a trial afterwards, choose “Restore Purchases”.',
+    a: 'Redeem it at apps.apple.com/redeem, or in the App Store app on your Mac → your name → “Redeem Gift Card or Code”, using the same Apple Account. That route works for every kind of code. The ☀️ menu also has “Purchases ▸ Redeem Code…”, but Apple’s in-app sheet only takes subscription offer codes — a one-off Lifetime code has to go through the App Store. A code unlocks MaxCandela straight away: it does not wait for your free trial to run out, and it replaces the trial rather than being added on to the end of it. If the menu still shows a trial afterwards, choose “Purchases ▸ Restore Purchases”.',
   },
   {
     q: 'Why doesn’t macOS just allow this?',

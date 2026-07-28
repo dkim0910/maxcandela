@@ -360,4 +360,36 @@ final class BoostLogicTests: XCTestCase {
         XCTAssertEqual(BrightnessController.targetScale(requested: request, currentHeadroom: 1.4), 1.4)
         XCTAssertEqual(BrightnessController.targetScale(requested: request, currentHeadroom: 2.0), 2.0)
     }
+
+    // MARK: - Per-display status
+
+    func testRemainingIsZeroWhenDrivenToTheCeiling() {
+        let maxed = BrightnessController.DisplayStatus(
+            name: "Built-in Retina Display", applied: 3.98, headroom: 3.98)
+        XCTAssertEqual(maxed.remaining, 0.0, accuracy: 0.0001)
+    }
+
+    func testRemainingReportsUnusedHeadroom() {
+        let eased = BrightnessController.DisplayStatus(
+            name: "Built-in Retina Display", applied: 1.62, headroom: 4.00)
+        XCTAssertEqual(eased.remaining, 2.38, accuracy: 0.0001)
+    }
+
+    func testRemainingNeverGoesNegativeWhenDimmedBelowNative() {
+        // Thermal .critical dims below 1.0 while headroom collapses; a naive
+        // subtraction would print a negative "left" figure at the user.
+        let dimmed = BrightnessController.DisplayStatus(
+            name: "Built-in Retina Display", applied: 0.8, headroom: 0.5)
+        XCTAssertEqual(dimmed.remaining, 0.0)
+    }
+
+    func testHeadroomIsNotMeaningfulBeforeEDREngages() {
+        // Live headroom idles at ~1.0 until something puts the panel in HDR
+        // mode — showing "0.00× left" there would read as "no boost possible".
+        XCTAssertFalse(BrightnessController.DisplayStatus(
+            name: "Display", applied: 1.0, headroom: 1.0).isMeaningful)
+        XCTAssertTrue(BrightnessController.DisplayStatus(
+            name: "Display", applied: 1.0, headroom: 4.344).isMeaningful)
+    }
 }
+

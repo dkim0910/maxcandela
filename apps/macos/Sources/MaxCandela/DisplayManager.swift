@@ -59,12 +59,6 @@ final class DisplayManager {
         currentDisplays().map(\.potentialHeadroom).max() ?? 1.0
     }
 
-    /// The best *live* headroom across displays right now — the real, achievable
-    /// value. ~1.0 until EDR is engaged, then ramps to what the panel sustains.
-    func bestCurrentHeadroom() -> CGFloat {
-        currentDisplays().map(\.currentHeadroom).max() ?? 1.0
-    }
-
     @objc private func screenParametersChanged() {
         debounceTimer?.invalidate()
         debounceTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: false) { [weak self] _ in

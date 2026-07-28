@@ -32,6 +32,12 @@ final class StoreManager {
     private(set) var products: [Product] = []
     private var transactionListener: Task<Void, Never>?
 
+    /// True when the account owns the non-consumable lifetime unlock — bought
+    /// outright or granted by an IAP promo code. Unlike a subscription this can
+    /// never lapse, so redemption UI has nothing left to offer these users.
+    /// Refreshed by every `currentState()` call.
+    private(set) var ownsLifetime = false
+
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         if defaults.object(forKey: Self.firstLaunchKey) == nil {
@@ -82,7 +88,10 @@ final class StoreManager {
         // (real StoreKit entitlements can't be exercised outside the App Store).
         if let forced = ProcessInfo.processInfo.environment["MAXCANDELA_FORCE_TRIAL"] {
             switch forced {
-            case "licensed": return .licensed
+            case "licensed":
+                // Preview the fully-unlocked menu, lifetime included.
+                ownsLifetime = true
+                return .licensed
             case "expired": return .expired
             case "trial": return .trial(daysRemaining: Self.trialDays)
             default:
@@ -96,17 +105,24 @@ final class StoreManager {
         // App Store Connect. Set MAXCANDELA_FORCE_PAYWALL=1 to reach the real
         // entitlement/trial-clock path below.
         if ProcessInfo.processInfo.environment["MAXCANDELA_FORCE_PAYWALL"] == nil {
+            ownsLifetime = true
             return .licensed
         }
         #endif
 
+        // Drained fully rather than returning on the first hit: the menu needs
+        // to know *which* product is entitled, not just that one of them is.
+        var entitled = false
+        var lifetime = false
         for await result in Transaction.currentEntitlements {
-            if case .verified(let transaction) = result,
-               Self.productIDs.contains(transaction.productID),
-               transaction.revocationDate == nil {
-                return .licensed
-            }
+            guard case .verified(let transaction) = result,
+                  Self.productIDs.contains(transaction.productID),
+                  transaction.revocationDate == nil else { continue }
+            entitled = true
+            lifetime = lifetime || transaction.productID == Self.lifetimeProductID
         }
+        ownsLifetime = lifetime
+        if entitled { return .licensed }
 
         let remaining = Self.trialDaysRemaining(firstLaunch: await trialStartDate())
         return remaining > 0 ? .trial(daysRemaining: remaining) : .expired
