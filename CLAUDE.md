@@ -291,23 +291,46 @@ deliberately lives in the demo section); `components/LegalShell.tsx` +
 ```
 main.swift            → NSApplication bootstrap, .accessory activation policy
 AppDelegate           → lifecycle; owns MenuBarController + BrightnessController
+AppMenu               → the invisible main menu. An accessory app shows no menu
+                         bar, but ⌘X/⌘C/⌘V are dispatched via
+                         mainMenu.performKeyEquivalent BEFORE the responder
+                         chain — with no Edit menu, paste is dead in every text
+                         field we present. Do not delete it as "unused UI".
 MenuBarController      → NSStatusItem. Single click = instant toggle; double
                          click / right-click = menu; single click on a
                          no-headroom display = menu (so Quit stays reachable
                          where the boost can't work — the App Review path).
-                         Menu: "Turn Boost On/Off", live "Boosting N×" line,
-                         purchase/restore items, Redeem Code…, Legal ▸ (Terms,
+                         Menu: "Turn Boost On/Off" carrying the live figure on
+                         the same row (attributedTitle, dimmed suffix), stated
+                         as headroom *left* — 0.00× once driven to the ceiling.
+                         Figures are **per display** (one row each when several
+                         can boost); never collapse them, headroom is a ratio
+                         against that panel's own SDR white. A second line
+                         appears *only* to explain something — thermal
+                         ease/pause/dim, or the no-headroom copy.
+                         Then the two buy items (top level — they must not be
+                         missable), Purchases ▸ (Restore Purchases, Redeem
+                         Code…, View in Mac App Store), Legal ▸ (Terms,
                          Privacy, Get Support), Quit. No slider. Restore
                          Purchases stays visible in every license state
-                         (Guideline 3.1.1). Owns licence *enforcement*:
+                         (Guideline 3.1.1) — but "Redeem Code…" hides once
+                         `StoreManager.ownsLifetime`, i.e. the permanent unlock
+                         is owned. Keyed on that, NOT on `.licensed`: a monthly
+                         subscriber is licensed too, and subscription offer
+                         codes are exactly what they might still redeem.
+                         Owns licence *enforcement*:
                          enforceLicense() restores or suspends the boost once
                          currentState() resolves — see the trial-enforcement
                          note in the status list.
 SupportMessages        → user-facing "which Macs are supported" copy, kept
                          out of the UI layer so it's unit-testable
 BrightnessController   → orchestrator: tiny EDR trigger per boost-capable
-                         screen; 1 s headroom poll; gamma lift fades via 30 Hz
-                         animator; toggle-on targets max headroom
+                         screen; 0.25 s headroom poll (`pollInterval` — sized
+                         for how fast the boost must follow the brightness
+                         slider, not for the heat model, which integrates over
+                         real elapsed time and so is tick-length agnostic);
+                         gamma lift fades via 30 Hz animator; toggle-on targets
+                         max headroom
 ThermalMonitor         → the heat guard: panel-exposure model + chassis
                          temperature + OS thermal state → Limits{boostCeiling,
                          dimTo, engagesEDR}. See "Thermal handling".
@@ -338,13 +361,19 @@ in `public/hdr/` and the generator script if ever needed again).
 ```bash
 # macOS app (from apps/macos/)
 swift build                 # debug
-swift run MaxCandela        # launch the menu-bar app
+swift run MaxCandela        # launch the menu-bar app  (pkill -x MaxCandela first
+                            #   — a second instance means two ☀️ in the menu bar)
 swift build -c release      # release
-swift test                  # unit tests
+swift test                  # unit tests — 51 across BoostLogic, DisplayManager,
+                            #   SupportMessages. Pure logic only: no test can
+                            #   observe the backlight, see "Verifying a
+                            #   brightness change actually works".
 
 # Web app (from apps/web/)
 npm install
 npm run dev                 # http://localhost:3000
+npm run lint                # next lint
+npx tsc --noEmit            # safe to run while dev is serving — prefer this
 npm run build               # static export → apps/web/out/  (NOT while dev runs)
 ```
 
@@ -365,8 +394,24 @@ running instance first (`pkill -x MaxCandela`) to avoid two menu-bar icons.
 | `MAXCANDELA_FORCE_TEMP=43.5 swift run MaxCandela` | Fake the chassis thermometer → walk the ease/protect ladder without cooking the Mac |
 | `MAXCANDELA_FORCE_NO_HEADROOM=1 swift run MaxCandela` | Pretend no display has EDR headroom → preview the "no boost available" alert (what App Review saw on a MacBook Air) |
 
+**"Redeem Code…" cannot be tested under `swift run`** (verified 2026-07-28 from
+`log show`). `AppStore.presentOfferCodeRedeemSheet` throws `ASDErrorDomain 507
+"No client to present code redemption sheet"` — a bare SwiftPM binary is not an
+App Store-installed bundle, so StoreKit has no client to host the sheet. The
+`catch` then opens `apps.apple.com/redeem` in the browser, which looks like the
+app "going to the gift-card page" but is just the documented fallback. The
+store-installed build presents it correctly, in-process, via
+`StoreKitUIServiceMac` (`…/redeem/?pbid=com.maxcandela.MaxCandela&ctx=offercodes`).
+Test redemption **only in the Mac App Store copy** — not `swift run`, not
+`dist/MaxCandela.app`. Note that sheet is an `AMSUIWebView` in *another
+process*, so `AppMenu`'s Edit menu may not reach it; ⌘V there is unverified.
+
 Note: plain `swift run` (DEBUG) auto-unlocks (returns `.licensed`) so dev isn't
 gated on the App Store — that's why the trial/paywall don't show without a flag.
+The auto-unlock also reports `ownsLifetime`, so **"Redeem Code…" is hidden in a
+plain `swift run`** (and under `FORCE_TRIAL=licensed`). That is the shipping
+behaviour for a lifetime owner, not a broken menu — use `FORCE_TRIAL=trial` to
+see the item.
 
 #### `FORCE_TRIAL=expired` vs `FORCE_PAYWALL=1` — they are not the same
 
@@ -524,20 +569,24 @@ does disabling instantly restore it) is required before claiming it works.
 - [x] Verify gamma/EDR APIs work inside the **sandboxed** build — confirmed via
       the codesigned `dist/MaxCandela.app` (boost + thermal work sandboxed).
 
-### App Store submission — remaining (Daniel drives, Apple-side)
+### App Store submission — DONE (Daniel drives, Apple-side)
 
-> **Status check 2026-07-21:** the app is **not yet live** on the Mac App Store
-> (iTunes Search API returns no results for MaxCandela). So the web CTAs
-> correctly remain ScrollLinks to #pricing, and the "add the App Store URL"
-> TODOs below stay open until the app is published.
+> **Status check 2026-07-28:** MaxCandela is **live on the Mac App Store**
+> (`id6792267034`), 1.0.9 published 2026-07-27, confirmed present in the US, KR
+> and GB storefronts via the iTunes lookup API. The web CTAs point at the real
+> store URL (`APP_STORE_URL` in `apps/web/lib/site.ts` → hero badge + both
+> pricing cards); the remaining ScrollLinks are section jumps, which is correct.
+> Nothing in this section is outstanding — it is kept as the record of what the
+> first submission required. New versions only need the Archive → Distribute
+> steps in "Submitting to the App Store" above.
 
 - [x] Xcode project generated (XcodeGen, `apps/macos/project.yml`) — builds &
       archives for the App Store; icon asset catalog, entitlements, GA-secret
       injection all wired. Full Archive steps in the "Submitting to the App
       Store" section above.
-- [~] App Store Connect setup — IN PROGRESS: app record created (bundle
-      `com.maxcandela.MaxCandela`, SKU `maxcandela-macos-001`), keywords set,
-      content-rights/age answered (4+). Still to do:
+- [x] App Store Connect setup — COMPLETE: app record (bundle
+      `com.maxcandela.MaxCandela`, SKU `maxcandela-macos-001`), keywords,
+      content-rights/age (4+), and everything below:
   - [x] Finish both IAP products: `com.maxcandela.pro.lifetime` ($9.99
         non-consumable) + `com.maxcandela.pro.monthly` ($0.99/mo subscription
         in a "MaxCandela Pro" group) — product IDs must match the code exactly.
@@ -585,7 +634,7 @@ does disabling instantly restore it) is required before claiming it works.
       thermometer, OS state) drives a proportional ceiling and drops EDR when
       cut. Also fixed: the thermal notification ran `refreshTargets()` off the
       main thread. Hardware-verified; see "Thermal handling".
-      Versioned as **1.0.9 (9)** — built and tested, still to be submitted.
+      Versioned as **1.0.9 (9)** — LIVE on the Mac App Store since 2026-07-27.
 - [x] SEO: domain maxcandela.com wired (`lib/site.ts`), canonical + OG/Twitter
       tags + `og.png`, `sitemap.xml` + `robots.txt`, JSON-LD SoftwareApplication
       structured data (with prices, no fake ratings), per-page meta descriptions.
@@ -620,17 +669,24 @@ does disabling instantly restore it) is required before claiming it works.
       hardware: expired → 1.0000 and zero boost events; 3-day trial → 1.8779.
       Enforcement also runs on a 30-min timer + `didWakeNotification`, not only
       at launch/menu-open — otherwise a Mac left running across the expiry
-      moment kept boosting. Versioned as **1.0.9 (9)** — built and tested,
-      still to be submitted.
-- [~] Trial *starts at download*, not first open (`AppTransaction
-      .originalPurchaseDate`). Someone who downloads today and opens in a week
-      gets a short trial; open it 6 days later and they get none. This is the
-      inherent cost of a tamper-proof anchor — first-launch dates stored
-      locally can be reset for a fresh trial, so the two goals genuinely
-      conflict without a server. Left as-is deliberately; now disclosed on
-      `/terms` and in the home FAQ. Revisit only with a decision on which side
-      to favour (keychain-stored first launch would fix fairness but reopens
-      the reset hole).
+      moment kept boosting. Versioned as **1.0.9 (9)** — LIVE on the Mac App
+      Store since 2026-07-27.
+- [x] **Trial starts at download, not first open — SETTLED 2026-07-28, do not
+      re-open.** `AppTransaction.originalPurchaseDate` anchors the 5-day clock,
+      so someone who downloads today and opens in a week gets a short trial,
+      and at 6+ days none at all — their first click is the paywall. That is
+      the accepted cost of a tamper-proof anchor, chosen over fairness on
+      purpose: a locally-stored first-launch date is resettable for unlimited
+      free trials, and no unforgeable "first open" exists without a server
+      (there is no backend — the site is a static export). Keychain storage is
+      *not* the fix: it adds friction, but the user can still delete the item.
+      Disclosed in both places, verified 2026-07-28 — `/terms` ("measured from
+      the date your Apple Account first downloads MaxCandela") and the home FAQ
+      ("open it soon after installing to get the full five days"); keep that
+      copy accurate if the clock ever changes.
+      The one idea worth costing if it is ever reconsidered: start at first
+      launch but hard-expire at `originalPurchaseDate + N days`, which bounds
+      the abuse instead of eliminating it, with no server. Not built.
 - [x] Trial clock hardening: uses the App Store receipt's original purchase
       date (`AppTransaction.shared`) as the trial start, tamper-proof, with a
       UserDefaults first-launch fallback for dev builds.
@@ -663,8 +719,9 @@ does disabling instantly restore it) is required before claiming it works.
       can change without an app update. Verify the alias actually delivers.
 - [x] Need to update the image in our web
 - [x] Need to update the image in the app
-- [x] Real App Store badge asset + store URL on the web page 
-      (CTAs are placeholders until the app is live).
+- [x] Real App Store badge asset + store URL on the web page — live, not
+      placeholders: `APP_STORE_URL` (`apps/web/lib/site.ts`) drives the hero
+      badge (`public/download-on-mac-app-store.svg`) and both pricing CTAs.
 - [x] Promo codes: told the users how to redeem, **and corrected the premise**.
       This item used to read "tell them it will be applied after the 5day free
       trial ends" — that is **false**. `currentState()` checks
@@ -677,6 +734,41 @@ does disabling instantly restore it) is required before claiming it works.
       SwiftPM dev targets 14; falls back to `apps.apple.com/redeem`, which is
       also the *only* route for non-consumable IAP promo codes — the sheet takes
       subscription offer codes). `/support` + home FAQ document it.
+- [~] **1.1.0 (10)** — version bumped 2026-07-28, built and tested, **not yet
+      submitted**. First minor bump (1.0.x → 1.1.0), keeping the 3-component
+      scheme. Contents: `AppMenu` (copy/paste in dialogs), StoreKit sheets
+      self-centre, Purchases ▸ submenu, "Redeem Code…" hides for lifetime
+      owners, menu figures restated as headroom *left* and reported **per
+      display**, and live updating — 0.2 s ticker while the menu is open plus
+      `pollInterval` 1 s → 0.25 s so the boost follows the brightness slider.
+      Web copy updated to match (`/support` + home FAQ): menu paths now say
+      **Purchases ▸** and the headroom line describes "N× left". The promo-code
+      answer deliberately still leads with the in-app *Redeem Code…* route —
+      an attempt to demote it in favour of Apple's redeem page was rejected
+      2026-07-28. The site states no version number, so nothing to bump.
+- [x] Promo codes, the practical version (2026-07-28). **App-level promo codes
+      are useless here** — they grant a free *download*, and the app is already
+      free; they grant no entitlement and Apple rejects them in the in-app
+      sheet. Giveaways must use **IAP promo codes** generated inside
+      `com.maxcandela.pro.lifetime` (requires that IAP to be *Approved*),
+      redeemed at `apps.apple.com/redeem` or Mac App Store → Redeem — **not**
+      the in-app sheet, which takes subscription offer codes only. Codes expire
+      28 days after generation, are single-use, production-only (never
+      sandbox/TestFlight), locked to the Connect storefront's country, and fail
+      if the Apple ID already owns the product. The entitlement only appears in
+      the **App Store-downloaded** copy — a local `dist/` or `swift run` build
+      has no receipt, so `currentEntitlements` stays empty there.
+      Once redeemed, "Redeem Code…" hides itself (`StoreManager.ownsLifetime`).
+- [x] Copy/paste in app dialogs (2026-07-28): ⌘V did nothing in the redeem-code
+      sheet and the paywall text view because `NSApp.mainMenu` was never set —
+      AppKit matches command keys against the main menu before the responder
+      chain sees them, so with no Edit menu `paste:` was never sent. Fixed with
+      `AppMenu` (App + Edit menus, nil targets → first responder), installed in
+      `applicationDidFinishLaunching`. Also: the StoreKit sheets now centre
+      themselves. A sheet hangs off its parent window's top edge, and the
+      invisible anchor window carried a fixed `+120` offset tuned for the
+      payment sheet, so the differently-sized redeem sheet sat off-centre —
+      `centerAttachedSheet` now measures the sheet and nudges the anchor.
 - [ ] GDPR/ePrivacy: GA cookies are live; the AdSense **loader script** is on
       the site but AdSense is not approved and serves no ads yet. An EU consent
       banner will be needed once ads serve (AdSense requires a certified CMP for
@@ -702,6 +794,12 @@ Keep this list current as work lands.
   `.next/`, and the build yanks compiled chunks out from under the dev server
   ("Cannot find module './NNN.js'"). Cure: stop dev, `rm -rf apps/web/.next`,
   restart. Use `npx tsc --noEmit` for verification while dev is running.
+- A menu that is open runs the run loop in **event-tracking mode**, where a
+  plain `scheduledTimer` (default mode) never fires. Timers meant to update an
+  open menu must be `RunLoop.main.add(timer, forMode: .common)`. `showMenu()`
+  brackets its ticker around `performClick`, which blocks for exactly as long
+  as the menu is on screen. While that ticker runs, `refresh()` is a hot path —
+  don't insert/remove menu items or rebuild images in it unless they changed.
 - Gamma changes must never be applied as hard table swaps in a loop — each
   swap reads as screen flicker. Fade via the 30 Hz animator; likewise debounce
   `didChangeScreenParametersNotification` (our own EDR engagement fires it).

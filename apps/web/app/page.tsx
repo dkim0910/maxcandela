@@ -68,7 +68,7 @@ const FAQS = [
   },
   {
     q: 'I have a promo code — how do I use it?',
-    a: 'Open the ☀️ menu (right-click or double-click the icon) and choose “Redeem Code…”, or redeem it at apps.apple.com/redeem with the same Apple ID. A code unlocks MaxCandela straight away — it does not wait for your free trial to run out, and it replaces the trial rather than being added on to the end of it. If the menu still shows a trial afterwards, choose “Restore Purchases”.',
+    a: 'Open the ☀️ menu (right-click or double-click the icon) and choose “Purchases ▸ Redeem Code…”, or redeem it at apps.apple.com/redeem with the same Apple ID. A code unlocks MaxCandela straight away — it does not wait for your free trial to run out, and it replaces the trial rather than being added on to the end of it. If the menu still shows a trial afterwards, choose “Purchases ▸ Restore Purchases”.',
   },
   {
     q: 'Why doesn’t macOS just allow this?',

@@ -165,10 +165,37 @@ final class BrightnessController {
         return displayManager.bestPotentialHeadroom() > 1.0
     }
 
-    /// The real, live headroom across displays right now (not the theoretical
-    /// potential). ~1.0 when nothing has engaged EDR.
-    func currentHeadroom() -> CGFloat {
-        displayManager.bestCurrentHeadroom()
+    /// One display's live boost position: what we've applied, what the panel
+    /// currently allows, and therefore how much lift is still unused.
+    ///
+    /// Reported per display rather than as a single best-of figure — headroom
+    /// is a ratio against *that* panel's SDR white, so a built-in XDR panel and
+    /// an external HDR monitor produce numbers that mean different things and
+    /// must never be collapsed into one.
+    struct DisplayStatus {
+        let name: String
+        let applied: CGFloat
+        let headroom: CGFloat
+
+        /// Boost still available on this panel; 0 once it is driven to its
+        /// current ceiling.
+        var remaining: CGFloat { max(0, headroom - applied) }
+
+        /// Live headroom sits at ~1.0 until something engages EDR, so below
+        /// that threshold the value describes nothing the user would recognise
+        /// and is not worth showing.
+        var isMeaningful: Bool { headroom > 1.05 }
+    }
+
+    /// Live per-display status for the menu, boost-capable displays only.
+    func displayStatuses() -> [DisplayStatus] {
+        displayManager.currentDisplays()
+            .filter(\.supportsBoost)
+            .map { info in
+                DisplayStatus(name: info.screen.localizedName,
+                              applied: currentScales[info.displayID] ?? 1.0,
+                              headroom: info.currentHeadroom)
+            }
     }
 
     /// How heat is currently affecting brightness, for the menu to explain a
@@ -185,24 +212,22 @@ final class BrightnessController {
         }
     }
 
-    /// Live info for the menu: (applied lift, current headroom) of the display
-    /// with the most headroom, or nil when disabled/no data yet.
-    func liveStatus() -> (applied: CGFloat, headroom: CGFloat)? {
-        guard isEnabled,
-              let best = displayManager.currentDisplays()
-                  .max(by: { $0.currentHeadroom < $1.currentHeadroom })
-        else { return nil }
-        let applied = currentScales[best.displayID] ?? 1.0
-        return (applied, best.currentHeadroom)
-    }
-
     // MARK: - Poll loop
+
+    /// How often live headroom is re-read. Chosen for *user-visible* latency:
+    /// turning the brightness slider moves SDR white, which moves headroom, and
+    /// the boost has to follow within a fade the user reads as immediate. At
+    /// 1 s the clamp lagged the slider by up to a second before the fade even
+    /// started. Cheap to run — it reads NSScreen properties, no I/O — and the
+    /// heat model integrates over real elapsed time (`advanceExposure`), so
+    /// tick length does not perturb the thermal ladder.
+    private static let pollInterval: TimeInterval = 0.25
 
     /// EDR headroom ramps up over a few seconds after the trigger appears and
     /// drifts with thermals/battery — poll it and follow (never cache).
     private func startPolling() {
         pollTimer?.invalidate()
-        let timer = Timer(timeInterval: 1.0, repeats: true) { [weak self] _ in
+        let timer = Timer(timeInterval: Self.pollInterval, repeats: true) { [weak self] _ in
             self?.refreshTargets()
         }
         RunLoop.main.add(timer, forMode: .common)
@@ -385,7 +410,7 @@ final class BrightnessController {
             let next = Self.animationStep(current: current, target: target)
             if gamma.applyLift(scale: next, to: id) {
                 // Only record progress the display actually accepted — otherwise
-                // liveStatus() would report a boost that isn't on the glass.
+                // displayStatuses() would report a boost that isn't on the glass.
                 currentScales[id] = next
                 if next != target {
                     allSettled = false

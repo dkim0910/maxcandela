@@ -36,8 +36,9 @@ export default function SupportPage() {
         <li>MaxCandela needs a display with EDR headroom — MacBook Pro
           14″/16″ (2021+), Pro Display XDR, or another HDR-capable display.
           On other panels there is no headroom to unlock.</li>
-        <li>Check the right-click menu: it shows the live headroom your
-          display is reporting right now.</li>
+        <li>Check the right-click menu: next to the toggle it shows how much
+          headroom is left on each display — <em>0.00× left</em> means that
+          screen is already as bright as the panel currently allows.</li>
         <li>On battery-saver, macOS temporarily lowers the available headroom;
           the boost follows it down automatically.</li>
         <li>If it was brighter earlier in the session, MaxCandela has probably
@@ -60,13 +61,13 @@ export default function SupportPage() {
       <h3>I have a promo code — where do I enter it?</h3>
       <p>
         Open the ☀️ menu (right-click or double-click the icon) and choose{' '}
-        <em>Redeem Code…</em>, or redeem it at{' '}
+        <em>Purchases ▸ Redeem Code…</em>, or redeem it at{' '}
         <a href="https://apps.apple.com/redeem">apps.apple.com/redeem</a> using
         the same Apple Account you use for the App Store. A code takes effect{' '}
         <strong>immediately</strong> — it does not wait for the 5-day free trial
         to finish, and it replaces the trial rather than extending it. If the
         menu still shows a trial after redeeming, choose{' '}
-        <em>Restore Purchases</em>.
+        <em>Purchases ▸ Restore Purchases</em>.
       </p>
 
       <h3>How do I cancel my subscription?</h3>
@@ -88,7 +89,7 @@ export default function SupportPage() {
       <h3>I bought Lifetime on another Mac — how do I unlock this one?</h3>
       <p>
         Make sure you’re signed into the same Apple Account, then right-click
-        the ☀️ icon → <em>Restore Purchases</em>.
+        the ☀️ icon → <em>Purchases ▸ Restore Purchases</em>.
       </p>
 
       <h3>Is it safe for my display?</h3>
