@@ -394,6 +394,19 @@ running instance first (`pkill -x MaxCandela`) to avoid two menu-bar icons.
 | `MAXCANDELA_FORCE_TEMP=43.5 swift run MaxCandela` | Fake the chassis thermometer → walk the ease/protect ladder without cooking the Mac |
 | `MAXCANDELA_FORCE_NO_HEADROOM=1 swift run MaxCandela` | Pretend no display has EDR headroom → preview the "no boost available" alert (what App Review saw on a MacBook Air) |
 
+**The offer-code sheet is NOT ours to position** (measured 2026-07-28, installed
+1.1.3 build 14). `centerAttachedSheet` logged *nothing at all* across a 2-hour
+window while the sheet was demonstrably presented — its strings are in the
+shipped binary, so the code ran and found `anchor.attachedSheet == nil`. The
+sheet is drawn by `StoreKitUIServiceMac` out of process, so there is no window
+of ours to move and the sandbox offers no supported way to move another
+process's window. Do not "fix" the centring by tweaking the maths — it never
+gets a window. `hostedWindow(of:)` also checks `childWindows` in case some
+StoreKit UI attaches that way, and a one-shot `redeem survey —` log line dumps
+what windows existed; read that before touching this again. The **payment**
+sheet is different — `purchase(confirmIn:)` takes an NSWindow explicitly and
+plausibly is a real sheet, so centring may work there. Unverified.
+
 **"Redeem Code…" cannot be tested under `swift run`** (verified 2026-07-28 from
 `log show`). `AppStore.presentOfferCodeRedeemSheet` throws `ASDErrorDomain 507
 "No client to present code redemption sheet"` — a bare SwiftPM binary is not an
@@ -734,22 +747,32 @@ does disabling instantly restore it) is required before claiming it works.
       SwiftPM dev targets 14; falls back to `apps.apple.com/redeem`, which is
       also the *only* route for non-consumable IAP promo codes — the sheet takes
       subscription offer codes). `/support` + home FAQ document it.
-- [~] **1.1.3 (13)** — the shipping version, set 2026-07-28, built and tested.
-      First minor bump off 1.0.x, keeping the 3-component scheme. (1.1.0–1.1.2
-      were bumped and superseded the same day; never uploaded, so the gap is
-      harmless — Apple only needs increasing numbers.) The store still served
-      **1.0.9** when last checked on 2026-07-28, which is expected until review
-      and propagation finish; re-check with the iTunes lookup API.
-      Contents: `AppMenu` (copy/paste in dialogs), StoreKit sheets self-centre
-      on both axes and re-centre as the sheet resizes (remote-view content
-      loads late), anchored to the screen under the pointer — ⚠️ **unverified**,
-      it depends on StoreKit's remote sheet registering as `attachedSheet`; the
-      code now logs which way it went, see "no attached sheet seen" in the log.
-      Purchases ▸ submenu, "Redeem Code…" hides for lifetime
-      owners, menu figures restated as headroom *left* and reported **per
-      display**, and live updating — 0.2 s ticker while the menu is open plus
-      `pollInterval` 1 s → 0.25 s so the boost follows the brightness slider.
-      Web copy updated to match (`/support` + home FAQ): menu paths now say
+- [~] **1.1.5 (15)** — current source version, set 2026-07-28, built and tested,
+      **not yet uploaded**. Bump the *build* number for every upload; Apple only
+      requires increasing values, so the skipped 1.1.0–1.1.4 are harmless.
+      Version numbering state, as of 2026-07-28 (three different things, easy to
+      confuse — check all three before assuming a fix is missing):
+
+  | Where | Version | Note |
+  |---|---|---|
+  | This repo | 1.1.5 (15) | not uploaded |
+  | `/Applications/MaxCandela.app` | 1.1.3 (14) | what Daniel is testing |
+  | iTunes lookup API | 1.0.9 | still cached/propagating |
+
+      **A fix you can't see is usually a build older than the fix** — confirm
+      with `defaults read /Applications/MaxCandela.app/Contents/Info
+      CFBundleShortVersionString`, and `strings …/MacOS/MaxCandela | grep <a
+      literal from the change>` to prove whether the code is even in there.
+
+      Contents of this release: `AppMenu` (copy/paste in our own dialogs);
+      Purchases ▸ submenu; "Redeem Code…" hides for lifetime owners; menu
+      figures restated as headroom *left*, reported **per display**; live
+      updating — 0.2 s ticker while the menu is open plus `pollInterval`
+      1 s → 0.25 s so the boost follows the brightness slider. Sheet centring
+      is in for the payment sheet but **does not work for the offer-code
+      sheet** — see the note in the DEBUG-flags section; that is an Apple
+      out-of-process window, not a bug in our maths.
+      Web copy updated to match (`/support` + home FAQ): menu paths say
       **Purchases ▸**, the headroom line describes "N× left", and the promo-code
       answer leads with `apps.apple.com/redeem` (works for every code type),
       naming the in-app sheet second with its subscription-offer-code limit.

@@ -740,25 +740,47 @@ final class MenuBarController {
         guard let anchor, attemptsLeft > 0 else { return }
 
         var seen = lastSize
-        if let sheet = anchor.attachedSheet, sheet.frame.size != lastSize {
+        if let sheet = hostedWindow(of: anchor), sheet.frame.size != lastSize {
             seen = sheet.frame.size
             recenter(sheet, parent: anchor)
-            NSLog("MaxCandela: centred StoreKit sheet, size %@ → %@",
+            NSLog("MaxCandela: centred StoreKit window, size %@ → %@",
                   NSStringFromSize(sheet.frame.size), NSStringFromRect(sheet.frame))
         }
+        // One survey mid-flight, so a sheet we failed to find can still be
+        // identified from the log instead of guessing at its window class.
+        if attemptsLeft == 80 {
+            let others = NSApp.windows
+                .filter { $0 !== anchor && $0.isVisible }
+                .map { "\(type(of: $0)) \(NSStringFromRect($0.frame))" }
+            NSLog("MaxCandela: redeem survey — attachedSheet=%@ children=%d visibleWindows=[%@]",
+                  anchor.attachedSheet == nil ? "nil" : "yes",
+                  anchor.childWindows?.count ?? 0,
+                  others.joined(separator: ", "))
+        }
         guard attemptsLeft > 1 else {
-            // Whether StoreKit's remote sheets actually register as
-            // `attachedSheet` is the one thing this code can't assume. If they
-            // don't, nothing above ever runs and the sheet sits wherever the
-            // system put it — say so in the log rather than failing silently.
+            // Whether StoreKit's remote UI is reachable as a sheet or child
+            // window at all is the one thing this code can't assume. If it is
+            // not, nothing above runs and Apple positions it — say so in the
+            // log rather than failing silently.
             if seen == .zero {
-                NSLog("MaxCandela: no attached sheet seen — StoreKit positioned it itself")
+                NSLog("MaxCandela: no hosted window seen — StoreKit positioned it itself")
             }
             return
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
             centerAttachedSheet(on: anchor, lastSize: seen, attemptsLeft: attemptsLeft - 1)
         }
+    }
+
+    /// The window StoreKit put on top of `anchor`, if we can reach it at all.
+    ///
+    /// `attachedSheet` covers a true sheet (the payment sheet). The offer-code
+    /// sheet is drawn by `StoreKitUIServiceMac` out of process and was observed
+    /// *not* to register there, so a child window is checked too. If neither
+    /// finds it, the window belongs to another process and the sandbox gives us
+    /// no supported way to move it.
+    private static func hostedWindow(of anchor: NSWindow) -> NSWindow? {
+        anchor.attachedSheet ?? anchor.childWindows?.first { $0.isVisible }
     }
 
     /// Move `parent` so its sheet lands in the middle of the monitor — the
