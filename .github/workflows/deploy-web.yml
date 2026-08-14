@@ -59,3 +59,56 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+      # Push the new URLs to Bing/IndexNow instead of waiting to be crawled.
+      # Bing's own queue left maxcandela.com uncrawled indefinitely (2026-08-14);
+      # IndexNow is the supported way to ask for a crawl directly.
+      # The key file must stay reachable at the keyLocation below — it lives at
+      # apps/web/public/<key>.txt so the static export publishes it at the root.
+      # Never fails the deploy: indexing is best-effort, the site is already live.
+      - name: Notify IndexNow
+        continue-on-error: true
+        env:
+          INDEXNOW_KEY: fda6a6d1bb1812e1a3a98a2b68c8a597
+          SITE_HOST: maxcandela.com
+        run: |
+          set -uo pipefail
+
+          # Pages serves from a CDN, so the fresh sitemap can lag the deploy.
+          for attempt in 1 2 3 4 5; do
+            sitemap=$(curl -sSf --max-time 30 "https://$SITE_HOST/sitemap.xml") && break
+            echo "sitemap not ready (attempt $attempt), retrying..."
+            sleep 15
+          done
+
+          if [ -z "${sitemap:-}" ]; then
+            echo "::warning::could not fetch sitemap; skipping IndexNow"
+            exit 0
+          fi
+
+          # IndexNow takes a URL list, not a sitemap, so pull the <loc> values out.
+          urls=$(printf '%s' "$sitemap" \
+            | grep -oE '<loc>[^<]+</loc>' \
+            | sed -E 's|</?loc>||g' \
+            | jq -R . | jq -sc .)
+
+          echo "submitting $(printf '%s' "$urls" | jq 'length') URLs"
+
+          jq -nc \
+            --arg host "$SITE_HOST" \
+            --arg key "$INDEXNOW_KEY" \
+            --arg loc "https://$SITE_HOST/$INDEXNOW_KEY.txt" \
+            --argjson urlList "$urls" \
+            '{host: $host, key: $key, keyLocation: $loc, urlList: $urlList}' \
+            > payload.json
+
+          # 200 = accepted, 202 = accepted but key still being validated.
+          code=$(curl -sS --max-time 30 -o response.txt -w '%{http_code}' \
+            -X POST 'https://api.indexnow.org/IndexNow' \
+            -H 'Content-Type: application/json; charset=utf-8' \
+            --data @payload.json)
+
+          echo "IndexNow responded $code"
+          cat response.txt || true
+          [ "$code" = "200" ] || [ "$code" = "202" ] \
+            || echo "::warning::IndexNow returned $code"
