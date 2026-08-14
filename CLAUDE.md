@@ -747,8 +747,8 @@ does disabling instantly restore it) is required before claiming it works.
       SwiftPM dev targets 14; falls back to `apps.apple.com/redeem`, which is
       also the *only* route for non-consumable IAP promo codes — the sheet takes
       subscription offer codes). `/support` + home FAQ document it.
-- [~] **1.1.5 (15)** — current source version, set 2026-07-28, built and tested,
-      **not yet uploaded**. Bump the *build* number for every upload; Apple only
+- [x] **1.1.5 (15)** — current source version, set 2026-07-28, built and tested,
+      Bump the *build* number for every upload; Apple only
       requires increasing values, so the skipped 1.1.0–1.1.4 are harmless.
       Version numbering state, as of 2026-07-28 (three different things, easy to
       confuse — check all three before assuming a fix is missing):
