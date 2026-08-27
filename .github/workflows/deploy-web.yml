@@ -28,8 +28,17 @@ jobs:
     defaults:
       run:
         working-directory: apps/web
+    outputs:
+      # JSON array of URLs for the IndexNow step in the deploy job.
+      indexnow_urls: ${{ steps.urls.outputs.list }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          # Full history: app/sitemap.ts derives each route's <lastmod> from the
+          # last commit that touched its source file, and the changed-route
+          # detection below diffs against the previous commit. A shallow clone
+          # silently degrades both to their fallbacks.
+          fetch-depth: 0
 
       - uses: actions/setup-node@v6
         with:
@@ -42,6 +51,62 @@ jobs:
 
       - name: Build static export
         run: npm run build
+
+      - name: Work out which URLs to submit to IndexNow
+        id: urls
+        working-directory: ${{ github.workspace }}
+        env:
+          BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          set -uo pipefail
+
+          # Read the sitemap we just BUILT, not the live one. Pages serves
+          # through a CDN, so fetching https://maxcandela.com/sitemap.xml right
+          # after a deploy can return a cached copy that omits a new route.
+          all=$(grep -oE '<loc>[^<]+</loc>' apps/web/out/sitemap.xml \
+                | sed -E 's|</?loc>||g')
+
+          if [ -z "$all" ]; then
+            echo "::warning::no <loc> entries in the built sitemap; skipping IndexNow"
+            echo "list=[]" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # IndexNow's guidance is to submit what actually changed. A change to
+          # a single page's source maps to that one route; anything shared
+          # (layout, components, CSS, public assets) really does change every
+          # page, so submit the lot.
+          files=""
+          if [ -n "${BEFORE_SHA:-}" ] \
+             && [ "$BEFORE_SHA" != "0000000000000000000000000000000000000000" ] \
+             && git cat-file -e "${BEFORE_SHA}^{commit}" 2>/dev/null; then
+            files=$(git diff --name-only "$BEFORE_SHA" "$GITHUB_SHA" -- apps/web 2>/dev/null)
+          fi
+
+          # Counted rather than tested with `grep -qv`: the exit status of
+          # `-q` combined with `-v` is not consistent across grep
+          # implementations, and getting it backwards silently mails the wrong
+          # URL list. Comparing counts means the same thing everywhere.
+          total=$(printf '%s\n' "$files" | grep -c . || true)
+          pages=$(printf '%s\n' "$files" | grep -cE '^apps/web/app/[^/]*/?page\.tsx$' || true)
+
+          if [ -z "$files" ]; then
+            # First push on the branch, a manual run, or no diff available.
+            urls="$all"
+            echo "no usable diff — submitting every URL"
+          elif [ "$total" -gt 0 ] && [ "$total" -eq "$pages" ]; then
+            urls=$(printf '%s\n' "$files" \
+              | sed -E 's|^apps/web/app/page\.tsx$|/|; s|^apps/web/app/([^/]+)/page\.tsx$|/\1/|' \
+              | sed -E 's|^|https://maxcandela.com|')
+            echo "page-only change ($pages file(s)) — submitting just the changed routes"
+          else
+            urls="$all"
+            echo "shared files changed ($((total - pages)) of $total) — submitting every URL"
+          fi
+
+          list=$(printf '%s\n' "$urls" | grep -v '^$' | sort -u | jq -R . | jq -sc .)
+          echo "$list" | jq -r '.[]' | sed 's/^/  /'
+          echo "list=$list" >> "$GITHUB_OUTPUT"
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
@@ -60,45 +125,32 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@v4
 
-      # Push the new URLs to Bing/IndexNow instead of waiting to be crawled.
+      # Push the changed URLs to Bing/IndexNow instead of waiting to be crawled.
       # Bing's own queue left maxcandela.com uncrawled indefinitely (2026-08-14);
       # IndexNow is the supported way to ask for a crawl directly.
       # The key file must stay reachable at the keyLocation below — it lives at
       # apps/web/public/<key>.txt so the static export publishes it at the root.
       # Never fails the deploy: indexing is best-effort, the site is already live.
+      # NOTE: a 202 means the key is still being validated, NOT that the URLs
+      # were accepted. Confirm in Bing Webmaster Tools → IndexNow that the key
+      # validated; every submission so far has only ever returned 202.
       - name: Notify IndexNow
+        if: needs.build.outputs.indexnow_urls != '' && needs.build.outputs.indexnow_urls != '[]'
         continue-on-error: true
         env:
           INDEXNOW_KEY: fda6a6d1bb1812e1a3a98a2b68c8a597
           SITE_HOST: maxcandela.com
+          URL_LIST: ${{ needs.build.outputs.indexnow_urls }}
         run: |
           set -uo pipefail
 
-          # Pages serves from a CDN, so the fresh sitemap can lag the deploy.
-          for attempt in 1 2 3 4 5; do
-            sitemap=$(curl -sSf --max-time 30 "https://$SITE_HOST/sitemap.xml") && break
-            echo "sitemap not ready (attempt $attempt), retrying..."
-            sleep 15
-          done
-
-          if [ -z "${sitemap:-}" ]; then
-            echo "::warning::could not fetch sitemap; skipping IndexNow"
-            exit 0
-          fi
-
-          # IndexNow takes a URL list, not a sitemap, so pull the <loc> values out.
-          urls=$(printf '%s' "$sitemap" \
-            | grep -oE '<loc>[^<]+</loc>' \
-            | sed -E 's|</?loc>||g' \
-            | jq -R . | jq -sc .)
-
-          echo "submitting $(printf '%s' "$urls" | jq 'length') URLs"
+          echo "submitting $(printf '%s' "$URL_LIST" | jq 'length') URLs"
 
           jq -nc \
             --arg host "$SITE_HOST" \
             --arg key "$INDEXNOW_KEY" \
             --arg loc "https://$SITE_HOST/$INDEXNOW_KEY.txt" \
-            --argjson urlList "$urls" \
+            --argjson urlList "$URL_LIST" \
             '{host: $host, key: $key, keyLocation: $loc, urlList: $urlList}' \
             > payload.json
 

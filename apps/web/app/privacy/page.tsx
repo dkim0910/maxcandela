@@ -1,12 +1,14 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
+import { pageMetadata } from '@/lib/metadata';
 import LegalShell from '@/components/LegalShell';
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
+  path: '/privacy/',
   title: 'Privacy Policy — MaxCandela',
   description:
     'MaxCandela collects no personal data and never sees your screen content. Read exactly what the app and website do and don’t collect.',
-};
+});
 
 export default function PrivacyPage() {
   return (
@@ -14,8 +16,8 @@ export default function PrivacyPage() {
       <p>
         MaxCandela is built to collect as little as possible. <strong>The Mac
         app collects no personal data</strong> and never sees your screen. This
-        <strong> website</strong> uses analytics and includes Google ad code
-        (ads may appear), which can set cookies — details below.
+        <strong> website</strong> uses analytics, which sets cookies. It carries
+        no advertising — details below.
       </p>
 
       <h2>The Mac app</h2>
@@ -56,15 +58,10 @@ export default function PrivacyPage() {
           this purpose; see{' '}
           <a href="https://policies.google.com/privacy">Google’s Privacy
           Policy</a> for how Google processes this data.</li>
-        <li>Includes Google AdSense code, and ads may be served through it.
-          Google and its partners may use
-          cookies and similar technologies to serve and personalize ads based on
-          your visits to this and other sites. You can review and control ad
-          personalization at{' '}
-          <a href="https://myadcenter.google.com/">Google My Ad Center</a>, and
-          learn how Google uses this data in{' '}
-          <a href="https://policies.google.com/technologies/partner-sites">
-            Google’s partner-sites policy</a>.</li>
+        <li>Shows no advertising and loads no advertising code. The site
+          previously included a Google AdSense script; it has been removed, so
+          no ad cookies are set. If we ever add advertising we will update this
+          policy first.</li>
         <li>The in-browser brightness demo runs entirely on your device —
           nothing about your display or its content is sent anywhere.</li>
         <li>Our hosting provider may keep standard, short-lived server logs

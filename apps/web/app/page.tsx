@@ -6,7 +6,22 @@ import SiteFooter from '@/components/SiteFooter';
 import ScrollLink from '@/components/ScrollLink';
 import BeforeAfter from '@/components/BeforeAfter';
 import { useBoost } from '@/components/BoostProvider';
-import { APP_STORE_URL } from '@/lib/site';
+import { APP_STORE_URL, SITE_NAME, SITE_ORIGIN, SITE_URL } from '@/lib/site';
+
+// Responsive sources for the comparison slider. The originals are 3456×2234
+// PNGs (~5 MB each, misnamed .jpg) — far more than the 1240px box can show, so
+// they are re-encoded to WebP at 1× and 2× the container width by
+// scripts/optimize-web-images.sh. 10.45 MB → 260 KB on a 2× display.
+const COMPARE_WIDTH = 2480;
+const COMPARE_HEIGHT = 1604;
+const COMPARE_NORMAL = {
+  src: '/compare-normal-2480.webp',
+  srcSet: '/compare-normal-1240.webp 1240w, /compare-normal-2480.webp 2480w',
+};
+const COMPARE_BOOSTED = {
+  src: '/compare-boosted-2480.webp',
+  srcSet: '/compare-boosted-1240.webp 1240w, /compare-boosted-2480.webp 2480w',
+};
 
 const FEATURES = [
   {
@@ -79,32 +94,59 @@ const FAQS = [
 export default function Home() {
   // Site-wide boost state — the video overlay itself renders from the root
   // layout (BoostProvider), so it stays active on every page.
-  const { enabled, supported, unlocker, toggle } = useBoost();
+  const { enabled, supported, isMac, unlocker, toggle } = useBoost();
 
+  // The demo is a macOS-only claim, so a phone gets its own state rather than
+  // a working toggle: `(dynamic-range: high)` matches on iPhone 12+ and many
+  // HDR Android phones, and brightening someone's phone would imply an app
+  // that cannot help them. `note` is the long explanation — it sits under the
+  // pill instead of inside it, so the pill stays a pill.
   const status =
-    supported === null
-      ? { cls: 'status-off', text: 'Checking your display…' }
-      : !supported
+    supported === null || isMac === null
+      ? { cls: 'status-off', text: 'Checking your display…', note: null }
+      : !isMac
         ? {
             cls: 'status-unsupported',
-            text: 'No HDR headroom on this display — MaxCandela needs a MacBook Pro 14″/16″ (2021 or later) or a Pro Display XDR. MacBook Air and standard monitors aren’t supported.',
+            text: 'Open this page on a MacBook Pro to try the demo',
+            note: 'MaxCandela is a macOS app. The browser demo needs the same XDR display the app does, so it only runs on a Mac.',
           }
-        : enabled
-          ? { cls: 'status-on', text: 'Boost active — this page is now brighter than macOS normally allows' }
-          : { cls: 'status-off', text: 'Boost off — normal brightness' };
+        : !supported
+          ? {
+              cls: 'status-unsupported',
+              text: 'No HDR headroom on this display',
+              note: 'MaxCandela needs a MacBook Pro 14″/16″ (2021 or later) or a Pro Display XDR. MacBook Air and standard monitors have no headroom to unlock.',
+            }
+          : enabled
+            ? {
+                cls: 'status-on',
+                text: 'Boost active — this page is now brighter than macOS normally allows',
+                note: null,
+              }
+            : { cls: 'status-off', text: 'Boost off — normal brightness', note: null };
 
   return (
     // Wrapper (normal flow) so Next's scroll restoration targets this, not the
     // fixed <NavBar> — avoids the "Skipping auto-scroll" console warning.
     <div>
+      {/* Describes THIS page: the app itself and the FAQ actually rendered
+          below. Site-wide Organization/WebSite identity lives in the layout.
+          Inline JSON-LD renders straight into the prerendered HTML, so being
+          inside a client component costs nothing. */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(homeSchema) }}
+      />
       <NavBar />
 
       <main className="main">
         {/* ---- Hero ---- */}
         <section className="hero">
           <p className="eyebrow">For MacBook Pro XDR displays</p>
+          {/* "MacBook Pro" belongs in the h1, not only in the eyebrow above it:
+              the entity people search for has to carry heading weight. */}
           <h1>
-            Your screen can go <span className="hl">70% brighter</span>.
+            Your MacBook Pro screen can go{' '}
+            <span className="hl">70% brighter</span>.
             <br />
             macOS just won’t let it.
           </h1>
@@ -142,17 +184,19 @@ export default function Home() {
         {/* ---- Product showcase: before/after ---- */}
         <section className="showcase">
           <span className="section-eyebrow">See the difference</span>
-          <h2>How dark it is now vs. how bright it gets</h2>
+          <h2>How dark your MacBook Pro screen is now vs. how bright it gets</h2>
           <p className="demo-copy">
             Drag the slider — the left is your screen at its normal cap, the
             right is the same desktop with MaxCandela on.
           </p>
           <BeforeAfter
-            before="/compare-normal.jpg"
-            after="/compare-boosted.jpg"
+            before={COMPARE_NORMAL}
+            after={COMPARE_BOOSTED}
+            width={COMPARE_WIDTH}
+            height={COMPARE_HEIGHT}
             beforeLabel="Now"
             afterLabel="With MaxCandela"
-            alt="A Mac desktop shown at normal brightness versus brightened with MaxCandela"
+            alt="MacBook Pro XDR display at the macOS brightness cap next to the same desktop unlocked to full brightness by MaxCandela"
           />
           <p className="device-caption">
             Same Mac, same wallpaper — only the brightness changes. The app
@@ -163,7 +207,7 @@ export default function Home() {
         {/* ---- Live demo ---- */}
         <section className="demo" id="demo">
           <span className="section-eyebrow">Try it free</span>
-          <h2>Don’t take our word for it — feel it</h2>
+          <h2>Don’t take our word for it — try the brightness boost</h2>
           <p className="demo-copy">
             This page can boost itself the same way, right in your browser.
             Press the button and imagine your whole Mac like this.
@@ -174,7 +218,7 @@ export default function Home() {
             <button
               className={`toggle toggle-big ${enabled ? 'toggle-on' : ''}`}
               onClick={toggle}
-              disabled={supported !== true}
+              disabled={supported !== true || isMac !== true}
               aria-pressed={enabled}
             >
               <span className="toggle-dot" aria-hidden="true" />
@@ -187,6 +231,7 @@ export default function Home() {
               {status.text}
             </div>
           </div>
+          {status.note && <p className="demo-fineprint">{status.note}</p>}
           {enabled && unlocker?.error && (
             <p className="diag">⚠️ {unlocker.error}</p>
           )}
@@ -200,7 +245,7 @@ export default function Home() {
         <section className="features" id="features">
           <div className="section-head">
             <span className="section-eyebrow">Why MaxCandela</span>
-            <h2>Built for one job, done right</h2>
+            <h2>Built for one job: making your whole Mac brighter</h2>
           </div>
           <div className="cards">
             {FEATURES.map((f) => (
@@ -217,7 +262,7 @@ export default function Home() {
         <section className="pricing" id="pricing">
           <div className="section-head">
             <span className="section-eyebrow">Pricing</span>
-            <h2>Simple pricing</h2>
+            <h2>Simple pricing — $9.99 once or $0.99/month</h2>
             <p className="section-sub">
               Free for 5 days, everything unlocked. Then pick what suits you.
               Requires a MacBook Pro 14″/16″ (2021 or later) or Pro Display XDR
@@ -270,7 +315,7 @@ export default function Home() {
         <section className="faq" id="faq">
           <div className="section-head">
             <span className="section-eyebrow">FAQ</span>
-            <h2>Questions, answered</h2>
+            <h2>MacBook Pro brightness questions, answered</h2>
           </div>
           {FAQS.map((f) => (
             <details key={f.q}>
@@ -278,6 +323,18 @@ export default function Home() {
               <p>{f.a}</p>
             </details>
           ))}
+          {/* The only in-body links to the deep pages. Footer-only links give a
+              crawler almost nothing to weigh, and /support/ is the page most
+              likely to answer a search that lands here. */}
+          <p className="faq-more">
+            Want the full explanation? Read{' '}
+            <Link href="/how-it-works/">
+              how to make your MacBook screen brighter than max
+            </Link>{' '}
+            — why macOS caps it, and why a bright wallpaper can’t fix it. Still
+            stuck? Our <Link href="/support/">support guide</Link> covers
+            display-by-display troubleshooting, subscriptions and promo codes.
+          </p>
         </section>
       </main>
 
@@ -285,3 +342,66 @@ export default function Home() {
     </div>
   );
 }
+
+// Structured data for the home page. Deliberately no `aggregateRating`: the
+// App Store listing has 0 ratings, and Google's review-snippet policy forbids
+// aggregating another site's ratings anyway. That means no Software App rich
+// result until real first-party reviews exist — the block is entity data for
+// Google, Bing and AI answer engines, not a rich-result play.
+const homeSchema = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'SoftwareApplication',
+      '@id': `${SITE_ORIGIN}#app`,
+      name: SITE_NAME,
+      applicationCategory: 'UtilitiesApplication',
+      operatingSystem: 'macOS 15.6 or later',
+      url: SITE_ORIGIN,
+      image: `${SITE_URL}/og.png`,
+      screenshot: `${SITE_URL}/compare-boosted-2480.webp`,
+      // The machine-readable link between the site and the store listing —
+      // the listing's sellerUrl already points back here.
+      downloadUrl: APP_STORE_URL,
+      installUrl: APP_STORE_URL,
+      sameAs: [APP_STORE_URL],
+      publisher: { '@id': `${SITE_ORIGIN}#organization` },
+      description:
+        'MaxCandela unlocks the full brightness of MacBook Pro XDR displays — pushing everyday content past the ~600 nit cap macOS enforces, with one click in the menu bar.',
+      // `category: In-app purchase` matters: the App Store listing is Free, so
+      // a bare $9.99 Offer contradicted the page it links to.
+      offers: [
+        {
+          '@type': 'Offer',
+          name: 'Lifetime',
+          price: '9.99',
+          priceCurrency: 'USD',
+          category: 'In-app purchase',
+          availability: 'https://schema.org/InStock',
+          url: APP_STORE_URL,
+        },
+        {
+          '@type': 'Offer',
+          name: 'Monthly',
+          price: '0.99',
+          priceCurrency: 'USD',
+          category: 'In-app purchase',
+          availability: 'https://schema.org/InStock',
+          url: APP_STORE_URL,
+        },
+      ],
+    },
+    {
+      // Google retired FAQ rich results, so this earns no stars in Google.
+      // Bing and the AI answer engines still consume FAQPage, and it costs
+      // ~2 KB to describe questions the page genuinely answers.
+      '@type': 'FAQPage',
+      '@id': `${SITE_ORIGIN}#faq`,
+      mainEntity: FAQS.map((f) => ({
+        '@type': 'Question',
+        name: f.q,
+        acceptedAnswer: { '@type': 'Answer', text: f.a },
+      })),
+    },
+  ],
+};

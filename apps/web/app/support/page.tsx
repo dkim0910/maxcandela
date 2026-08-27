@@ -1,11 +1,13 @@
 import type { Metadata } from 'next';
+import { pageMetadata } from '@/lib/metadata';
 import LegalShell from '@/components/LegalShell';
 
-export const metadata: Metadata = {
-  title: 'Support — MaxCandela',
+export const metadata: Metadata = pageMetadata({
+  path: '/support/',
+  title: 'MaxCandela Support — XDR brightness help for MacBook Pro',
   description:
     'Help with MaxCandela: which Macs are supported, why the boost may look different, managing your subscription, restoring purchases, and how to get in touch.',
-};
+});
 
 const SUPPORT_EMAIL = 'hello+maxcandela@nelera.net';
 // The "+" must be percent-encoded in a mailto: URL — several mail clients

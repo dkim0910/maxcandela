@@ -1,12 +1,14 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
+import { pageMetadata } from '@/lib/metadata';
 import LegalShell from '@/components/LegalShell';
 
-export const metadata: Metadata = {
-  title: 'About — MaxCandela',
+export const metadata: Metadata = pageMetadata({
+  path: '/about/',
+  title: 'About MaxCandela — the XDR brightness unlocker for Mac',
   description:
     'Why MaxCandela exists: your MacBook Pro’s XDR display is rated for ~1,000 nits but macOS caps everyday content near 600. We hand that reserve back to you.',
-};
+});
 
 export default function AboutPage() {
   return (

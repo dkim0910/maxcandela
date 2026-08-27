@@ -1,12 +1,14 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
+import { pageMetadata } from '@/lib/metadata';
 import LegalShell from '@/components/LegalShell';
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
+  path: '/terms/',
   title: 'Terms of Use — MaxCandela',
   description:
     'The terms for using MaxCandela: licensing, the free trial, pricing and subscriptions, fair-use expectations, and warranty.',
-};
+});
 
 export default function TermsPage() {
   return (

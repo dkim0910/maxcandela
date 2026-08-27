@@ -239,10 +239,12 @@ Rules that make this work:
 - **No glows in the CSS**: no `box-shadow` halos or `radial-gradient` washes —
   under the boost they multiply into EDR and read as light bleed ("blooming").
   Hard-edged gradients inside elements are fine.
-- Two encodings are needed: **HEVC 10-bit PQ** (`hvc1`, BT.2020/SMPTE-2084,
-  white pinned at ~1000 nits) for Safari/Chrome-with-HEVC and **VP9 10-bit
-  HLG** (BT.2020/arib-std-b67) as fallback. Both live in `apps/web/public/hdr/`
-  and are committed; pick via `canPlayType`.
+- Two encodings are needed: **HEVC 10-bit PQ** (`hvc1`, BT.2020/SMPTE-2084)
+  for Safari/Chrome-with-HEVC and **VP9 10-bit HLG** (BT.2020/arib-std-b67) as
+  fallback. Both live in `apps/web/public/hdr/` and are committed; pick via
+  `canPlayType`. **The shipping code uses `white-pq-1600.mp4` and
+  `white-hlg.webm`** (`BrightnessUnlocker.tsx`) — verify against the source
+  before believing any nit figure written down here.
 - Regenerate them with `scripts/generate-hdr-video.sh` (needs ffmpeg). Gotcha:
   libvpx only writes the WebM Colour element if the *input frames* carry the
   metadata — hence the `setparams` filter in the script. Verify with
@@ -352,9 +354,13 @@ Data flow: toggle → `BrightnessController` → per-tick
 `targetScale(requested, currentHeadroom)` → trigger renderer boost + gamma
 lift (faded by the animator) per display.
 
-Also removed 2026-07: the web app's three-level boost selector (single
-1000-nit clip with codec detection remains; the 700/1600-nit clips still exist
-in `public/hdr/` and the generator script if ever needed again).
+Also removed 2026-07: the web app's three-level boost selector. Codec
+detection remains and picks **`white-pq-1600.mp4`** (HEVC) or
+**`white-hlg.webm`** (fallback). *(Corrected 2026-08-27: this said the
+1000-nit clip was the one in use — it is not, and has not been. Both
+`white-pq-700.mp4` and `white-pq-1000.mp4` are referenced nowhere, are still
+published at maxcandela.com/hdr/, and can be deleted; `scripts/
+generate-hdr-video.sh` regenerates them.)*
 
 ## Build / run / test
 
@@ -547,8 +553,8 @@ does disabling instantly restore it) is required before claiming it works.
 - [x] Web app: Next.js static export, nav-bar toggle, HDR video assets
       (`scripts/generate-hdr-video.sh`), `dynamic-range` detection.
 - [x] Web boost verified on hardware (fullscreen multiply-blend; verified with
-      3 nit levels at the time — the selector was since removed, single
-      1000-nit clip remains).
+      3 nit levels at the time — the selector was since removed; the code now
+      picks the 1600-nit PQ clip, or the HLG clip where HEVC is unavailable).
 - [x] Native trigger + gamma lift implemented; live 1 s headroom poll/clamp.
 - [x] Native gamma lift verified on hardware — table path with >1.0 values
       works. Color washout fixed via encoded-gain math + calibration-preserving
@@ -622,10 +628,14 @@ does disabling instantly restore it) is required before claiming it works.
       (Xcode build-phase and the CLI bundler). App events: app_launch,
       boost_enabled/boost_disabled, paywall_shown, purchase_completed; web:
       page views + boost toggle. DEBUG never sends. `/privacy` discloses it.
-- [x] Google AdSense loader added (`ca-pub-7400069037778721` in `layout.tsx`) +
-      `/privacy` disclosure. NOTE: no ad units placed yet; won't show ads until
-      AdSense approves the site; adds ad cookies (see EU-consent item). Ads on a
-      paid-app landing page are questionable — flagged to Daniel.
+- [x] Google AdSense **removed** (2026-08-27). The loader
+      (`ca-pub-7400069037778721`) shipped on all five pages for months, pulled
+      ~200 KB of JS, set ad cookies, and served **zero ads** — AdSense never
+      approved the site and no ad units were ever placed. It was pure page-speed
+      and consent cost for no revenue, so `layout.tsx` no longer loads it and
+      `/privacy` now states the site carries no advertising. Re-add both
+      together if AdSense is ever revisited; note it also cannot serve on a
+      non-HTTPS page, which this site still is (see "Enforce HTTPS" below).
 - [x] App menu polish: trial countdown (`Free trial — N days left`) + hover
       tooltip on the ☀️; menu now shows the *real live* headroom instead of the
       inflated theoretical max; brand logo in the paywall + welcome dialogs.
@@ -651,6 +661,63 @@ does disabling instantly restore it) is required before claiming it works.
 - [x] SEO: domain maxcandela.com wired (`lib/site.ts`), canonical + OG/Twitter
       tags + `og.png`, `sitemap.xml` + `robots.txt`, JSON-LD SoftwareApplication
       structured data (with prices, no fake ratings), per-page meta descriptions.
+- [x] **SEO audit + repair pass (2026-08-27).** The headline bug: the root
+      layout set `alternates.canonical = SITE_URL` and **no child page
+      overrode it**, so `/about/`, `/privacy/`, `/terms/` and `/support/` each
+      shipped `<link rel="canonical" href="https://maxcandela.com/">` — telling
+      Google all four were duplicates of the home page while the sitemap asked
+      for them to be indexed. Same root cause hit OG: children set `title` but
+      never `openGraph.title`, so every page's `og:title`/`og:url` was the home
+      page's. Next merges page metadata over the layout's **shallowly** — a
+      page that omits `alternates`/`openGraph` inherits them whole. Fixed with
+      `lib/metadata.ts` → `pageMetadata({path, title, description})`; use it for
+      every new page rather than hand-writing a metadata object, or the bug
+      comes straight back. Also landed: `robots` meta with
+      `max-image-preview:large`; `og:locale`; `themeColor` (on the `viewport`
+      export — it is silently ignored in `metadata`); JSON-LD split so
+      `SoftwareApplication` + `FAQPage` describe the home page and only
+      `Organization` + `WebSite` are site-wide (the app node was being emitted
+      on `/privacy/` and `/terms/`, which claimed each legal page *was* the
+      app); offers relabelled `category: 'In-app purchase'` because the store
+      listing is Free and a bare $9.99 Offer contradicted it; `downloadUrl`/
+      `sameAs` now link the site to the store listing; "MacBook Pro" added to
+      the home `<h1>` and "XDR" to the title; in-body links from the home FAQ to
+      `/support/` and `/about/`; `LegalShell` nav no longer a dead end.
+      **No `aggregateRating`, deliberately** — the listing has 0 ratings and
+      Google's policy forbids aggregating another site's, so the Software App
+      rich result is unreachable and the block is entity data only.
+- [x] **Home page was 10.45 MB of images (2026-08-27).**
+      `public/compare-normal.jpg` and `compare-boosted.jpg` are 3456×2234 and
+      ~5 MB each — and despite the `.jpg` extension they are **PNGs** (`file`
+      them). Both were `rel=preload`ed into a box CSS caps at 1240px, i.e. ~98%
+      of the page weight and ~86% of every pixel discarded. Next's `<Image>`
+      optimizer is unavailable under `output: 'export'`, so
+      `scripts/optimize-web-images.sh` (needs `cwebp`) generates 1240/2480-wide
+      WebP variants — **10.45 MB → 262 KB** on a 2× display, 105 KB on 1× — and
+      `BeforeAfter` now takes `srcset`/`sizes` plus required `width`/`height`
+      (without intrinsic dimensions the slider collapsed to zero height until
+      the bytes landed — a CLS failure). Re-run the script after replacing
+      either screenshot. **The two originals are still in `public/` and are now
+      referenced by nothing** — delete them when happy.
+- [x] Sitemap `lastmod` is derived from git (2026-08-27). It was hardcoded
+      `2026-07-21` on all five routes while four had been edited later, and a
+      lastmod contradicting the `Last-Modified` header gets the signal
+      discarded site-wide, not merely ignored. `app/sitemap.ts` now runs
+      `git log -1 --format=%cI -- <source>` per route, so `deploy-web.yml`
+      needs `fetch-depth: 0`. Do **not** replace this with `new Date()` —
+      build time makes all five routes claim they changed on every deploy,
+      which is the same falsifiable pattern and never self-corrects.
+      `changeFrequency`/`priority` dropped: Google states outright it ignores
+      both, and the old comment implied they did something.
+- [x] IndexNow submits only what changed (2026-08-27) and reads the sitemap
+      from the **built artifact**, not the live URL — Pages serves through a
+      CDN, so a post-deploy fetch could return a cached sitemap missing a new
+      route. A change to one page's source submits that route; anything shared
+      (layout, components, CSS, public assets) submits all five. Note the
+      changed-file test counts lines instead of using `grep -qv`: that exit
+      status is **not** consistent across grep implementations (Daniel's local
+      grep is ugrep, CI is GNU grep) and getting it backwards silently mails
+      the wrong URL list.
 - [x] Web deployment: LIVE at https://maxcandela.com via GitHub Pages +
       Actions (`.github/workflows/deploy-web.yml`), custom domain + HTTPS.
       Pushes to `main` touching `apps/web/**` auto-rebuild/redeploy.
@@ -803,12 +870,93 @@ does disabling instantly restore it) is required before claiming it works.
       invisible anchor window carried a fixed `+120` offset tuned for the
       payment sheet, so the differently-sized redeem sheet sat off-centre —
       `centerAttachedSheet` now measures the sheet and nudges the anchor.
-- [ ] GDPR/ePrivacy: GA cookies are live; the AdSense **loader script** is on
-      the site but AdSense is not approved and serves no ads yet. An EU consent
-      banner will be needed once ads serve (AdSense requires a certified CMP for
-      EU traffic). Options: consent banner, or drop ads + switch to cookieless
-      analytics. *(2026-07-21: AdSense isn't active — leave this for
-      now; revisit when/if AdSense approves.)*
+- [ ] GDPR/ePrivacy: GA cookies are live and there is still no consent
+      mechanism. *(2026-08-27: the AdSense loader is now gone, which removes
+      the certified-CMP requirement and the ad cookies — this is back to a
+      plain GA-cookie question. Options: a consent banner, or switch to
+      cookieless analytics. Lower urgency than it was, not zero.)*
+
+- [x] **Second SEO pass (2026-08-27).** New page **`/how-it-works/`** —
+      "How to make your MacBook screen brighter than max", the informational
+      query a competitor's blog currently owns. Built only from facts this repo
+      has hardware-verified (the SDR-compensation finding, the encoded-gain
+      colour problem, panel heat being invisible to `thermalState`); it names
+      no competitor, so nothing in it needs checking against someone else's
+      pricing page. Added to `sitemap.ts`, the footer, `LegalShell`'s nav and
+      the home FAQ. Also: all five `<h2>`s on the home page carry a topic word
+      now (they were pure copywriting — the keywords sat in the 12px eyebrow
+      spans); `.legal p + p` got a margin, since every older legal page happens
+      to use one paragraph per heading and the gap had never shown; footer
+      links to the store on all six routes (only the home page linked out
+      before); `APP_STORE_URL` lost its `/us/` segment, since Apple 301s the
+      country-less form to the visitor's own storefront (verified) and the
+      hardcoded one sent everyone to USD pricing.
+- [x] **Browser demo is macOS-gated (2026-08-27).** It was gated on
+      `(dynamic-range: high)` alone, which matches on iPhone 12+ and many HDR
+      Android phones — so the toggle lit up on a phone, and the fullscreen
+      multiply overlay really engaged, for a macOS-only product whose FAQ calls
+      the demo "an honest test" of whether the app will work. `BoostProvider`
+      now detects the platform (`userAgentData.platform`, falling back to
+      `navigator.platform` + `maxTouchPoints === 0` so iPadOS's Mac-spoofing UA
+      doesn't pass) and shows a distinct "open this on a MacBook Pro" state.
+      Priming is gated on it too — no reason to play HDR video on a phone
+      battery. Long status text moved out of the pill into a line beneath it.
+
+### Outstanding — console-side, Daniel only (from the 2026-08-27 SEO audit)
+
+None of these are code; all were verified live on 2026-08-27.
+
+- [ ] **Enforce HTTPS on GitHub Pages.** `curl -sSI http://maxcandela.com/`
+      returns `200`, not a redirect — every page is reachable over plain HTTP,
+      and the Pages API reports `"https_enforced": false`. Repo Settings →
+      Pages → check **Enforce HTTPS**. This also fixes the legacy
+      `dkim0910.github.io/maxcandela/` redirect, which currently points at
+      `http://`.
+- [ ] **Fix or remove the `www` record.** `www.maxcandela.com` resolves to the
+      Pages IPs but the certificate covers the apex only (`CN = *.github.io` is
+      served), so a browser shows a full "connection is not private"
+      interstitial before the (correct) 301 ever runs. Either re-save the
+      custom domain in Settings → Pages to reissue a cert covering `www`, or
+      delete the `www` DNS record so it stops resolving.
+- [ ] **App Store privacy label is wrong — this is a compliance issue, not
+      SEO.** The listing renders "The developer does not collect any data from
+      this app", but the shipping 1.1.5 build has `GAMeasurementID` +
+      `GAApiSecret` in its Info.plist and `Analytics.swift` POSTs to GA4 with a
+      persistent per-install UUID — and the linked `/privacy` page says so.
+      App Store Connect → App Privacy: set **Usage Data → Product Interaction**
+      and **Identifiers → Device ID**, both "not linked to identity", used for
+      Analytics. (CLAUDE.md previously recorded this label as already set; it
+      is not.)
+- [ ] **Bing Webmaster Tools: verify + submit.** Nothing exists yet
+      (`/BingSiteAuth.xml` → 404, no `msvalidate.01`). Daniel chose the
+      *Import from Google Search Console* flow — worth knowing Bing's own docs
+      say that import re-validates against continued GSC access, so if Google
+      access is ever revoked the site needs re-verifying another way. The
+      durable alternative is dropping `BingSiteAuth.xml` into `apps/web/public/`
+      (the IndexNow key file already proves that path publishes at the root).
+      After verifying: submit `sitemap.xml`, run URL Inspection on the home
+      page, and check **IndexNow** — every submission so far returned `202`
+      ("key pending validation"), and a `200` has never been observed.
+- [ ] **Google Search Console: resubmit the sitemap and read Page Indexing.**
+      Do this *after* the canonical fix deploys — before it, the four secondary
+      pages will keep reporting as "Alternate page with proper canonical tag"
+      and any Request-Indexing quota spent on them is wasted.
+- [ ] Content: a `/vivid-alternative/` comparison page is the highest-value
+      addition still outstanding (competitors rank for "Vivid alternative" with
+      dedicated pages). **Not built** — it requires competitor pricing and
+      feature claims that must be checked by hand before publishing, not
+      guessed. Decide the claims, then it's a straightforward page; the
+      informational sibling, `/how-it-works/`, is already live in the repo.
+- [ ] App Store ratings: the listing has **0 ratings after ~5 weeks**, and the
+      app never asks — `grep -rn 'SKStoreReviewController\|requestReview'
+      apps/macos/Sources/` finds nothing. Ratings are an App Store ranking
+      input and the most visible trust signal on the product page. Worth adding
+      behind a conservative trigger (licensed user, after N successful boost
+      sessions, never in DEBUG, never gated on the boost working). Not built —
+      it changes shipping-app UX and needs a release, so it is Daniel's call.
+- [ ] `npm run lint` in `apps/web` is broken: Next 16 removed `next lint`, so
+      the script fails with "Invalid project directory provided, no such
+      directory: .../lint". Pre-existing; migrate to the ESLint CLI.
 
 Keep this list current as work lands.
 

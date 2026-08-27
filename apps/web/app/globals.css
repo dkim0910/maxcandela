@@ -527,14 +527,21 @@ h2 {
 
 .status {
   display: inline-flex;
-  align-items: center;
+  /* flex-start, not center: if the label ever wraps, a centred dot floats to
+     the middle of the block instead of sitting with the first line. */
+  align-items: flex-start;
   gap: 10px;
   padding: 10px 18px;
+  /* Capped so a long status can't stretch the pill the width of the section.
+     The long explanations now render as a separate line underneath (see
+     `status.note` in app/page.tsx), so this is a guard, not the main fix. */
+  max-width: 460px;
   border-radius: 999px;
   border: 1px solid var(--border);
   background: var(--bg);
   font-size: 14px;
   font-weight: 600;
+  text-align: left;
 }
 
 .status-dot {
@@ -543,6 +550,10 @@ h2 {
   border-radius: 50%;
   background: var(--off);
   flex-shrink: 0;
+  /* The pill aligns to flex-start so a wrapped label keeps the dot on its
+     first line; this re-centres the dot within that line box (1.6 line-height
+     on a 9px dot). */
+  margin-top: calc((1.6em - 9px) / 2);
 }
 
 .status-on .status-dot {
@@ -760,6 +771,14 @@ h2 {
   color: var(--text-dim);
 }
 
+.faq-more {
+  margin: 22px auto 0;
+  max-width: 640px;
+  text-align: center;
+  font-size: 14px;
+  color: var(--text-dim);
+}
+
 /* Footer */
 
 .footer {
@@ -831,6 +850,14 @@ h2 {
 .legal li {
   font-size: 15px;
   color: var(--text-dim);
+}
+
+/* Consecutive paragraphs ran together with no gap. Scoped to the adjacent
+   case on purpose: the older legal pages use one paragraph per heading, so a
+   blanket margin on `.legal p` would re-space all of them. */
+.legal p + p,
+.legal ul + p {
+  margin-top: 14px;
 }
 
 .legal ul {
