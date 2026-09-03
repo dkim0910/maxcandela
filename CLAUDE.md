@@ -897,8 +897,8 @@ does disabling instantly restore it) is required before claiming it works.
       SwiftPM dev targets 14; falls back to `apps.apple.com/redeem`, which is
       also the *only* route for non-consumable IAP promo codes — the sheet takes
       subscription offer codes). `/support` + home FAQ document it.
-- [x] **1.1.6 (16)** — current source version, set 2026-09-03 for the
-      RevenueCat release. Both numbers moved, not just the build: App Store
+- [x] **1.1.7 (17)** — current source version, set 2026-09-03 for the
+      RevenueCat release (17 because build 16 was already spent on the first attempt). Both numbers moved, not just the build: App Store
       Connect already shows 1.1.5 as "Ready for Distribution", and Apple will
       not attach a new build to a version that has shipped, so a bare build
       bump could not be submitted. `project.yml` + `Info.plist` are in step and
@@ -911,14 +911,14 @@ does disabling instantly restore it) is required before claiming it works.
       ```
 
       1. Xcode menu bar → **Window → Organizer** (⌥⇧⌘O) → **Archives** tab.
-      2. Left column: **MaxCandela** → pick **"MaxCandela 1.1.6 (16)"**
+      2. Left column: **MaxCandela** → pick **"MaxCandela 1.1.7 (17)"**
          dated 2026-09-03. (It lives in
          `~/Library/Developer/Xcode/Archives/2026-09-03/`; if Organizer
          shows nothing, double-click the `.xcarchive` there.)
       3. **Distribute App → App Store Connect → Upload → Next** through the
          defaults (automatic signing, upload symbols) → **Upload**.
-      4. App Store Connect → MaxCandela → **+** new macOS version **1.1.6**
-         → wait for build 16 to finish processing (a few minutes) → attach it
+      4. App Store Connect → MaxCandela → **+** new macOS version **1.1.7**
+         → wait for build 17 to finish processing (a few minutes) → attach it
          → "What's New" text → **Submit for Review**.
 
       If you would rather re-archive from source: open
@@ -934,7 +934,7 @@ does disabling instantly restore it) is required before claiming it works.
 
   | Where | Version | Note |
   |---|---|---|
-  | This repo | 1.1.6 (16) | not uploaded — carries RevenueCat |
+  | This repo | 1.1.7 (17) | not uploaded — carries RevenueCat |
   | `/Applications/MaxCandela.app` | 1.1.5 (15) | what Daniel is testing |
   | App Store Connect | 1.1.5 | Ready for Distribution |
 
@@ -1039,12 +1039,12 @@ None of these are code; all were verified live on 2026-08-27.
       RevenueCat items (Purchases, User ID) until the next build ships —
       over-declaring is harmless; the reverse was the compliance problem.
 - [ ] **RevenueCat: upload + submit.** Everything up to the upload is done
-      (2026-09-03): the **1.1.6 (16) archive is built** — universal, sandboxed,
+      (2026-09-03): the **1.1.7 (17) archive is built** — universal, sandboxed,
       both keys injected, verified — and sits in Xcode's Organizer as
-      "MaxCandela 1.1.6 (16)" under 2026-09-03. Remaining: Organizer →
+      "MaxCandela 1.1.7 (17)" under 2026-09-03. Remaining: Organizer →
       Distribute App → App Store Connect → Upload (the CLI export/upload was
       refused by the tooling's permission layer, so this is Daniel's click),
-      then attach the build to a new 1.1.6 version and submit. The archive
+      then attach the build to a new 1.1.7 version and submit. The archive
       was built from the **uncommitted** working tree — commit that exact
       state before or right after uploading so the store build matches a
       commit. After release, verify with a sandbox purchase from the App
