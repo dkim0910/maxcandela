@@ -34,8 +34,9 @@ enum Analytics {
     }
 
     /// Random per-install identifier; created lazily, never leaves this Mac
-    /// except inside analytics events.
-    private static var clientID: String {
+    /// except inside analytics events. Also the RevenueCat app user ID
+    /// (`ConversionTracker`) — one anonymous ID for both, not two.
+    static var clientID: String {
         let defaults = UserDefaults.standard
         if let existing = defaults.string(forKey: clientIDKey) {
             return existing

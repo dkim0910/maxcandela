@@ -159,6 +159,8 @@ final class StoreManager {
         switch result {
         case .success(let verification):
             if case .verified(let transaction) = verification {
+                // Conversion ledger only — never on the entitlement path.
+                ConversionTracker.record(result)
                 await transaction.finish()
                 return true
             }

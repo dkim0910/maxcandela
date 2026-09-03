@@ -58,6 +58,13 @@ if [[ -n "${GA_API_SECRET:-}" ]]; then
     /usr/libexec/PlistBuddy -c "Set :GAApiSecret $GA_API_SECRET" "$APP/Contents/Info.plist"
     echo "==> Injected GA API secret"
 fi
+# RevenueCat *public* SDK key (appl_…) — same mechanism, same "unset => off"
+# rule (ConversionTracker). Public by design, so pasting it straight into
+# Resources/Info.plist is also fine; .env just keeps one place for all keys.
+if [[ -n "${RC_PUBLIC_API_KEY:-}" ]]; then
+    /usr/libexec/PlistBuddy -c "Set :RCPublicAPIKey $RC_PUBLIC_API_KEY" "$APP/Contents/Info.plist"
+    echo "==> Injected RevenueCat public API key"
+fi
 cp "$DIST/AppIcon.icns" "$APP/Contents/Resources/AppIcon.icns"
 
 # Mac App Store builds must embed their provisioning profile.

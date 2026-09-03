@@ -10,10 +10,16 @@ options:
     macOS: "15.6"
   createIntermediateGroups: true
 
+# Keep the version in step with Package.swift (the SwiftPM dev build).
+packages:
+  RevenueCat:
+    url: https://github.com/RevenueCat/purchases-ios-spm.git
+    from: 5.87.1
+
 settings:
   base:
-    MARKETING_VERSION: "1.1.5"
-    CURRENT_PROJECT_VERSION: "15"
+    MARKETING_VERSION: "1.1.16"
+    CURRENT_PROJECT_VERSION: "16"
     DEVELOPMENT_TEAM: YU66583SCF          # your Apple Developer team
     SWIFT_VERSION: "5.9"
 
@@ -24,6 +30,9 @@ targets:
     sources:
       - path: Sources/MaxCandela          # all the .swift + the SPM AppIcon.png
       - path: Resources/Assets.xcassets    # the app-icon asset catalog
+    dependencies:
+      - package: RevenueCat
+        product: RevenueCat
     settings:
       base:
         PRODUCT_NAME: MaxCandela
@@ -36,17 +45,22 @@ targets:
         ENABLE_HARDENED_RUNTIME: YES
         COMBINE_HIDPI_IMAGES: YES
     postBuildScripts:
-      # Inject the GA API secret from the repo-root .env (gitignored) into the
-      # built app's Info.plist, before code signing. No .env / secret ⇒ analytics
-      # stays off. Keeps the secret out of the repo, same as the CLI bundler.
-      - name: Inject GA API secret
+      # Inject the GA API secret and the RevenueCat public SDK key from the
+      # repo-root .env (gitignored) into the built app's Info.plist, before
+      # code signing. Missing .env / missing value ⇒ that integration stays
+      # off. Keeps the secret out of the repo, same as the CLI bundler.
+      - name: Inject analytics keys from .env
         basedOnDependencyAnalysis: false
         script: |
           ENV_FILE="$SRCROOT/../../.env"
-          [ -f "$ENV_FILE" ] || { echo "no .env — skipping GA secret"; exit 0; }
+          [ -f "$ENV_FILE" ] || { echo "no .env — skipping analytics keys"; exit 0; }
           set -a; source "$ENV_FILE"; set +a
-          [ -n "${GA_API_SECRET:-}" ] || { echo "no GA_API_SECRET — skipping"; exit 0; }
           PLIST="$BUILT_PRODUCTS_DIR/$INFOPLIST_PATH"
-          /usr/libexec/PlistBuddy -c "Set :GAApiSecret $GA_API_SECRET" "$PLIST" \
-            || /usr/libexec/PlistBuddy -c "Add :GAApiSecret string $GA_API_SECRET" "$PLIST"
-          echo "Injected GA_API_SECRET into $PLIST"
+          inject() {  # inject <plist key> <value>
+            [ -n "$2" ] || { echo "no value for $1 — skipping"; return 0; }
+            /usr/libexec/PlistBuddy -c "Set :$1 $2" "$PLIST" \
+              || /usr/libexec/PlistBuddy -c "Add :$1 string $2" "$PLIST"
+            echo "Injected $1 into $PLIST"
+          }
+          inject GAApiSecret "${GA_API_SECRET:-}"
+          inject RCPublicAPIKey "${RC_PUBLIC_API_KEY:-}"

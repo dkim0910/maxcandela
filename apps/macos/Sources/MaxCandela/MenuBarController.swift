@@ -415,6 +415,7 @@ final class MenuBarController {
     private func refreshLicense() {
         Task { @MainActor in
             licenseState = await store.currentState()
+            ConversionTracker.update(licenseState: licenseState)
             enforceLicense()
             await store.loadProducts()
             if let lifetime = store.product(id: StoreManager.lifetimeProductID) {
@@ -648,6 +649,7 @@ final class MenuBarController {
                     licenseState = .licensed
                     refresh()
                     Analytics.track("purchase_completed", params: ["product": productID])
+                    ConversionTracker.update(licenseState: .licensed)
                 }
             } catch {
                 NSLog("MaxCandela: purchase failed: \(error.localizedDescription)")
@@ -688,6 +690,7 @@ final class MenuBarController {
     @objc private func restorePurchases() {
         Task { @MainActor in
             await store.restorePurchases()
+            ConversionTracker.syncPurchases()
             refreshLicense()
         }
     }

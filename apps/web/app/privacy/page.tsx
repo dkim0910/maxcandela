@@ -12,7 +12,7 @@ export const metadata: Metadata = pageMetadata({
 
 export default function PrivacyPage() {
   return (
-    <LegalShell title="Privacy Policy" updated="July 21, 2026">
+    <LegalShell title="Privacy Policy" updated="September 3, 2026">
       <p>
         MaxCandela is built to collect as little as possible. <strong>The Mac
         app collects no personal data</strong> and never sees your screen. This
@@ -32,6 +32,14 @@ export default function PrivacyPage() {
           how the app is used. These events carry only a random per-install
           identifier that is not linked to you and can be reset by deleting
           the app’s preferences.</li>
+        <li>Reports to RevenueCat, a subscription-analytics service, that the
+          app was installed and whether a purchase was made — its purchase
+          status and trial status, nothing else — so we can see how many free
+          trials go on to buy. It uses the <em>same</em> random per-install
+          identifier as above (no second identifier, still not linked to
+          you). See{' '}
+          <a href="https://www.revenuecat.com/privacy">RevenueCat’s Privacy
+          Policy</a> for how RevenueCat processes this data.</li>
         <li>Otherwise makes no network connections except to Apple’s App Store
           services for purchases and license verification (handled by Apple’s
           StoreKit framework).</li>
