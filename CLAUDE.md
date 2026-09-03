@@ -416,6 +416,9 @@ swift build                 # debug
 swift run MaxCandela        # launch the menu-bar app  (pkill -x MaxCandela first
                             #   — a second instance means two ☀️ in the menu bar)
 swift build -c release      # release
+xcodegen generate && open MaxCandela.xcodeproj
+                            # open in Xcode (Archive / App Store upload live there —
+                            #   the .xcodeproj is gitignored, so generate it first)
 swift test                  # unit tests — 55 across BoostLogic, ConversionTracker,
                             #   DisplayManager, SupportMessages. Pure logic only: no test can
                             #   observe the backlight, see "Verifying a
@@ -427,6 +430,27 @@ npm run dev                 # http://localhost:3000
 npm run lint                # next lint
 npx tsc --noEmit            # safe to run while dev is serving — prefer this
 npm run build               # static export → apps/web/out/  (NOT while dev runs)
+```
+
+```bash
+# App Store upload (from apps/macos/) — bump MARKETING_VERSION +
+# CURRENT_PROJECT_VERSION in project.yml AND CFBundleShortVersionString +
+# CFBundleVersion in Resources/Info.plist first (they must match; Apple wants
+# a new version string once the previous one has shipped, not just a new build).
+xcodegen generate           # only if project.yml changed (the .xcodeproj is gitignored)
+xcodebuild -project MaxCandela.xcodeproj -scheme MaxCandela -configuration Release \
+  -destination 'generic/platform=macOS' -archivePath build/MaxCandela.xcarchive \
+  -allowProvisioningUpdates archive
+                            # universal, sandboxed, .env keys injected → build/MaxCandela.xcarchive
+xcodebuild -exportArchive -archivePath build/MaxCandela.xcarchive \
+  -exportOptionsPlist ExportOptions.plist -exportPath build/export \
+  -allowProvisioningUpdates
+                            # re-signs with Apple Distribution and UPLOADS to App Store
+                            #   Connect (uses the Apple ID signed into Xcode). Then:
+                            #   App Store Connect → new version → attach the build → submit.
+
+# GUI alternative, same result (the archive from above shows up in Organizer):
+open -a Xcode               # Window ▸ Organizer ▸ Archives ▸ Distribute App ▸ App Store Connect ▸ Upload
 ```
 
 ### DEBUG-only preview flags (macOS)
@@ -879,6 +903,28 @@ does disabling instantly restore it) is required before claiming it works.
       not attach a new build to a version that has shipped, so a bare build
       bump could not be submitted. `project.yml` + `Info.plist` are in step and
       the `.xcodeproj` was regenerated. Not uploaded yet.
+
+      **How to upload it (the archive already exists — do not re-archive):**
+
+      ```bash
+      open -a Xcode      # no project needed; Organizer is app-wide
+      ```
+
+      1. Xcode menu bar → **Window → Organizer** (⌥⇧⌘O) → **Archives** tab.
+      2. Left column: **MaxCandela** → pick **"MaxCandela 1.1.16 (16)"**
+         dated 2026-09-03. (It lives in
+         `~/Library/Developer/Xcode/Archives/2026-09-03/`; if Organizer
+         shows nothing, double-click the `.xcarchive` there.)
+      3. **Distribute App → App Store Connect → Upload → Next** through the
+         defaults (automatic signing, upload symbols) → **Upload**.
+      4. App Store Connect → MaxCandela → **+** new macOS version **1.1.16**
+         → wait for build 16 to finish processing (a few minutes) → attach it
+         → "What's New" text → **Submit for Review**.
+
+      If you would rather re-archive from source: open
+      `apps/macos/MaxCandela.xcodeproj` (`xcodegen generate` first if
+      `project.yml` changed), destination **Any Mac**, **Product → Archive**;
+      Organizer then opens on the new archive and step 3 continues from there.
 - [x] **1.1.5 (15)** — shipped; it is what `/Applications/MaxCandela.app`
       reports (checked 2026-09-03) and what the store lists as ready.
       Bump the *build* number for every upload; Apple only
