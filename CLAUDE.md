@@ -287,6 +287,46 @@ deliberately lives in the demo section); `components/LegalShell.tsx` +
   in DEBUG). Analytics changed the privacy posture — keep `/privacy` and the
   App Store privacy label ("Usage Data → Analytics, not linked to identity")
   in sync. GA cookies imply an EU consent-banner decision (see TODO).
+- **Conversion tracking (RevenueCat)** — `ConversionTracker.swift`, added
+  2026-09-03 to answer "how many trials end up buying". Wired in
+  *purchases-completed-by-my-app* mode (`.myApp` + `.storeKit2`):
+  `StoreManager` keeps doing every StoreKit call and `currentState()` remains
+  the licence's source of truth; RevenueCat only gets told. Three touch
+  points: `configure()` in `applicationDidFinishLaunching` (the install becomes
+  a customer, "first seen" that day → **New Customers** chart),
+  `record(_:)` inside `StoreManager.purchase` after verification and before
+  `finish()` (purchases via `Product.purchase()` never reach
+  `Transaction.updates` in-process, so without this call RevenueCat would see
+  only renewals → **Conversion to Paying** / **New Paying Customers**), and
+  `update(licenseState:)` from `refreshLicense()` (subscriber attributes
+  `license_state` = trial/expired/licensed + `trial_days_left`, for customer
+  lists). **That call must be followed by
+  `syncAttributesAndOfferingsIfNeeded()`** — the SDK otherwise uploads
+  attributes only when the app resigns active or at the next launch, and an
+  accessory app never resigns active. Found live on 2026-09-03: the customer
+  appeared in the dashboard with no `license_state`; with the explicit sync
+  the values landed within seconds (verified `trial` / `3` from a
+  `FORCE_TRIAL=3` run). `syncPurchases()` runs after Restore Purchases. App user ID is
+  `Analytics.clientID` — the GA UUID — so there is still exactly one anonymous
+  identifier. **Our 5-day trial does not appear on RevenueCat's "Trials"
+  chart**: that chart counts App Store introductory free trials on
+  subscriptions, which we don't offer; the app-side clock is invisible to the
+  store. Filter on `license_state` instead. Key handling mirrors GA: public
+  SDK key (`appl_…`, designed to ship in the binary) in Info.plist
+  `RCPublicAPIKey`, committed empty, filled from `RC_PUBLIC_API_KEY` in `.env`
+  by both `bundle-macos.sh` and the Xcode post-build script; empty ⇒ silently
+  off. DEBUG reads `MAXCANDELA_RC_API_KEY` from the environment or stays off.
+  SDK is `purchases-ios-spm` (SPM-only mirror), `from: 5.87.1` in *both*
+  `Package.swift` and `project.yml` — keep them equal. `Package.resolved` is
+  gitignored, so a fresh clone may resolve a newer 5.x; the SDK uses no
+  `Bundle.module`, so the CLI bundler needs no resource bundle copied. The
+  SDK's own `Transaction.updates` listener runs alongside ours and never
+  finishes transactions in this mode (`finishTransactions` is false when
+  purchases are completed by the app — read in the 5.87.1 source, not the
+  docs). Verified 2026-09-03 on the bare debug binary with a fake key: the
+  SDK configures without a bundle and fails cleanly with "Invalid API Key".
+  `/privacy` discloses RevenueCat; the App Store privacy label must add
+  Purchases + User ID (see Outstanding).
 
 ## Native app architecture (apps/macos)
 
@@ -348,6 +388,12 @@ MetalRenderer          → owns MTLDevice/queue; drives the CAMetalLayer render
                          loop (CADisplayLink via NSView.displayLink); clears
                          drawable to EDR white ×boost
 Preferences            → UserDefaults-backed enabled flag + boost level
+ConversionTracker     → RevenueCat in "purchases completed by my app" mode:
+                         registers the install at launch, records StoreKit 2
+                         purchases after StoreManager verifies them, mirrors
+                         the licence state as subscriber attributes. A ledger
+                         for the trial→paid charts, never on the entitlement
+                         path. See "Conversion tracking (RevenueCat)".
 ```
 
 Data flow: toggle → `BrightnessController` → per-tick
@@ -370,8 +416,8 @@ swift build                 # debug
 swift run MaxCandela        # launch the menu-bar app  (pkill -x MaxCandela first
                             #   — a second instance means two ☀️ in the menu bar)
 swift build -c release      # release
-swift test                  # unit tests — 51 across BoostLogic, DisplayManager,
-                            #   SupportMessages. Pure logic only: no test can
+swift test                  # unit tests — 55 across BoostLogic, ConversionTracker,
+                            #   DisplayManager, SupportMessages. Pure logic only: no test can
                             #   observe the backlight, see "Verifying a
                             #   brightness change actually works".
 
@@ -399,6 +445,7 @@ running instance first (`pkill -x MaxCandela`) to avoid two menu-bar icons.
 | `MAXCANDELA_FORCE_THERMAL=nominal\|fair\|serious\|critical swift run MaxCandela` | Force an OS thermal state (eases/cuts the boost) |
 | `MAXCANDELA_FORCE_TEMP=43.5 swift run MaxCandela` | Fake the chassis thermometer → walk the ease/protect ladder without cooking the Mac |
 | `MAXCANDELA_FORCE_NO_HEADROOM=1 swift run MaxCandela` | Pretend no display has EDR headroom → preview the "no boost available" alert (what App Review saw on a MacBook Air) |
+| `MAXCANDELA_RC_API_KEY=appl_… swift run MaxCandela` | Turn RevenueCat on in a debug run. Off otherwise — dev launches must not count as customers, and a bare binary has no Info.plist to read the key from. SDK output goes to the unified log, not stderr: `log show --last 5m --predicate 'subsystem CONTAINS "revenuecat"'` |
 
 **The offer-code sheet is NOT ours to position** (measured 2026-07-28, installed
 1.1.3 build 14). `centerAttachedSheet` logged *nothing at all* across a 2-hour
@@ -628,6 +675,18 @@ does disabling instantly restore it) is required before claiming it works.
       (Xcode build-phase and the CLI bundler). App events: app_launch,
       boost_enabled/boost_disabled, paywall_shown, purchase_completed; web:
       page views + boost toggle. DEBUG never sends. `/privacy` discloses it.
+- [x] RevenueCat conversion tracking (2026-09-03) — code complete, builds,
+      55 tests pass, **console side done the same day**: project `MaxCandela`
+      (id `eef621b0`), app "MaxCandela (App Store)", entitlement `pro` with
+      both products attached. The In-App Purchase key and App Store Connect
+      API key are the ones the Geesly app already used — verified in App
+      Store Connect that the IAP key sits under this team, and the product
+      import returned exactly `com.maxcandela.pro.*`, which proves the ASC key
+      reaches the right team too. Public SDK key is **in
+      `Resources/Info.plist`** (`RCPublicAPIKey`, committed — public by
+      design) and mirrored in `.env`. **Goes live with the next App Store
+      build**; nothing reports until then. Details under "Conversion
+      tracking (RevenueCat)" above.
 - [x] Google AdSense **removed** (2026-08-27). The loader
       (`ca-pub-7400069037778721`) shipped on all five pages for months, pulled
       ~200 KB of JS, set ad cookies, and served **zero ads** — AdSense never
@@ -814,17 +873,24 @@ does disabling instantly restore it) is required before claiming it works.
       SwiftPM dev targets 14; falls back to `apps.apple.com/redeem`, which is
       also the *only* route for non-consumable IAP promo codes — the sheet takes
       subscription offer codes). `/support` + home FAQ document it.
-- [x] **1.1.5 (15)** — current source version, set 2026-07-28, built and tested,
+- [x] **1.1.16 (16)** — current source version, set 2026-09-03 for the
+      RevenueCat release. Both numbers moved, not just the build: App Store
+      Connect already shows 1.1.5 as "Ready for Distribution", and Apple will
+      not attach a new build to a version that has shipped, so a bare build
+      bump could not be submitted. `project.yml` + `Info.plist` are in step and
+      the `.xcodeproj` was regenerated. Not uploaded yet.
+- [x] **1.1.5 (15)** — shipped; it is what `/Applications/MaxCandela.app`
+      reports (checked 2026-09-03) and what the store lists as ready.
       Bump the *build* number for every upload; Apple only
       requires increasing values, so the skipped 1.1.0–1.1.4 are harmless.
-      Version numbering state, as of 2026-07-28 (three different things, easy to
+      Version numbering state, as of 2026-09-03 (three different things, easy to
       confuse — check all three before assuming a fix is missing):
 
   | Where | Version | Note |
   |---|---|---|
-  | This repo | 1.1.5 (15) | not uploaded |
-  | `/Applications/MaxCandela.app` | 1.1.3 (14) | what Daniel is testing |
-  | iTunes lookup API | 1.0.9 | still cached/propagating |
+  | This repo | 1.1.16 (16) | not uploaded — carries RevenueCat |
+  | `/Applications/MaxCandela.app` | 1.1.5 (15) | what Daniel is testing |
+  | App Store Connect | 1.1.5 | Ready for Distribution |
 
       **A fix you can't see is usually a build older than the fix** — confirm
       with `defaults read /Applications/MaxCandela.app/Contents/Info
@@ -918,15 +984,29 @@ None of these are code; all were verified live on 2026-08-27.
       interstitial before the (correct) 301 ever runs. Either re-save the
       custom domain in Settings → Pages to reissue a cert covering `www`, or
       delete the `www` DNS record so it stops resolving.
-- [ ] **App Store privacy label is wrong — this is a compliance issue, not
-      SEO.** The listing renders "The developer does not collect any data from
-      this app", but the shipping 1.1.5 build has `GAMeasurementID` +
-      `GAApiSecret` in its Info.plist and `Analytics.swift` POSTs to GA4 with a
-      persistent per-install UUID — and the linked `/privacy` page says so.
-      App Store Connect → App Privacy: set **Usage Data → Product Interaction**
-      and **Identifiers → Device ID**, both "not linked to identity", used for
-      Analytics. (CLAUDE.md previously recorded this label as already set; it
-      is not.)
+- [x] **App Store privacy label fixed (2026-09-03).** It read "Data Not
+      Collected" for a month while 1.1.5 sent GA4 events. Now declares
+      **Identifiers → User ID + Device ID**, **Purchases → Purchase History**,
+      **Usage Data → Product Interaction**, each "Analytics / not linked to
+      identity / not used for tracking". Label edits publish immediately, so
+      the listing is a few days *ahead* of the live build on the two
+      RevenueCat items (Purchases, User ID) until the next build ships —
+      over-declaring is harmless; the reverse was the compliance problem.
+- [ ] **RevenueCat: upload + submit.** Everything up to the upload is done
+      (2026-09-03): the **1.1.16 (16) archive is built** — universal, sandboxed,
+      both keys injected, verified — and sits in Xcode's Organizer as
+      "MaxCandela 1.1.16 (16)" under 2026-09-03. Remaining: Organizer →
+      Distribute App → App Store Connect → Upload (the CLI export/upload was
+      refused by the tooling's permission layer, so this is Daniel's click),
+      then attach the build to a new 1.1.16 version and submit. The archive
+      was built from the **uncommitted** working tree — commit that exact
+      state before or right after uploading so the store build matches a
+      commit. After release, verify with a sandbox purchase from the App
+      Store-installed build — the customer should appear under Customers with
+      `license_state`, the purchase under sandbox data. The test customer the
+      verification runs created (`8D0B…`) was deleted, so Customers starts at
+      0. Expect the "Trials" chart to stay empty by design (see "Conversion
+      tracking").
 - [ ] **Bing Webmaster Tools: verify + submit.** Nothing exists yet
       (`/BingSiteAuth.xml` → 404, no `msvalidate.01`). Daniel chose the
       *Import from Google Search Console* flow — worth knowing Bing's own docs

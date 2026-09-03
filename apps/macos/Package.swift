@@ -14,9 +14,20 @@ let package = Package(
     products: [
         .executable(name: "MaxCandela", targets: ["MaxCandela"])
     ],
+    dependencies: [
+        // RevenueCat, in "purchases completed by my app" mode: StoreManager
+        // keeps doing the StoreKit 2 work, RevenueCat only *records* installs
+        // and purchases so trial → paid conversion is visible on its charts.
+        // Mirror of purchases-ios that ships only the SPM sources (faster clone).
+        // Keep the version in step with project.yml (the Xcode/App Store build).
+        .package(url: "https://github.com/RevenueCat/purchases-ios-spm.git", from: "5.87.1")
+    ],
     targets: [
         .executableTarget(
             name: "MaxCandela",
+            dependencies: [
+                .product(name: "RevenueCat", package: "purchases-ios-spm")
+            ],
             path: "Sources/MaxCandela",
             resources: [.process("Resources")]
         ),
