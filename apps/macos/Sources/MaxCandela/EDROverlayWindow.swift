@@ -18,15 +18,8 @@ final class EDROverlayWindow: NSWindow {
     init?(screen: NSScreen) {
         guard let renderer = MetalRenderer() else { return nil }
         self.renderer = renderer
-
-        // Bottom-right corner of the target screen.
+        let rect = Self.patchFrame(on: screen)
         let size = Self.patchSize
-        let rect = NSRect(
-            x: screen.frame.maxX - size,
-            y: screen.frame.minY,
-            width: size,
-            height: size
-        )
 
         // Note: use the base designated initializer, not the `screen:` variant.
         // On newer macOS the screen: variant delegates to this one on `self`,
@@ -55,6 +48,27 @@ final class EDROverlayWindow: NSWindow {
         )
         hosting.layer = renderer.metalLayer
         contentView = hosting
+    }
+
+    /// Bottom-right corner of `screen`, in global coordinates.
+    private static func patchFrame(on screen: NSScreen) -> NSRect {
+        NSRect(x: screen.frame.maxX - patchSize, y: screen.frame.minY,
+               width: patchSize, height: patchSize)
+    }
+
+    /// Re-park on `screen` after a resolution or arrangement change. The frame
+    /// is global, so the screen can move out from under it — and off its
+    /// display the patch holds no EDR open. A no-op when nothing moved.
+    func place(on screen: NSScreen) {
+        let rect = Self.patchFrame(on: screen)
+        if frame != rect {
+            setFrame(rect, display: false)
+        }
+        let scale = screen.backingScaleFactor
+        let drawable = CGSize(width: Self.patchSize * scale, height: Self.patchSize * scale)
+        if renderer.metalLayer.drawableSize != drawable {
+            renderer.metalLayer.drawableSize = drawable
+        }
     }
 
     /// Trigger windows should never become key/main — they're passive.

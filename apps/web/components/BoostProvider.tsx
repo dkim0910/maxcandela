@@ -76,28 +76,43 @@ export default function BoostProvider({
     const mac = isMacPlatform();
     setSupported(mq.matches);
     setIsMac(mac);
-    const onChange = (e: MediaQueryListEvent) => setSupported(e.matches);
+    const onChange = (e: MediaQueryListEvent) => {
+      setSupported(e.matches);
+      // Lost the headroom mid-boost (e.g. the window moved to an SDR screen):
+      // the demo button disables itself there, so a boost left running would
+      // have no way to be switched off.
+      if (!e.matches) setEnabled(false);
+    };
     mq.addEventListener('change', onChange);
 
-    // Resume the boost across full page loads within this tab.
-    if (mac && mq.matches && sessionStorage.getItem(STORAGE_KEY) === '1') {
+    // Resume the boost across full page loads within this tab. Guarded like
+    // the write in toggle(): with site data blocked, merely touching
+    // sessionStorage throws, and an uncaught throw here takes the whole page
+    // down to Next's error screen.
+    let resume = false;
+    try {
+      resume = sessionStorage.getItem(STORAGE_KEY) === '1';
+    } catch {
+      // Storage unavailable — start with the boost off.
+    }
+    if (mac && mq.matches && resume) {
       setEnabled(true);
     }
     return () => mq.removeEventListener('change', onChange);
   }, []);
 
+  // Side effects stay out of the state updater: React may run an updater
+  // twice (Strict Mode does in dev), which sent every analytics event twice.
   const toggle = useCallback(() => {
-    setEnabled((v) => {
-      const next = !v;
-      try {
-        sessionStorage.setItem(STORAGE_KEY, next ? '1' : '0');
-      } catch {
-        // Private-mode storage restrictions — boost still works this page.
-      }
-      trackEvent(next ? 'boost_enabled' : 'boost_disabled');
-      return next;
-    });
-  }, []);
+    const next = !enabled;
+    setEnabled(next);
+    try {
+      sessionStorage.setItem(STORAGE_KEY, next ? '1' : '0');
+    } catch {
+      // Private-mode storage restrictions — boost still works this page.
+    }
+    trackEvent(next ? 'boost_enabled' : 'boost_disabled');
+  }, [enabled]);
 
   return (
     <BoostContext.Provider value={{ enabled, supported, isMac, unlocker, toggle }}>

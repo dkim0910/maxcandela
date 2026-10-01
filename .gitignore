@@ -8,6 +8,8 @@ node_modules/
 .next/
 out/
 next-env.d.ts
+# tsc's incremental cache — rewritten by every `tsc --noEmit` and `next build`
+*.tsbuildinfo
 npm-debug.log*
 .eslintcache
 

@@ -11,13 +11,17 @@ on:
       - '.github/workflows/deploy-web.yml'
   workflow_dispatch: {}
 
-# Permissions the deploy-pages action needs.
+# Permissions the deploy-pages action needs, plus actions:read so the
+# IndexNow step can look up the last successful deploy.
 permissions:
   contents: read
   pages: write
   id-token: write
+  actions: read
 
-# Only one Pages deploy at a time; newer pushes cancel in-flight ones.
+# Only one Pages deploy at a time; newer pushes cancel in-flight ones. A
+# cancelled push's changes still reach IndexNow: the URL step below diffs
+# against the last *successful* deploy, not the previous push.
 concurrency:
   group: pages
   cancel-in-progress: true
@@ -36,7 +40,7 @@ jobs:
         with:
           # Full history: app/sitemap.ts derives each route's <lastmod> from the
           # last commit that touched its source file, and the changed-route
-          # detection below diffs against the previous commit. A shallow clone
+          # detection below diffs against the last deployed commit. A shallow clone
           # silently degrades both to their fallbacks.
           fetch-depth: 0
 
@@ -57,6 +61,8 @@ jobs:
         working-directory: ${{ github.workspace }}
         env:
           BEFORE_SHA: ${{ github.event.before }}
+          EVENT_NAME: ${{ github.event_name }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -uo pipefail
 
@@ -76,11 +82,25 @@ jobs:
           # a single page's source maps to that one route; anything shared
           # (layout, components, CSS, public assets) really does change every
           # page, so submit the lot.
+          #
+          # Diff against the commit the site was last successfully deployed
+          # from, not github.event.before: with cancel-in-progress, a push whose
+          # run was cancelled never deployed, and diffing from the push before
+          # this one would drop its changed routes. The previous push is only
+          # the fallback when the API lookup fails.
+          base=$(gh run list --repo "$GITHUB_REPOSITORY" \
+                   --workflow deploy-web.yml --branch main --status success \
+                   --limit 1 --json headSha --jq '.[0].headSha // empty' 2>/dev/null || true)
+          if [ -z "$base" ]; then
+            base="${BEFORE_SHA:-}"
+          fi
+          have_base=false
           files=""
-          if [ -n "${BEFORE_SHA:-}" ] \
-             && [ "$BEFORE_SHA" != "0000000000000000000000000000000000000000" ] \
-             && git cat-file -e "${BEFORE_SHA}^{commit}" 2>/dev/null; then
-            files=$(git diff --name-only "$BEFORE_SHA" "$GITHUB_SHA" -- apps/web 2>/dev/null)
+          if [ -n "$base" ] \
+             && [ "$base" != "0000000000000000000000000000000000000000" ] \
+             && git cat-file -e "${base}^{commit}" 2>/dev/null; then
+            have_base=true
+            files=$(git diff --name-only "$base" "$GITHUB_SHA" -- apps/web 2>/dev/null)
           fi
 
           # Counted rather than tested with `grep -qv`: the exit status of
@@ -90,8 +110,18 @@ jobs:
           total=$(printf '%s\n' "$files" | grep -c . || true)
           pages=$(printf '%s\n' "$files" | grep -cE '^apps/web/app/[^/]*/?page\.tsx$' || true)
 
-          if [ -z "$files" ]; then
-            # First push on the branch, a manual run, or no diff available.
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            # A manual run is how a full resubmission is asked for.
+            urls="$all"
+            echo "manual run — submitting every URL"
+          elif [ -z "$files" ] && [ "$have_base" = true ]; then
+            # Nothing under apps/web changed since the last deploy (e.g. a push
+            # that only touched this workflow): the pages are byte-identical,
+            # so there is nothing new to ask a crawler about.
+            urls=""
+            echo "no web changes since the last deploy — nothing to submit"
+          elif [ -z "$files" ]; then
+            # First deploy, or no usable base commit to diff against.
             urls="$all"
             echo "no usable diff — submitting every URL"
           elif [ "$total" -gt 0 ] && [ "$total" -eq "$pages" ]; then
@@ -132,8 +162,9 @@ jobs:
       # apps/web/public/<key>.txt so the static export publishes it at the root.
       # Never fails the deploy: indexing is best-effort, the site is already live.
       # NOTE: a 202 means the key is still being validated, NOT that the URLs
-      # were accepted. Confirm in Bing Webmaster Tools → IndexNow that the key
-      # validated; every submission so far has only ever returned 202.
+      # were accepted. Early submissions all returned 202; the 2026-09-03 run
+      # got 200, so the key has validated. A 202 again means re-check it in
+      # Bing Webmaster Tools → IndexNow.
       - name: Notify IndexNow
         if: needs.build.outputs.indexnow_urls != '' && needs.build.outputs.indexnow_urls != '[]'
         continue-on-error: true

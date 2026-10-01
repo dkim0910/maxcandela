@@ -12,7 +12,7 @@ export const metadata: Metadata = pageMetadata({
 
 export default function PrivacyPage() {
   return (
-    <LegalShell title="Privacy Policy" updated="September 3, 2026">
+    <LegalShell title="Privacy Policy" updated="October 1, 2026">
       <p>
         MaxCandela is built to collect as little as possible. <strong>The Mac
         app collects no personal data</strong> and never sees your screen. This
@@ -28,16 +28,20 @@ export default function PrivacyPage() {
           brightness boost works without ever reading what is on your
           display.</li>
         <li>Sends a few anonymous usage events (app launched, boost turned
-          on/off, purchase completed) to Google Analytics so we can understand
+          on/off, trial-ended prompt shown, purchase completed) to Google
+          Analytics so we can understand
           how the app is used. These events carry only a random per-install
           identifier that is not linked to you and can be reset by deleting
           the app’s preferences.</li>
         <li>Reports to RevenueCat, a subscription-analytics service, that the
-          app was installed and whether a purchase was made — its purchase
-          status and trial status, nothing else — so we can see how many free
-          trials go on to buy. It uses the <em>same</em> random per-install
-          identifier as above (no second identifier, still not linked to
-          you). See{' '}
+          app was installed, whether its free trial is running or has ended,
+          and — if you buy — the App Store’s signed record of that purchase
+          (which product, when, and its transaction ID), so we can see how many
+          free trials go on to buy. Its requests also carry basic technical
+          details: the app and macOS versions, your Mac’s model, your
+          preferred languages, and your App Store country. It uses the{' '}
+          <em>same</em> random per-install identifier as above (no second
+          identifier, still not linked to you). See{' '}
           <a href="https://www.revenuecat.com/privacy">RevenueCat’s Privacy
           Policy</a> for how RevenueCat processes this data.</li>
         <li>Otherwise makes no network connections except to Apple’s App Store

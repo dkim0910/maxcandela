@@ -3,8 +3,10 @@
 # brightness in the browser. Requires ffmpeg (brew install ffmpeg).
 #
 # Output (committed to the repo so the site works without ffmpeg):
-#   apps/web/public/hdr/white-pq.mp4   — HEVC 10-bit, BT.2020 + PQ (Safari)
-#   apps/web/public/hdr/white-hlg.webm — VP9 10-bit, BT.2020 + HLG (Chrome)
+#   apps/web/public/hdr/white-pq-{700,1000,1600}.mp4 — HEVC 10-bit, BT.2020 + PQ
+#       (Safari, Chrome with HEVC). The site plays only white-pq-1600.mp4
+#       (BrightnessUnlocker.tsx); 700 and 1000 are spare levels.
+#   apps/web/public/hdr/white-hlg.webm — VP9 10-bit, BT.2020 + HLG (fallback)
 #
 # The clips are 64x64 solid white, 1s, looped by the <video> element. HDR
 # metadata (color primaries/transfer) is what makes the browser engage EDR —
