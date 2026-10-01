@@ -98,6 +98,18 @@ const siteSchema = {
       name: SITE_NAME,
       url: SITE_ORIGIN,
       logo: `${SITE_URL}/brand.png`,
+      description:
+        'MaxCandela makes a macOS menu-bar app that unlocks the unused EDR brightness headroom in MacBook Pro XDR displays.',
+      // The only contact channel the site publishes. A contactPoint gives the
+      // entity somewhere to resolve to beyond a name and a logo; `url` rather
+      // than the address itself, because /support/ is the page that stays
+      // correct if the alias ever changes.
+      contactPoint: {
+        '@type': 'ContactPoint',
+        contactType: 'customer support',
+        url: `${SITE_URL}/support/`,
+        availableLanguage: 'en',
+      },
       sameAs: [APP_STORE_URL],
     },
     {

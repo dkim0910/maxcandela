@@ -403,10 +403,9 @@ lift (faded by the animator) per display.
 Also removed 2026-07: the web app's three-level boost selector. Codec
 detection remains and picks **`white-pq-1600.mp4`** (HEVC) or
 **`white-hlg.webm`** (fallback). *(Corrected 2026-08-27: this said the
-1000-nit clip was the one in use — it is not, and has not been. Both
-`white-pq-700.mp4` and `white-pq-1000.mp4` are referenced nowhere, are still
-published at maxcandela.com/hdr/, and can be deleted; `scripts/
-generate-hdr-video.sh` regenerates them.)*
+1000-nit clip was the one in use — it is not, and has not been. The unused
+`white-pq-700.mp4` and `white-pq-1000.mp4` were deleted 2026-10-01;
+`scripts/generate-hdr-video.sh` regenerates them if ever needed.)*
 
 ## Build / run / test
 
@@ -780,8 +779,12 @@ does disabling instantly restore it) is required before claiming it works.
       `BeforeAfter` now takes `srcset`/`sizes` plus required `width`/`height`
       (without intrinsic dimensions the slider collapsed to zero height until
       the bytes landed — a CLS failure). Re-run the script after replacing
-      either screenshot. **The two originals are still in `public/` and are now
-      referenced by nothing** — delete them when happy.
+      either screenshot. *(2026-10-01: the two originals moved out of
+      `public/` to `assets/screenshots/compare-{normal,boosted}.png` — renamed
+      to match what they actually are. They are the regeneration **sources**,
+      so they are kept, but anything under `public/` publishes verbatim, and
+      leaving 10.45 MB of unlinked masters on maxcandela.com was the whole
+      problem. `optimize-web-images.sh` reads the new path.)*
 - [x] Sitemap `lastmod` is derived from git (2026-08-27). It was hardcoded
       `2026-07-21` on all five routes while four had been edited later, and a
       lastmod contradicting the `Last-Modified` header gets the signal
@@ -1012,6 +1015,46 @@ does disabling instantly restore it) is required before claiming it works.
       deploy (cancelled pushes no longer drop routes), submits nothing when
       no web file changed, everything on a manual run.
       `tsconfig.tsbuildinfo` untracked + ignored.
+- [x] **Third SEO pass (2026-10-01).** Run with the `claude-seo` plugin's
+      audit methodology. Landed: `BreadcrumbList` + a visible breadcrumb trail
+      on all five secondary pages (`LegalShell` now *requires* a `path`, the
+      same forcing function `pageMetadata` uses — pass `""` only for the 404,
+      which has no canonical URL and so gets the trail without the markup);
+      `TechArticle` on `/how-it-works/` with `datePublished`/`dateModified`
+      read from git by `lib/git.ts`, the helper `app/sitemap.ts` now shares,
+      so a route's `<lastmod>` and its schema `dateModified` are the same
+      value **by construction** (two freshness dates that disagree is what
+      gets the signal discarded); `Organization` gained `description` + a
+      `contactPoint` pointing at `/support/`; `/support/`'s `<h1>` was the
+      bare word "Support" and now carries the terms the page answers for.
+      Caveat on the git dates: they are file-granular, so editing a page's
+      source for a non-content reason (adding this schema did exactly that)
+      moves its `dateModified`. Accepted — the alternative is a hand-kept
+      date that silently rots.
+      Two real bugs fixed. (1) The 404 set `title`/`robots`/`canonical` but
+      not `description` or `openGraph`, so Next's shallow merge handed it the
+      **home page's** `og:title` and `og:url` — a dead link pasted into Slack
+      unfurled as the home page and hid that it was broken. Same shallow-merge
+      root cause as the 2026-08-27 canonical bug, one file further on.
+      (2) `next/script strategy="afterInteractive"` makes Next emit
+      `<link rel="preload" as="script">` for gtag.js into every page's head,
+      and Chrome prioritises a preloaded script — a third-party tag was
+      competing for bandwidth with the LCP comparison image. `lazyOnload`
+      drops the preload entirely (verified in the built HTML, not assumed);
+      the cost is that a visitor who leaves before `window.onload` is not
+      counted.
+      Deploy weight **12.4 MB → 2.0 MB**, from the asset move above.
+      Deliberately **not** done, with reasons: no new `FAQPage` anywhere —
+      Google fully retired the FAQ rich result on **2026-05-07**, so it earns
+      nothing in Google and no AI provider has confirmed consuming it (the
+      existing home-page block stays; removal is not recommended either, and
+      the comment above it now says so instead of claiming a Bing/AI benefit);
+      no `HowTo` on `/how-it-works/` despite the title, retired Sept 2023; no
+      `llms.txt` — Google's own docs say Search ignores it, and MaxCandela is
+      not a developer-docs site, which is the one place it demonstrably helps.
+      Converting `app/page.tsx` off `'use client'` was measured and dropped:
+      the page's own chunk is **8 KB gzipped** of a ~160 KB first load, so it
+      is framework weight, not page weight.
 - [ ] GDPR/ePrivacy: GA cookies are live and there is still no consent
       mechanism. *(2026-08-27: the AdSense loader is now gone, which removes
       the certified-CMP requirement and the ad cookies — this is back to a

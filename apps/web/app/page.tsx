@@ -392,9 +392,13 @@ const homeSchema = {
       ],
     },
     {
-      // Google retired FAQ rich results, so this earns no stars in Google.
-      // Bing and the AI answer engines still consume FAQPage, and it costs
-      // ~2 KB to describe questions the page genuinely answers.
+      // Google fully retired the FAQ rich result on 2026-05-07, so this earns
+      // nothing in Google's SERP. Kept — not removed — because it accurately
+      // describes questions the page really answers, for whatever non-Google
+      // consumers read it, at ~2 KB. Do not add FAQPage to another page
+      // expecting a SERP gain, and do not claim an AI-citation benefit: no
+      // AI provider has confirmed one. For a genuine user-submitted Q&A page
+      // the live type is QAPage, not this.
       '@type': 'FAQPage',
       '@id': `${SITE_ORIGIN}#faq`,
       mainEntity: FAQS.map((f) => ({

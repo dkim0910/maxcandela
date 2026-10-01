@@ -829,6 +829,41 @@ h2 {
   letter-spacing: -0.025em;
 }
 
+/* Breadcrumb trail above the h1. Sits inside the 120px top padding rather
+   than adding to it, so adding the trail did not push every secondary page's
+   h1 down the viewport. */
+.crumbs {
+  margin-bottom: 10px;
+}
+
+.crumbs ol {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+  color: var(--text-mute);
+}
+
+/* Separator on the generated content rather than between elements, so it
+   never lands after the last crumb. */
+.crumbs li + li::before {
+  content: '›';
+  margin-right: 8px;
+  color: var(--text-mute);
+}
+
+.crumbs a {
+  color: var(--text-dim);
+  text-decoration: none;
+}
+
+.crumbs a:hover {
+  text-decoration: underline;
+}
+
 .legal-updated {
   margin-top: 6px;
   font-size: 13px;

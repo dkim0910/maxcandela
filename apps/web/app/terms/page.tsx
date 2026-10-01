@@ -12,7 +12,12 @@ export const metadata: Metadata = pageMetadata({
 
 export default function TermsPage() {
   return (
-    <LegalShell title="Terms of Use" updated="July 27, 2026">
+    <LegalShell
+      path="/terms/"
+      title="Terms of Use"
+      crumb="Terms"
+      updated="July 27, 2026"
+    >
       <p>
         These terms apply to the MaxCandela macOS application and this
         website. By downloading or using MaxCandela, you agree to them.

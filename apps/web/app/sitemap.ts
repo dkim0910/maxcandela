@@ -1,5 +1,5 @@
-import { execFileSync } from 'node:child_process';
 import type { MetadataRoute } from 'next';
+import { lastModified } from '@/lib/git';
 import { SITE_ORIGIN } from '@/lib/site';
 
 // Static sitemap for the marketing pages — helps search engines discover and
@@ -16,10 +16,12 @@ export const dynamic = 'force-static';
  * Last-Modified header is trivially falsifiable, so the signal gets discarded
  * site-wide rather than merely ignored.
  *
- * Deriving it from git is the accurate option. Do NOT "simplify" this to
- * `new Date()`: build time makes all five routes claim they changed on every
- * deploy, which is the same falsifiable pattern and never self-corrects.
- * Stale is bad; falsely fresh is worse.
+ * Deriving it from git is the accurate option (see lib/git.ts, which also
+ * feeds the `dateModified` in /how-it-works/'s article schema so the two can
+ * never disagree). Do NOT "simplify" this to `new Date()`: build time makes
+ * all six routes claim they changed on every deploy, which is the same
+ * falsifiable pattern and never self-corrects. Stale is bad; falsely fresh is
+ * worse.
  */
 const ROUTES = [
   { path: '', source: 'app/page.tsx' },
@@ -29,24 +31,6 @@ const ROUTES = [
   { path: 'terms/', source: 'app/terms/page.tsx' },
   { path: 'support/', source: 'app/support/page.tsx' },
 ];
-
-// Used only when git history is unavailable (a tarball export, or a shallow CI
-// clone). deploy-web.yml sets fetch-depth: 0 precisely so this is not hit.
-const FALLBACK_LAST_MODIFIED = '2026-08-27';
-
-function lastModified(source: string): Date {
-  try {
-    const iso = execFileSync('git', ['log', '-1', '--format=%cI', '--', source], {
-      cwd: process.cwd(),
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'ignore'],
-    }).trim();
-    if (iso) return new Date(iso);
-  } catch {
-    // Not a git checkout — fall through.
-  }
-  return new Date(FALLBACK_LAST_MODIFIED);
-}
 
 export default function sitemap(): MetadataRoute.Sitemap {
   // No changeFrequency/priority: Google states outright that it ignores both,
