@@ -2,11 +2,16 @@
 # Re-encode the home page's before/after comparison shots into the responsive
 # WebP variants that apps/web/components/BeforeAfter.tsx references.
 #
-# Why this exists: the sources are 3456×2234 screenshots weighing ~5 MB each
-# (and, despite the .jpg extension, they are PNGs — `file` them and see). Both
-# were served raw and rel=preload'ed on /, so a first visit pulled 10.45 MB of
-# images for a box CSS caps at 1240px. Next's <Image> optimizer is unavailable
-# under `output: 'export'`, so the resizing happens here instead.
+# Why this exists: the sources are 3456×2234 PNG screenshots weighing ~5 MB
+# each. Both were served raw and rel=preload'ed on /, so a first visit pulled
+# 10.45 MB of images for a box CSS caps at 1240px. Next's <Image> optimizer is
+# unavailable under `output: 'export'`, so the resizing happens here instead.
+#
+# The sources live in assets/screenshots/, NOT in apps/web/public/. Everything
+# under public/ is published verbatim, so a 5 MB master kept there is a live
+# crawlable URL on maxcandela.com that no page links to — 10.45 MB of the
+# deploy serving no one. Same reason the brand master sits in assets/brand/.
+# They were also named .jpg while being PNGs; renamed to match reality.
 #
 # Sizes: 1240 = the .ba container's max-width (globals.css), 2480 = the same at
 # 2× DPR. The <img srcset> lets the browser pick; phones take the 1240w.
@@ -16,7 +21,9 @@
 
 set -euo pipefail
 
-PUBLIC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/apps/web/public"
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+SRC_DIR="$REPO_ROOT/assets/screenshots"
+PUBLIC_DIR="$REPO_ROOT/apps/web/public"
 QUALITY=80
 WIDTHS=(2480 1240)
 SOURCES=(compare-normal compare-boosted)
@@ -27,7 +34,7 @@ command -v cwebp >/dev/null 2>&1 || {
 }
 
 for name in "${SOURCES[@]}"; do
-  src="$PUBLIC_DIR/$name.jpg"
+  src="$SRC_DIR/$name.png"
   [ -f "$src" ] || { echo "error: missing source $src" >&2; exit 1; }
 
   for width in "${WIDTHS[@]}"; do
@@ -39,6 +46,7 @@ for name in "${SOURCES[@]}"; do
 done
 
 echo
-echo "Sources are left in place. They are no longer referenced by the site —"
-echo "delete them once you are happy with the re-encodes:"
-for name in "${SOURCES[@]}"; do echo "  apps/web/public/$name.jpg"; done
+echo "Sources stay in assets/screenshots/ — they are the masters these .webp"
+echo "files are re-encoded from, and they are outside public/ so they are not"
+echo "published. Commit the regenerated .webp files."
+

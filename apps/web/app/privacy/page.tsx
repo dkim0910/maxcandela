@@ -12,7 +12,12 @@ export const metadata: Metadata = pageMetadata({
 
 export default function PrivacyPage() {
   return (
-    <LegalShell title="Privacy Policy" updated="October 1, 2026">
+    <LegalShell
+      path="/privacy/"
+      title="Privacy Policy"
+      crumb="Privacy"
+      updated="October 1, 2026"
+    >
       <p>
         MaxCandela is built to collect as little as possible. <strong>The Mac
         app collects no personal data</strong> and never sees your screen. This

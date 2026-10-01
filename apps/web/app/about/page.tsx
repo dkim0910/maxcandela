@@ -12,7 +12,11 @@ export const metadata: Metadata = pageMetadata({
 
 export default function AboutPage() {
   return (
-    <LegalShell title="About MaxCandela">
+    <LegalShell
+      path="/about/"
+      title="About MaxCandela"
+      crumb="About"
+    >
       <p>
         <strong>MaxCandela exists to answer one simple frustration:</strong>{' '}
         your MacBook Pro’s screen is capable of far more brightness than

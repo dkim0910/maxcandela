@@ -2,18 +2,76 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import { pageMetadata } from '@/lib/metadata';
 import LegalShell from '@/components/LegalShell';
-import { APP_STORE_URL } from '@/lib/site';
+import { firstPublished, lastModified } from '@/lib/git';
+import { APP_STORE_URL, SITE_NAME, SITE_ORIGIN, SITE_URL } from '@/lib/site';
+
+const PATH = '/how-it-works/';
+const TITLE = 'How to make your MacBook screen brighter than max';
+const DESCRIPTION =
+  'Why macOS caps your MacBook Pro at ~600 nits when the panel is rated for 1,000, why a white wallpaper or bright overlay can’t fix it, and what actually works.';
+
+// This page's own source file — the thing whose commit dates ARE the article's
+// dates. Relative to apps/web, which is `cwd` at build time.
+const SOURCE = 'app/how-it-works/page.tsx';
 
 export const metadata: Metadata = pageMetadata({
-  path: '/how-it-works/',
-  title: 'How to make your MacBook screen brighter than max',
-  description:
-    'Why macOS caps your MacBook Pro at ~600 nits when the panel is rated for 1,000, why a white wallpaper or bright overlay can’t fix it, and what actually works.',
+  path: PATH,
+  title: TITLE,
+  description: DESCRIPTION,
 });
+
+/**
+ * The only informational page on the site, so the only one where an article
+ * node is honest: the other five are the app's own pages (SoftwareApplication
+ * on `/`) or boilerplate. `TechArticle` rather than `Article` because the
+ * content is a technical explanation — Google treats it as an Article subtype,
+ * so it is eligible for the same treatment with a more accurate type.
+ *
+ * Dates come from git via the same helper the sitemap uses, so `dateModified`
+ * and this route's `<lastmod>` are the same value by construction. Two
+ * freshness dates that disagree is the pattern that gets the signal discarded.
+ *
+ * Deliberately no `HowTo`: despite the page's title, Google retired the HowTo
+ * rich result in September 2023, and the markup now buys nothing.
+ */
+function articleSchema() {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'TechArticle',
+    '@id': `${SITE_URL}${PATH}#article`,
+    headline: TITLE,
+    description: DESCRIPTION,
+    mainEntityOfPage: { '@type': 'WebPage', '@id': `${SITE_URL}${PATH}` },
+    datePublished: firstPublished(SOURCE).toISOString(),
+    dateModified: lastModified(SOURCE).toISOString(),
+    image: `${SITE_URL}/og.png`,
+    inLanguage: 'en-US',
+    // The Organization node is defined once in the root layout; both of these
+    // reference it by @id rather than restating it.
+    author: { '@id': `${SITE_ORIGIN}#organization` },
+    publisher: { '@id': `${SITE_ORIGIN}#organization` },
+    // Restated rather than referenced by @id: the SoftwareApplication node
+    // lives on the home page, and an @id this page never defines leaves a
+    // dangling reference in the graph a validator reads here.
+    about: { '@type': 'SoftwareApplication', name: SITE_NAME, url: SITE_ORIGIN },
+    articleSection: 'Displays',
+    keywords: [
+      'MacBook Pro brightness',
+      'XDR display',
+      'EDR headroom',
+      'nits',
+      'macOS brightness cap',
+    ],
+  };
+}
 
 export default function HowItWorksPage() {
   return (
-    <LegalShell title="How to make your MacBook screen brighter than max">
+    <LegalShell path={PATH} title={TITLE} crumb="How it works">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema()) }}
+      />
       <p>
         If you have pushed the brightness slider on a 14″ or 16″ MacBook Pro
         all the way up and thought <em>“this panel can do more than

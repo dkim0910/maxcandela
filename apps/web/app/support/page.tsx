@@ -16,7 +16,11 @@ const SUPPORT_MAILTO = `mailto:${SUPPORT_EMAIL.replace('+', '%2B')}?subject=MaxC
 
 export default function SupportPage() {
   return (
-    <LegalShell title="Support">
+    <LegalShell
+      path="/support/"
+      title="Support — MacBook Pro brightness help"
+      crumb="Support"
+    >
       <p>
         Something not working, or just have a question? We read everything.
       </p>
