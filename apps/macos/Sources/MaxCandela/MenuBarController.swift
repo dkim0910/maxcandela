@@ -495,8 +495,14 @@ final class MenuBarController {
             guard !suppressPendingToggle else { return }
             switch licenseState {
             case .licensed, .trial:
-                brightness.toggle()
-                lastToggleAppliedAt = Date()
+                // Only ever switches ON from here — this branch began with
+                // the boost off. A launch-time licence check can restore the
+                // saved boost while this one is in flight, and a blind
+                // toggle would then turn it straight back off.
+                if !brightness.isEnabled {
+                    brightness.toggle()
+                    lastToggleAppliedAt = Date()
+                }
             case .expired:
                 showPaywallAlert()
             }
@@ -548,7 +554,13 @@ final class MenuBarController {
     private static let brandIcon: NSImage? = {
         #if SWIFT_PACKAGE
         // `swift run` has no app icon, so load the bundled resource explicitly.
-        if let url = Bundle.module.url(forResource: "AppIcon", withExtension: "png"),
+        // Not inside a .app, though: scripts/bundle-macos.sh ships the binary
+        // without SwiftPM's resource bundle, and the generated `Bundle.module`
+        // accessor calls fatalError when it can't find one — it only appeared
+        // to work on the Mac that built it, via an absolute .build/ fallback
+        // path. That bundle has a real icon (AppIcon.icns) anyway.
+        if Bundle.main.bundleURL.pathExtension != "app",
+           let url = Bundle.module.url(forResource: "AppIcon", withExtension: "png"),
            let image = NSImage(contentsOf: url) {
             return image
         }
@@ -647,6 +659,11 @@ final class MenuBarController {
             do {
                 if try await store.purchase(product, confirmIn: anchor) {
                     licenseState = .licensed
+                    // Bring back a boost the expiry suspended. A purchase
+                    // made here never arrives on Transaction.updates, so
+                    // nothing else would until the next licence refresh —
+                    // the user would pay and see no change.
+                    enforceLicense()
                     refresh()
                     Analytics.track("purchase_completed", params: ["product": productID])
                     ConversionTracker.update(licenseState: .licensed)

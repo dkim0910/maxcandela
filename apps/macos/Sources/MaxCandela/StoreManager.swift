@@ -9,9 +9,10 @@ import StoreKit
 ///   com.maxcandela.pro.lifetime — non-consumable, $9.99
 ///   com.maxcandela.pro.monthly  — auto-renewable subscription, $0.99/month
 ///
-/// Trial note (v1): the trial clock is the first-launch date in UserDefaults.
-/// That's resettable by a determined user; the robust upgrade is the app
-/// receipt's original purchase date — tracked in CLAUDE.md TODO.
+/// Trial clock: the App Store's original purchase date (`AppTransaction`,
+/// signed by Apple), so the trial runs from download, not first open, and
+/// can't be reset by deleting preferences. The UserDefaults first-launch
+/// stamp is only the fallback when there is no receipt (dev builds).
 final class StoreManager {
     enum LicenseState: Equatable {
         case licensed

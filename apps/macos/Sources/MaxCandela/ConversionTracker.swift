@@ -110,8 +110,10 @@ enum ConversionTracker {
     /// The explicit sync matters: the SDK normally uploads attributes when
     /// the app resigns active or on the next launch, and an accessory app
     /// never resigns active — verified 2026-09-03: without it the customer
-    /// appeared in the dashboard with no `license_state` at all. Rate-limited
-    /// by the SDK to 5/min, which the 30-min licence refresh never reaches.
+    /// appeared in the dashboard with no `license_state` at all. The SDK
+    /// rate-limits the sync to 5/min, and the licence refresh also runs on
+    /// every menu open, so a burst of opens can hit that limit. Harmless: the
+    /// error is dropped and the cached attributes go up with the next sync.
     static func update(licenseState: StoreManager.LicenseState) {
         guard isConfigured else { return }
         Purchases.shared.attribution.setAttributes(attributes(for: licenseState))

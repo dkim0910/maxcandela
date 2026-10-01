@@ -122,7 +122,7 @@ final class ThermalMonitor {
     static let criticalDim: CGFloat = 0.8
 
     /// Called on every OS thermal-state transition so the controller can
-    /// re-evaluate immediately instead of waiting for its 1 s poll.
+    /// re-evaluate immediately instead of waiting for its next poll.
     ///
     /// Always delivered on the main thread: Foundation posts
     /// `thermalStateDidChangeNotification` on the global dispatch queue (see

@@ -4,8 +4,9 @@ import Script from 'next/script';
 import { GA_ID, gaConfigured } from '@/lib/analytics';
 
 /**
- * Google Analytics 4 loader. Renders nothing until a real Measurement ID is
- * set in lib/analytics.ts, so development and preview builds stay clean.
+ * Google Analytics 4 loader. Renders nothing unless `gaConfigured` (a real
+ * Measurement ID in lib/analytics.ts, and a production build), so `next dev`
+ * stays clean.
  * IP anonymization is on and ad personalization signals are off — keep this
  * in sync with the /privacy page.
  */

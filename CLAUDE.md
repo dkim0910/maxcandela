@@ -897,7 +897,11 @@ does disabling instantly restore it) is required before claiming it works.
       SwiftPM dev targets 14; falls back to `apps.apple.com/redeem`, which is
       also the *only* route for non-consumable IAP promo codes — the sheet takes
       subscription offer codes). `/support` + home FAQ document it.
-- [x] **1.1.7 (17)** — current source version, set 2026-09-03 for the
+- [x] **1.1.8 (18)** — current source version, set 2026-10-01 for the bug
+      sweep (see "Bug sweep (2026-10-01)" above). 1.1.7 is live on the store
+      (iTunes lookup, 2026-10-01), so both numbers moved. Not archived yet —
+      Archive → Distribute as described under 1.1.7 below, picking 1.1.8 (18).
+- [x] **1.1.7 (17)** — set 2026-09-03 for the
       RevenueCat release (17 because build 16 was already spent on the first attempt). Both numbers moved, not just the build: App Store
       Connect already shows 1.1.5 as "Ready for Distribution", and Apple will
       not attach a new build to a version that has shipped, so a bare build
@@ -929,14 +933,14 @@ does disabling instantly restore it) is required before claiming it works.
       reports (checked 2026-09-03) and what the store lists as ready.
       Bump the *build* number for every upload; Apple only
       requires increasing values, so the skipped 1.1.0–1.1.4 are harmless.
-      Version numbering state, as of 2026-09-03 (three different things, easy to
+      Version numbering state, as of 2026-10-01 (three different things, easy to
       confuse — check all three before assuming a fix is missing):
 
   | Where | Version | Note |
   |---|---|---|
-  | This repo | 1.1.7 (17) | not uploaded — carries RevenueCat |
-  | `/Applications/MaxCandela.app` | 1.1.5 (15) | what Daniel is testing |
-  | App Store Connect | 1.1.5 | Ready for Distribution |
+  | This repo | 1.1.8 (18) | not archived — carries the 2026-10-01 bug sweep |
+  | `/Applications/MaxCandela.app` | 1.1.7 (17) | store install, checked 2026-10-01 |
+  | App Store (live) | 1.1.7 | RevenueCat release |
 
       **A fix you can't see is usually a build older than the fix** — confirm
       with `defaults read /Applications/MaxCandela.app/Contents/Info
@@ -982,6 +986,32 @@ does disabling instantly restore it) is required before claiming it works.
       invisible anchor window carried a fixed `+120` offset tuned for the
       payment sheet, so the differently-sized redeem sheet sat off-centre —
       `centerAttachedSheet` now measures the sheet and nudges the anchor.
+- [x] **Bug sweep (2026-10-01)** — build + 55 tests + `tsc` + `npm run build`
+      pass; brightness changes below still need the on-hardware check.
+      App: `refreshTargets()` now returns unless the boost is running — the
+      thermal notification called it while off/licence-suspended, so another
+      app's HDR content plus a thermal transition put the lift on the glass
+      with no poll to take it off (and burned the idle-cooling credit). A
+      purchase calls `enforceLicense()` so a suspended boost comes back
+      (purchases never reach `Transaction.updates`). A display that leaves
+      the boost set while still attached fades back to 1.0 instead of keeping
+      its lift. Triggers are re-parked (`EDROverlayWindow.place(on:)`) on
+      every screen change. A refused lift is not retried until its target
+      moves (was 2 log lines per 0.25 s poll). The click handler only ever
+      switches ON after its licence check. `brandIcon` skips `Bundle.module`
+      inside a `.app` — `bundle-macos.sh` ships no SwiftPM resource bundle,
+      and the accessor `fatalError`s without one, so `dist/MaxCandela.app`
+      crashed at the first-run popover on any Mac but the build machine.
+      Web: `sessionStorage` read guarded (blocked site data crashed the page);
+      boost drops when `(dynamic-range: high)` turns false; analytics side
+      effects moved out of the state updater and GA off under `next dev`;
+      `/privacy` lists `paywall_shown` and RevenueCat's technical headers +
+      signed purchase record; `/terms` date → July 27, 2026 (last material
+      change); `app/not-found.tsx` stops the 404 inheriting `index` + the
+      home canonical. Workflow: IndexNow diffs against the last *successful*
+      deploy (cancelled pushes no longer drop routes), submits nothing when
+      no web file changed, everything on a manual run.
+      `tsconfig.tsbuildinfo` untracked + ignored.
 - [ ] GDPR/ePrivacy: GA cookies are live and there is still no consent
       mechanism. *(2026-08-27: the AdSense loader is now gone, which removes
       the certified-CMP requirement and the ad cookies — this is back to a
@@ -1061,8 +1091,9 @@ None of these are code; all were verified live on 2026-08-27.
       durable alternative is dropping `BingSiteAuth.xml` into `apps/web/public/`
       (the IndexNow key file already proves that path publishes at the root).
       After verifying: submit `sitemap.xml`, run URL Inspection on the home
-      page, and check **IndexNow** — every submission so far returned `202`
-      ("key pending validation"), and a `200` has never been observed.
+      page, and check **IndexNow** — early submissions returned `202` ("key
+      pending validation"); the 2026-09-03 deploy got `200`, so the key has
+      validated.
 - [ ] **Google Search Console: resubmit the sitemap and read Page Indexing.**
       Do this *after* the canonical fix deploys — before it, the four secondary
       pages will keep reporting as "Alternate page with proper canonical tag"

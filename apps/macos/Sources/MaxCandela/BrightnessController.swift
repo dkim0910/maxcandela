@@ -54,6 +54,11 @@ final class BrightnessController {
     private var currentScales: [CGDirectDisplayID: CGFloat] = [:]
     private var targetScales: [CGDirectDisplayID: CGFloat] = [:]
 
+    /// Targets a display has refused the lift for. Not retried until the
+    /// target itself moves — retrying an unchanged one on every 0.25 s poll
+    /// only filled the log with two lines per tick, indefinitely.
+    private var refusedTargets: [CGDirectDisplayID: CGFloat] = [:]
+
     private var pollTimer: Timer?
     private var animationTimer: Timer?
 
@@ -71,7 +76,7 @@ final class BrightnessController {
         displayManager.onScreenConfigurationChanged = { [weak self] in
             self?.rebuildOverlays()
         }
-        // React the instant the Mac heats up or cools, not just on the 1 s poll.
+        // React the instant the Mac heats up or cools, not just on the next poll.
         thermal.onChange = { [weak self] in
             self?.refreshTargets()
         }
@@ -255,31 +260,53 @@ final class BrightnessController {
         // display set changes underneath us.
         guard !heatSuspended else { return }
 
-        let wanted = Set(
-            displayManager.currentDisplays()
-                .filter(\.supportsBoost)
-                .map(\.displayID)
-        )
+        let displays = displayManager.currentDisplays()
+        // uniquingKeysWith: mirrored screens can report duplicate display IDs;
+        // uniqueKeysWithValues would trap on that.
+        let infoByID = Dictionary(displays.map { ($0.displayID, $0) },
+                                  uniquingKeysWith: { first, _ in first })
+        let wanted = Set(displays.filter(\.supportsBoost).map(\.displayID))
         let existing = Set(overlays.keys)
+
+        // Even when the display set is unchanged, a resolution or arrangement
+        // change moves the screen out from under its trigger — whose frame is
+        // in global coordinates — and a trigger that is off its display holds
+        // no EDR open. Re-parking is a window move: no gamma, no flicker.
+        for id in existing.intersection(wanted) {
+            if let info = infoByID[id] {
+                overlays[id]?.place(on: info.screen)
+            }
+        }
         guard wanted != existing else {
             refreshTargets()
             return
         }
 
-        // Remove triggers for departed displays (no gamma restore needed —
-        // restore is global and would flash the surviving displays).
+        // Remove triggers for displays that left the boost set (no global
+        // gamma restore — it would flash the surviving displays). One that is
+        // still attached but lost its headroom (HDR switched off, an SDR
+        // reference preset) still carries our lift, and refreshTargets only
+        // drives boost-capable displays: fade it back to native here rather
+        // than forgetting it. Keeping its entry is also what makes
+        // `teardownAllOverlays` restore it if the user switches off.
+        var fadingBack = false
         for id in existing.subtracting(wanted) {
             overlays[id]?.deactivate()
             overlays[id] = nil
-            currentScales[id] = nil
-            targetScales[id] = nil
+            refusedTargets[id] = nil
+            if infoByID[id] != nil, let current = currentScales[id], current != 1.0 {
+                targetScales[id] = 1.0
+                fadingBack = true
+            } else {
+                currentScales[id] = nil
+                targetScales[id] = nil
+            }
+        }
+        if fadingBack {
+            startAnimatorIfNeeded()
         }
 
         // Add triggers for new displays.
-        // uniquingKeysWith: mirrored screens can report duplicate display IDs;
-        // uniqueKeysWithValues would trap on that.
-        let infoByID = Dictionary(displayManager.currentDisplays().map { ($0.displayID, $0) },
-                                  uniquingKeysWith: { first, _ in first })
         for id in wanted.subtracting(existing) {
             guard let info = infoByID[id] else { continue }
             guard let overlay = EDROverlayWindow(screen: info.screen) else {
@@ -298,6 +325,7 @@ final class BrightnessController {
         }
         overlays.removeAll()
         targetScales.removeAll()
+        refusedTargets.removeAll()
         if !currentScales.isEmpty {
             currentScales.removeAll()
             gamma.restoreAll()
@@ -350,6 +378,14 @@ final class BrightnessController {
     /// Recompute per-display targets from the live headroom and the heat guard,
     /// and kick the animator if anything needs to move.
     private func refreshTargets() {
+        // The thermal notification calls in here whatever the boost is doing.
+        // Off (or suspended for the licence) there is nothing to drive: without
+        // this guard another app's HDR content raised live headroom and the
+        // lift came up anyway, with no poll running to ever bring it back down.
+        // It also kept the heat model's clock ticking, which robbed the next
+        // switch-on of the cooling credit for the time spent off.
+        guard isEnabled else { return }
+
         // Feed the heat model what's actually on the glass, on the display
         // being driven hardest — not what the user asked for.
         let appliedBoost = currentScales.values.max() ?? 1.0
@@ -371,6 +407,10 @@ final class BrightnessController {
                                           currentHeadroom: info.currentHeadroom,
                                           thermalCeiling: limits.boostCeiling,
                                           dimTo: limits.dimTo)
+            // Already refused this exact target: leave the display parked
+            // where it stopped until the target moves (see refusedTargets).
+            if refusedTargets[info.displayID] == target { continue }
+            refusedTargets[info.displayID] = nil
             if targetScales[info.displayID] != target {
                 targetScales[info.displayID] = target
                 NSLog("MaxCandela: display %u headroom %.2f× thermal(ceil %.2f dim %@) → fading to %.2f× (requested %.2f×)",
@@ -416,8 +456,10 @@ final class BrightnessController {
                     allSettled = false
                 }
             } else {
-                // Display refused the lift: stop chasing it this fade instead
-                // of spinning the animator forever. The next poll retries.
+                // Display refused the lift: stop chasing it instead of
+                // spinning the animator forever. Retried once the target
+                // moves — refreshTargets skips a target already refused.
+                refusedTargets[id] = target
                 targetScales[id] = current
             }
         }
