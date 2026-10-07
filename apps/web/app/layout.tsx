@@ -4,6 +4,9 @@ import BoostProvider from '@/components/BoostProvider';
 import { APP_STORE_URL, SITE_NAME, SITE_ORIGIN, SITE_URL } from '@/lib/site';
 import './globals.css';
 
+// Google AdSense publisher ID (public — ships in the client script).
+const ADSENSE_CLIENT = 'ca-pub-7400069037778721';
+
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: 'MaxCandela — Unlock your MacBook Pro’s full XDR brightness',
@@ -80,6 +83,14 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(siteSchema) }}
         />
         <Analytics />
+        {/* Native <script> (React 19 hoists it to <head>) rather than
+            next/script — AdSense rejects the data-nscript attribute that
+            next/script adds. /privacy/ discloses it; keep the two in step. */}
+        <script
+          async
+          src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_CLIENT}`}
+          crossOrigin="anonymous"
+        />
         <BoostProvider>{children}</BoostProvider>
       </body>
     </html>

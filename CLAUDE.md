@@ -718,6 +718,11 @@ does disabling instantly restore it) is required before claiming it works.
       `/privacy` now states the site carries no advertising. Re-add both
       together if AdSense is ever revisited; note it also cannot serve on a
       non-HTTPS page, which this site still is (see "Enforce HTTPS" below).
+      **Re-added 2026-10-07** at Daniel's request — same loader, same native
+      `<script>` in `layout.tsx` (not `next/script`: AdSense rejects its
+      `data-nscript` attribute), and `/privacy` restored to the AdSense
+      disclosure. No ad units are placed; the loader alone serves only Auto
+      ads, and only once AdSense approves the site.
 - [x] App menu polish: trial countdown (`Free trial — N days left`) + hover
       tooltip on the ☀️; menu now shows the *real live* headroom instead of the
       inflated theoretical max; brand logo in the paywall + welcome dialogs.
@@ -1060,6 +1065,8 @@ does disabling instantly restore it) is required before claiming it works.
       the certified-CMP requirement and the ad cookies — this is back to a
       plain GA-cookie question. Options: a consent banner, or switch to
       cookieless analytics. Lower urgency than it was, not zero.)*
+      *(2026-10-07: AdSense is back, so the certified-CMP requirement for
+      EEA/UK ad serving and the ad cookies are back with it.)*
 
 - [x] **Second SEO pass (2026-08-27).** New page **`/how-it-works/`** —
       "How to make your MacBook screen brighter than max", the informational
