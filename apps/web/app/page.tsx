@@ -23,21 +23,108 @@ const COMPARE_BOOSTED = {
   srcSet: '/compare-boosted-1240.webp 1240w, /compare-boosted-2480.webp 2480w',
 };
 
-const FEATURES = [
+// The free tools. Each line states what the app does today — check it
+// against apps/macos/Sources/MaxCandela/Tools before adding or rewording a
+// card. The counts in the copy are derived from these arrays: "eight" is
+// TOOLS.length, "17" is TOOLS + PRO_TOOLS + the three display tools.
+const TOOLS = [
   {
-    icon: '🖥️',
-    title: 'Your whole Mac, brighter',
-    text: 'The menu-bar app boosts everything — desktop, every app, every window. Not just one browser tab.',
+    icon: '☕',
+    title: 'Keep Awake',
+    text: 'Stop your Mac’s display sleeping for half an hour, a few hours, or until you say so. Presentations, long downloads, reading.',
   },
   {
-    icon: '⚡',
-    title: 'One click',
-    text: 'A single ☀️ toggle in your menu bar. Click to unlock full brightness, click again to go back. Double-click for status, purchases and quit — that’s the whole UI.',
+    icon: '⏱️',
+    title: 'Timer',
+    text: 'A countdown that sits next to the menu-bar icon while it runs and chimes when it’s done.',
+  },
+  {
+    icon: '📋',
+    title: 'Clipboard tools',
+    text: 'Change the case of copied text, trim it, sort lines, URL- and Base64-encode or decode, format JSON. Optional history of the last 15 things you copied — kept in memory only.',
+  },
+  {
+    icon: '🎯',
+    title: 'Color picker',
+    text: 'Pick any colour on screen with the system eyedropper and get its hex code on your clipboard.',
+  },
+  {
+    icon: '🪄',
+    title: 'Generate',
+    text: 'A UUID, a strong password, a Unix timestamp, an ISO date or a paragraph of filler text — one click, straight to your clipboard.',
+  },
+  {
+    icon: '🌍',
+    title: 'World clock',
+    text: 'The time in the cities you work with, and whether it’s already tomorrow there.',
+  },
+  {
+    icon: '🔊',
+    title: 'Sound',
+    text: 'Switch between speakers, headphones and microphones, and mute the mic, without opening System Settings.',
+  },
+  {
+    icon: '📊',
+    title: 'System at a glance',
+    text: 'CPU, memory, free disk space, battery health and cycle count, uptime and your local IP address — live, and click any line to copy it.',
+  },
+];
+
+// The Pro tools — each one stands in for an app people buy on its own.
+const PRO_TOOLS = [
+  {
+    icon: '🙈',
+    title: 'Hide menu bar icons',
+    text: 'Tuck the icons you rarely need behind a chevron and bring them back with a click. Hold ⌘ and drag to choose which.',
+  },
+  {
+    icon: '🗂️',
+    title: 'Clipboard manager',
+    text: 'The last 200 things you copied in a searchable window on ⌃⌥⌘V. Pin what you reuse, and keep it between restarts if you choose to.',
+  },
+  {
+    icon: '🪟',
+    title: 'Window snapping',
+    text: 'Send the front window to a half, a quarter, the full screen or the centre — from the menu or with ⌃⌥ and the arrow keys.',
+  },
+  {
+    icon: '🔍',
+    title: 'Copy text from screen',
+    text: 'Drag a box over a video, an image or a PDF that won’t select, and the text in it is on your clipboard. Recognised on your Mac, never uploaded.',
+  },
+  {
+    icon: '⚙️',
+    title: 'Your Shortcuts, one click away',
+    text: 'Add any shortcut from Apple’s Shortcuts app to the menu — dark mode, a Focus, your smart lights — and run it from the menu bar.',
+  },
+  {
+    icon: '📅',
+    title: 'Next meeting',
+    text: 'What’s coming up on your calendar, right in the menu, with a Join button for Zoom, Meet, Teams and Webex calls.',
+  },
+];
+
+// The display tools — the part of the app behind MaxCandela Pro.
+const FEATURES = [
+  {
+    icon: '☀️',
+    title: 'XDR brightness boost',
+    text: 'On a MacBook Pro XDR display, lifts your whole screen — desktop, every app, every window — past the brightness macOS normally caps everyday content at.',
+  },
+  {
+    icon: '🌙',
+    title: 'Extra Dim',
+    text: 'Take the screen below the lowest step of the brightness keys, for a dark room late at night. Works on any Mac display.',
+  },
+  {
+    icon: '🌅',
+    title: 'Warmth',
+    text: 'Shift the picture toward a warmer white, all day or only at night — it eases in and out over half an hour rather than snapping. Works on any Mac display.',
   },
   {
     icon: '🎨',
     title: 'True colors',
-    text: 'Color-calibrated boost that preserves your display’s ColorSync profile. Brighter — never washed out.',
+    text: 'The boost is colour-calibrated and preserves your display’s ColorSync profile. Brighter — never washed out.',
   },
   {
     icon: '🌡️',
@@ -45,14 +132,9 @@ const FEATURES = [
     text: 'Never exceeds the limits macOS enforces for HDR. Because a bright screen makes heat, MaxCandela tracks how hard and how long it has been driving your display and eases the boost down as it warms — and cuts it entirely if it gets too hot, restoring it once things cool.',
   },
   {
-    icon: '🔆',
-    title: 'Nothing to configure',
-    text: 'Follows your display’s live headroom automatically, and settles at a brightness your Mac can hold instead of running flat out. Set it, forget it.',
-  },
-  {
-    icon: '🔒',
-    title: 'Private by default',
-    text: 'No screen recording, no account, no personal data. The app never sees your screen content — it only lifts it. Anonymous usage stats only, as described in our privacy policy.',
+    icon: '🎛️',
+    title: 'Works the way you do',
+    text: 'Set a keyboard shortcut, pause the boost on battery, boost only in the apps you choose, and leave a second monitor alone.',
   },
 ];
 
@@ -71,15 +153,23 @@ const FAQS = [
   },
   {
     q: 'Which Macs are supported?',
-    a: 'You need a Mac with an HDR-capable display: a MacBook Pro 14″ or 16″ (2021 or later) with the Liquid Retina XDR display, or a Pro Display XDR — those go up to ~1,000 nits sustained instead of the usual ~600. MacBook Air, iMac, and ordinary external monitors have no HDR headroom to unlock, so MaxCandela can’t brighten them. The app tells you straight away if your display isn’t supported, and the browser demo above is an honest test — if it doesn’t brighten your screen, the app won’t either.',
+    a: 'Every tool except the brightness boost runs on any Mac with macOS 15.6 or later — MacBook Air, iMac and Mac mini included. The brightness boost needs a display with HDR headroom: a MacBook Pro 14″ or 16″ with the Liquid Retina XDR display, or a Pro Display XDR. Those panels can sustain ~1,000 nits while macOS holds everyday content near 600. MacBook Air, iMac and ordinary external monitors have no headroom to unlock. Two newer cases we have not been able to confirm: MacBook Pros with an M5 Pro or M5 Max chip, where a macOS bug is reported to stop display adjustments of this kind from taking effect, and the PROLED XDR display, which we have not tested. The app tells you straight away if your display has no headroom, the browser demo on this page is an honest test, and the display tools are free to try for 5 days — check that the boost visibly works on your Mac before you buy.',
+  },
+  {
+    q: 'What is free and what is Pro?',
+    a: 'The eight everyday tools — Keep Awake, Timer, the clipboard text tools with a short history, the color picker, Generate, World Clock, Sound and the system read-out — are free with no time limit. MaxCandela Pro adds the six Pro tools (Hide Menu Bar Icons, the clipboard manager, Window Snapping, Copy Text from Screen, Shortcuts and Next Meeting) and the three display tools (the XDR brightness boost, Extra Dim and Warmth). Pro is free for 5 days, then $0.99/month or $9.99 once.',
+  },
+  {
+    q: 'Which tools ask for a system permission?',
+    a: 'Three, and only when you first use them: Window Snapping needs Accessibility (it is the only way one app may move another app’s windows), Copy Text from Screen needs Screen Recording (to read the box you draw, and nothing else), and Next Meeting needs Calendar access. None of the free tools asks for anything, and MaxCandela never asks at launch.',
   },
   {
     q: 'Will it drain my battery?',
-    a: 'Brightness costs power — the boost uses more battery, just like HDR video playback does. Toggle it off when you don’t need it; one click.',
+    a: 'Brightness costs power — the boost uses more battery, just like HDR video playback does. Toggle it off when you don’t need it, or switch on “Pause Boost on Battery” under Options and it will wait until you’re plugged in.',
   },
   {
     q: 'How does the free trial work?',
-    a: 'Download free from the Mac App Store and get 5 days with everything unlocked. The clock starts when your Apple ID first downloads MaxCandela, so open it soon after installing to get the full five days. After that, keep it for $0.99/month or unlock it forever for $9.99. One purchase works on all Macs signed into your Apple ID.',
+    a: 'Download free from the Mac App Store and get 5 days with all of Pro unlocked as well as the free tools. The clock starts when your Apple ID first downloads MaxCandela, so open it soon after installing to get the full five days. After that, keep Pro for $0.99/month or unlock it forever for $9.99; the everyday tools stay free either way. One purchase works on all Macs signed into your Apple ID.',
   },
   {
     q: 'I have a promo code — how do I use it?',
@@ -141,19 +231,20 @@ export default function Home() {
       <main className="main">
         {/* ---- Hero ---- */}
         <section className="hero">
-          <p className="eyebrow">For MacBook Pro XDR displays</p>
-          {/* "MacBook Pro" belongs in the h1, not only in the eyebrow above it:
-              the entity people search for has to carry heading weight. */}
+          <p className="eyebrow">Menu-bar toolbox for Mac</p>
+          {/* Toolbox-first since the 2026-11 pivot. "Mac" and "menu bar" carry
+              the heading weight now; the MacBook Pro brightness query is
+              served by the display section's h2s and /how-it-works/. */}
           <h1>
-            Your MacBook Pro screen can go{' '}
-            <span className="hl">70% brighter</span>.
+            17 Mac tools.
             <br />
-            macOS just won’t let it.
+            <span className="hl">One menu-bar icon.</span>
           </h1>
           <p className="subtitle">
-            Your XDR panel is rated for 1,000 nits — macOS caps everyday
-            content at ~600. MaxCandela unlocks the difference with one click
-            in your menu bar. Full brightness, true colors, zero setup.
+            Keep Awake, a timer, clipboard tools, a color picker and more —
+            free. Pro replaces a shelf of paid utilities: window snapping, a
+            clipboard manager, hidden menu-bar icons, text capture, and an XDR
+            brightness boost for MacBook Pro.
           </p>
           <div className="cta-row">
             <a className="app-store-link" href={APP_STORE_URL} aria-label="Download on the Mac App Store">
@@ -165,29 +256,93 @@ export default function Home() {
                 height={40}
               />
             </a>
-            <ScrollLink targetId="demo" className="cta cta-secondary">
-              Try it in your browser ↓
+            <ScrollLink targetId="tools" className="cta cta-secondary">
+              See the tools ↓
             </ScrollLink>
-            <span className="cta-note">Free · 5-day full trial</span>
+            <span className="cta-note">Free · no account</span>
           </div>
-          {/* Hardware requirement sits with the CTA, not buried in the FAQ —
-              the boost does nothing without HDR headroom, so nobody should
-              reach the App Store link without knowing that. */}
           <div className="trust-row">
-            <span>Needs an XDR display — MacBook Pro 14″/16″ (2021+)</span>
-            <span>macOS 15.6+</span>
-            <span>Colors preserved</span>
-            <span>No account needed</span>
+            <span>Eight tools free, no time limit</span>
+            <span>Runs on any Mac · macOS 15.6+</span>
+            <span>No account, no personal data</span>
+            <span>Quit and everything is back to normal</span>
+          </div>
+        </section>
+
+        {/* ---- Tools (free) ---- */}
+        <section className="features" id="tools">
+          <div className="section-head">
+            <span className="section-eyebrow">Free, forever</span>
+            <h2>The everyday Mac utilities, without eight separate apps</h2>
+            <p className="section-sub">
+              One icon in the menu bar instead of a row of them. Each tool is
+              a click away and none of them needs an account, a permission
+              prompt or a window.
+            </p>
+          </div>
+          <div className="cards">
+            {TOOLS.map((t) => (
+              <div className="card" key={t.title}>
+                <span className="card-icon" aria-hidden="true">{t.icon}</span>
+                <h3>{t.title}</h3>
+                <p>{t.text}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* ---- Pro tools ---- */}
+        <section className="features" id="pro">
+          <div className="section-head">
+            <span className="section-eyebrow">MaxCandela Pro · $9.99 once</span>
+            <h2>Six tools people usually buy one app at a time</h2>
+            <p className="section-sub">
+              A window manager, a clipboard manager, a menu-bar tidier and a
+              screen text reader are each their own purchase elsewhere. Here
+              they are one unlock — free to try for 5 days.
+            </p>
+          </div>
+          <div className="cards">
+            {PRO_TOOLS.map((t) => (
+              <div className="card" key={t.title}>
+                <span className="card-icon" aria-hidden="true">{t.icon}</span>
+                <h3>{t.title}</h3>
+                <p>{t.text}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* ---- Display tools (Pro) ---- */}
+        <section className="features" id="display">
+          <div className="section-head">
+            <span className="section-eyebrow">MaxCandela Pro · display tools</span>
+            <h2>Brighter, dimmer, warmer — control macOS doesn’t give you</h2>
+            <p className="section-sub">
+              Free to try for 5 days. The brightness boost needs a MacBook Pro
+              XDR display; Extra Dim and Warmth work on any Mac.
+            </p>
+          </div>
+          <div className="cards">
+            {FEATURES.map((f) => (
+              <div className="card" key={f.title}>
+                <span className="card-icon" aria-hidden="true">{f.icon}</span>
+                <h3>{f.title}</h3>
+                <p>{f.text}</p>
+              </div>
+            ))}
           </div>
         </section>
 
         {/* ---- Product showcase: before/after ---- */}
         <section className="showcase">
-          <span className="section-eyebrow">See the difference</span>
+          <span className="section-eyebrow">The XDR brightness boost</span>
           <h2>How dark your MacBook Pro screen is now vs. how bright it gets</h2>
           <p className="demo-copy">
-            Drag the slider — the left is your screen at its normal cap, the
-            right is the same desktop with MaxCandela on.
+            A MacBook Pro XDR panel can sustain around 1,000 nits; macOS holds
+            everyday content near 600. Drag the slider — the left is the
+            screen at its normal cap, the right is the same desktop with the
+            boost on.
           </p>
           <BeforeAfter
             before={COMPARE_NORMAL}
@@ -209,8 +364,9 @@ export default function Home() {
           <span className="section-eyebrow">Try it free</span>
           <h2>Don’t take our word for it — try the brightness boost</h2>
           <p className="demo-copy">
-            This page can boost itself the same way, right in your browser.
-            Press the button and imagine your whole Mac like this.
+            On a MacBook Pro XDR display, this page can boost itself the same
+            way, right in your browser. Press the button and imagine your
+            whole Mac like this.
           </p>
           {/* Wrapper forces the button onto its own line so the status pill
               sits BELOW it, not beside it (both are inline-flex). */}
@@ -241,42 +397,45 @@ export default function Home() {
           </p>
         </section>
 
-        {/* ---- Features ---- */}
-        <section className="features" id="features">
-          <div className="section-head">
-            <span className="section-eyebrow">Why MaxCandela</span>
-            <h2>Built for one job: making your whole Mac brighter</h2>
-          </div>
-          <div className="cards">
-            {FEATURES.map((f) => (
-              <div className="card" key={f.title}>
-                <span className="card-icon" aria-hidden="true">{f.icon}</span>
-                <h3>{f.title}</h3>
-                <p>{f.text}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-
         {/* ---- Pricing ---- */}
         <section className="pricing" id="pricing">
           <div className="section-head">
             <span className="section-eyebrow">Pricing</span>
-            <h2>Simple pricing — $9.99 once or $0.99/month</h2>
+            <h2>Eight tools free — all 17 for $9.99 once</h2>
             <p className="section-sub">
-              Free for 5 days, everything unlocked. Then pick what suits you.
-              Requires a MacBook Pro 14″/16″ (2021 or later) or Pro Display XDR
-              — check with the demo above before you buy.
+              The everyday tools cost nothing. Pro is free for 5 days, then
+              pick what suits you. The brightness boost needs a
+              MacBook Pro XDR display — check that it works on yours during
+              the trial before you buy.
             </p>
           </div>
-          <div className="price-cards">
+          <div className="price-cards price-cards-3">
+            <div className="price-card">
+              <h3>Free</h3>
+              <p className="price">
+                $0<span className="price-per"> forever</span>
+              </p>
+              <ul>
+                <li>✓ Keep Awake and Timer</li>
+                <li>✓ Clipboard tools and Generate</li>
+                <li>✓ Color picker and World Clock</li>
+                <li>✓ Sound and System read-out</li>
+              </ul>
+              <a className="cta cta-secondary" href={APP_STORE_URL}>
+                Download free
+              </a>
+            </div>
             <div className="price-card">
               <h3>Monthly</h3>
               <p className="price">
                 $0.99<span className="price-per">/month</span>
               </p>
               <ul>
-                <li>✓ Full brightness unlock</li>
+                <li>✓ Everything in Free</li>
+                <li>✓ Window snapping, clipboard manager</li>
+                <li>✓ Hide menu bar icons, text capture</li>
+                <li>✓ Shortcuts and Next Meeting</li>
+                <li>✓ XDR brightness boost, Extra Dim, Warmth</li>
                 <li>✓ All future updates</li>
                 <li>✓ Cancel anytime in the App Store</li>
               </ul>
@@ -291,7 +450,11 @@ export default function Home() {
                 $9.99<span className="price-per"> once</span>
               </p>
               <ul>
-                <li>✓ Full brightness unlock, forever</li>
+                <li>✓ Everything in Free</li>
+                <li>✓ Window snapping, clipboard manager</li>
+                <li>✓ Hide menu bar icons, text capture</li>
+                <li>✓ Shortcuts and Next Meeting</li>
+                <li>✓ XDR brightness boost, Extra Dim, Warmth</li>
                 <li>✓ All future updates</li>
                 <li>✓ Pays for itself in 11 months</li>
               </ul>
@@ -302,8 +465,9 @@ export default function Home() {
           </div>
           <p className="pricing-fineprint">
             Purchases via Apple. One purchase covers every Mac on your Apple
-            ID. Requires macOS 15.6+ and an HDR/XDR display (MacBook Pro
-            14″/16″ 2021 or later, or Pro Display XDR). Subscriptions
+            ID. Requires macOS 15.6+; the brightness boost also needs an
+            HDR/XDR display (MacBook Pro 14″/16″ 2021 or later, or Pro Display
+            XDR). Subscriptions
             renew monthly and can be cancelled anytime in App Store →
             Subscriptions; payment is charged to your Apple Account. See our{' '}
             <Link href="/terms/">Terms of Use</Link> and{' '}
@@ -315,7 +479,7 @@ export default function Home() {
         <section className="faq" id="faq">
           <div className="section-head">
             <span className="section-eyebrow">FAQ</span>
-            <h2>MacBook Pro brightness questions, answered</h2>
+            <h2>Questions about the tools, the brightness boost and pricing</h2>
           </div>
           {FAQS.map((f) => (
             <details key={f.q}>
@@ -367,7 +531,10 @@ const homeSchema = {
       sameAs: [APP_STORE_URL],
       publisher: { '@id': `${SITE_ORIGIN}#organization` },
       description:
-        'MaxCandela unlocks the full brightness of MacBook Pro XDR displays — pushing everyday content past the ~600 nit cap macOS enforces, with one click in the menu bar.',
+        'MaxCandela is a menu-bar toolbox for Mac. Free: Keep Awake, a timer, clipboard tools, a color picker, generators, world clocks, a sound switcher and a system read-out. Pro: window snapping, a clipboard manager, hidden menu-bar icons, text capture from the screen, Shortcuts, next meeting, and display tools including an XDR brightness boost for MacBook Pro.',
+      // The app itself is free to download and the eight tools are free to
+      // keep; the two Offers below are the optional Pro unlock.
+      isAccessibleForFree: true,
       // `category: In-app purchase` matters: the App Store listing is Free, so
       // a bare $9.99 Offer contradicted the page it links to.
       offers: [

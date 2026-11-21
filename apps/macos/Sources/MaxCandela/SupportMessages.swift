@@ -31,4 +31,18 @@ enum SupportMessages {
 
     /// Compact form for the status-item menu, where space is tight.
     static let noHeadroomMenuLine = "No HDR headroom — needs a MacBook Pro XDR display"
+
+    /// One-time notice on M5 Pro / M5 Max, where macOS is reported to ignore
+    /// display transfer tables (see `KnownIssues`). Says "can", not "does":
+    /// we have not seen it ourselves and Apple may fix it in any update. It
+    /// tells the user not to pay for a boost they cannot see.
+    static let m5IssueTitle = "Is your screen brighter now?"
+
+    static let m5IssueBody = """
+    If it is, everything is working and you can ignore this.
+
+    If nothing changed: a macOS bug on MacBook Pros with an M5 Pro or M5 Max chip can stop apps from adjusting the display, and MaxCandela relies on that. The boost is switched on, but macOS is ignoring it. Apple is investigating, and a macOS update should bring it back.
+
+    Until you can see the boost working on this Mac, please don’t buy MaxCandela Pro.
+    """
 }

@@ -15,8 +15,10 @@ export default function NavBar() {
         MaxCandela
       </Link>
       <div className="nav-links">
-        <ScrollLink targetId="demo">Try it</ScrollLink>
-        <ScrollLink targetId="features">Features</ScrollLink>
+        <ScrollLink targetId="tools">Tools</ScrollLink>
+        <ScrollLink targetId="pro">Pro</ScrollLink>
+        <ScrollLink targetId="display">Display</ScrollLink>
+        <ScrollLink targetId="demo">Try the boost</ScrollLink>
         <ScrollLink targetId="pricing">Pricing</ScrollLink>
         <ScrollLink targetId="faq">FAQ</ScrollLink>
         <Link href="/about/">About</Link>

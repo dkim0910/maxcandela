@@ -28,5 +28,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // overlays without clearing the persisted enabled flag, so the app
         // restores the user's state on next launch.
         brightness.shutdown()
+        menuBar.shutdown()
     }
 }

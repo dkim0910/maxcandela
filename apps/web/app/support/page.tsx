@@ -49,7 +49,51 @@ export default function SupportPage() {
           the boost follows it down automatically.</li>
         <li>If it was brighter earlier in the session, MaxCandela has probably
           eased it back for heat — see below.</li>
+        <li>With <em>Options ▸ Pause Boost on Battery</em> switched on, the
+          boost waits until the Mac is plugged in; the menu says{' '}
+          <em>“Paused on battery”</em> while it does.</li>
       </ul>
+
+      <h3>I have an M5 Pro or M5 Max MacBook Pro and nothing changes</h3>
+      <p>
+        There is a macOS bug, reported by several developers on Apple’s
+        developer forums and still open with Apple, that can make these two
+        chips ignore the display adjustment every brightness app of this kind
+        relies on. The boost shows as switched on, but the screen stays the
+        same. We have not been able to test an affected Mac ourselves, and it
+        does not affect every model — the standard M5 and earlier chips are
+        reported to work. If this is what you are seeing, a macOS update from
+        Apple is what will fix it; please don’t buy MaxCandela Pro until the
+        boost visibly works on your Mac, and{' '}
+        <a href={SUPPORT_MAILTO}>tell us</a> your macOS version so we can track
+        it.
+      </p>
+
+      <h3>What are Extra Dim, Warmth and Options?</h3>
+      <p>
+        <em>Extra Dim</em> takes the screen below the lowest setting of the
+        brightness keys, for a dark room; it applies whenever the boost is not
+        driving that display. <em>Warmth</em> shifts the picture toward warmer
+        white and works with or without the boost. Both return to normal the
+        moment you quit MaxCandela. <em>Warmth Schedule ▸ Only at Night</em>{' '}
+        keeps the warmth for the evening and eases it in and out over half an
+        hour.
+      </p>
+      <p>
+        Under <em>Options</em> you can pause the boost on battery, switch on a
+        keyboard shortcut that toggles the boost from any app (⌃⌥⌘B unless you
+        pick another with <em>Change Shortcut…</em>), have MaxCandela launch at
+        login, and limit the boost to particular apps with{' '}
+        <em>Boost Only In</em> — it then runs only while one of those apps is
+        in front. All of these are off until you turn them on.
+      </p>
+
+      <h3>Can I boost one display and not another?</h3>
+      <p>
+        Yes. With more than one HDR-capable display connected, the ☀️ menu
+        lists each one under the toggle; click a display to take it out of the
+        boost or put it back.
+      </p>
 
       <h3>The boost got dimmer on its own, or switched off</h3>
       <p>

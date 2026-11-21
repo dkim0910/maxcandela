@@ -28,6 +28,31 @@ final class MenuBarController {
     private let redeemItem: NSMenuItem
     private let menu: NSMenu
 
+    /// Extra Dim + Warmth sliders (custom-view menu items).
+    private var dimSlider: SliderMenuItemView!
+    private var warmthSlider: SliderMenuItemView!
+    private let batteryItem = NSMenuItem(title: "Pause Boost on Battery", action: nil, keyEquivalent: "")
+    private let hotKeyItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
+    /// Rebuilt on every menu open — the running apps and the hours' check
+    /// marks are only known then.
+    private let scheduleMenu = NSMenu()
+    private let appsMenu = NSMenu()
+    private let loginItem = NSMenuItem(title: "Launch at Login", action: nil, keyEquivalent: "")
+    private let hotKey = GlobalHotKey()
+
+    /// The toolbox: everything in the menu that is not the display. Order
+    /// here is the order in the menu. See `MenuTool`.
+    private let tools: [MenuTool] = [
+        KeepAwakeTool(), TimerTool(), ClipboardTool(), ColorPickerTool(),
+        GeneratorTool(), WorldClockTool(), AudioTool(), SystemTool(),
+        // Pro (`isPro`): listed under their own heading by buildMenu().
+        MenuBarHiderTool(), WindowSnapTool(), ScreenTextTool(), ShortcutsTool(), CalendarTool(),
+    ]
+    /// The "— Pro" row shown in place of each Pro tool while Pro is not
+    /// available; clicking it opens the paywall.
+    private var lockedItems: [(tool: MenuTool, locked: NSMenuItem)] = []
+    private let clickItem = NSMenuItem(title: "Clicking the Icon Toggles the Boost", action: nil, keyEquivalent: "")
+
     /// One row per display, present only while more than one can boost.
     private var perDisplayItems: [NSMenuItem] = []
     /// The display set those rows were built for, so a refresh on an *open*
@@ -41,6 +66,7 @@ final class MenuBarController {
     /// Which SF Symbol the status item is currently showing, so a hot refresh
     /// can skip rebuilding an identical image.
     private var currentStatusSymbol: String?
+    private var currentBoostSymbol: String?
 
     /// Held so the first-run welcome popover isn't deallocated while shown.
     private var welcomePopover: NSPopover?
@@ -93,11 +119,30 @@ final class MenuBarController {
         self.redeemItem = NSMenuItem(title: "Redeem Code…", action: nil, keyEquivalent: "")
         self.menu = NSMenu()
 
+        resolveClickBehaviour()
         configureStatusButton()
         buildMenu()
+        // Battery pause/resume changes the running state with no click.
+        brightness.onStateChange = { [weak self] in self?.refresh() }
+        hotKey.onPress = { [weak self] in
+            // Same path as a click, so the licence gate and the kill-switch
+            // rule (off is never gated) apply to the shortcut too.
+            self?.suppressPendingToggle = false
+            self?.toggleBoost()
+        }
+        if Preferences.shared.hotKeyEnabled {
+            hotKey.register(Preferences.shared.shortcut)
+        }
         refresh()
         refreshLicense()
         startLicenseWatch()
+        #if DEBUG
+        // MAXCANDELA_OPEN_MENU=1 opens the menu by itself shortly after
+        // launch, so its layout can be screenshotted without a click.
+        if ProcessInfo.processInfo.environment["MAXCANDELA_OPEN_MENU"] == "1" {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in self?.showMenu() }
+        }
+        #endif
         showWelcomeIfFirstRun()
     }
 
@@ -127,6 +172,32 @@ final class MenuBarController {
         }
     }
 
+    // MARK: - What a click does
+
+    /// MaxCandela began as a one-button brightness app, where a single click
+    /// toggled the boost and the menu was a second gesture. As a toolbox the
+    /// menu *is* the app, so new installs open it on a single click.
+    ///
+    /// People who installed the brightness app keep the click they learned:
+    /// having seen the welcome popover is the mark of an existing install, and
+    /// this must run before `showWelcomeIfFirstRun()` sets that flag.
+    /// Either group can flip it under Options.
+    private func resolveClickBehaviour() {
+        guard Preferences.shared.clickTogglesBoost == nil else { return }
+        let existingInstall = UserDefaults.standard.bool(forKey: Self.welcomeSeenKey)
+        Preferences.shared.clickTogglesBoost = Self.initialClickTogglesBoost(existingInstall: existingInstall)
+    }
+
+    /// Pure, unit-tested.
+    static func initialClickTogglesBoost(existingInstall: Bool) -> Bool { existingInstall }
+
+    private var clickTogglesBoost: Bool { Preferences.shared.clickTogglesBoost ?? false }
+
+    @objc private func toggleClickBehaviour() {
+        Preferences.shared.clickTogglesBoost = !clickTogglesBoost
+        refresh()
+    }
+
     // MARK: - First-run welcome
 
     /// On the very first launch, pop a small callout anchored to the ☀️ icon so
@@ -147,7 +218,7 @@ final class MenuBarController {
             guard let self, let button = self.statusItem.button else { return }
             let popover = NSPopover()
             popover.behavior = .transient
-            popover.contentViewController = WelcomeViewController(icon: Self.brandIcon) { [weak self] in
+            popover.contentViewController = WelcomeViewController(icon: Self.brandIcon, clickTogglesBoost: self.clickTogglesBoost) { [weak self] in
                 self?.welcomePopover?.close()
                 self?.welcomePopover = nil
             }
@@ -166,28 +237,78 @@ final class MenuBarController {
     }
 
     private func buildMenu() {
+        // Three titled sections — Display, Tools, MaxCandela Pro — then the
+        // app-level rows. Every row carries an icon (see MenuStyling).
+        menu.addItem(.sectionHeader(title: "Display"))
         boostItem.target = self
         boostItem.action = #selector(toggleBoost)
-        menu.addItem(boostItem)
+        menu.addItem(boostItem.symbol("sun.max"))
 
         headroomItem.isEnabled = false
-        menu.addItem(headroomItem)
+        menu.addItem(headroomItem.symbol("info.circle"))
 
-        menu.addItem(.separator())
+        // Extra Dim: slider left = off, right = the dimmest we allow.
+        let dimRange = 1.0 - Double(GammaController.minimumDim)
+        dimSlider = SliderMenuItemView(
+            title: "Extra Dim",
+            symbol: "moon",
+            value: (1.0 - Double(brightness.extraDim)) / dimRange
+        ) { [weak self] value in
+            self?.brightness.setExtraDim(CGFloat(1.0 - value * dimRange))
+        }
+        let dimItem = NSMenuItem()
+        dimItem.view = dimSlider
+        menu.addItem(dimItem)
 
+        warmthSlider = SliderMenuItemView(
+            title: "Warmth",
+            symbol: "thermometer.sun",
+            value: Double(brightness.warmth)
+        ) { [weak self] value in
+            self?.brightness.setWarmth(CGFloat(value))
+        }
+        let warmthItem = NSMenuItem()
+        warmthItem.view = warmthSlider
+        menu.addItem(warmthItem)
+
+        let scheduleItem = NSMenuItem(title: "Warmth Schedule", action: nil, keyEquivalent: "")
+        scheduleItem.submenu = scheduleMenu
+        menu.addItem(scheduleItem.symbol("clock"))
+
+        menu.addSection("Tools")
+        for tool in tools where !tool.isPro {
+            menu.addItem(tool.menuItem)
+        }
+        menu.addSection("Pro Tools")
+        for tool in tools where tool.isPro {
+            menu.addItem(tool.menuItem)
+            let locked = NSMenuItem(title: "\(tool.menuItem.title) — Pro",
+                                    action: #selector(showPaywallFromMenu), keyEquivalent: "")
+            locked.target = self
+            locked.image = tool.menuItem.image
+            locked.isHidden = true
+            menu.addItem(locked)
+            lockedItems.append((tool, locked))
+        }
+        tools.forEach { tool in
+            tool.onStatusChange = { [weak self] in self?.refreshStatusText() }
+        }
+        ProGate.shared.requestUpgrade = { [weak self] in self?.showPaywallAlert() }
+
+        menu.addSection("MaxCandela Pro")
         licenseItem.isEnabled = false
-        menu.addItem(licenseItem)
+        menu.addItem(licenseItem.symbol("checkmark.seal"))
 
         lifetimeItem.target = self
         lifetimeItem.action = #selector(buyLifetime)
-        menu.addItem(lifetimeItem)
+        menu.addItem(lifetimeItem.symbol("sparkles"))
 
         monthlyItem.target = self
         monthlyItem.action = #selector(buyMonthly)
         // Guideline 3.1.2: the renewal terms must be visible where the
         // subscription is offered.
         monthlyItem.toolTip = "MaxCandela Pro Monthly — auto-renews every month until cancelled in your App Store account settings."
-        menu.addItem(monthlyItem)
+        menu.addItem(monthlyItem.symbol("calendar"))
 
         // The three App Store errands live together under one item, the same
         // way Legal groups the two documents. The *buy* items stay at top
@@ -202,21 +323,23 @@ final class MenuBarController {
 
         restoreItem.target = self
         restoreItem.action = #selector(restorePurchases)
-        purchasesMenu.addItem(restoreItem)
+        purchasesMenu.addItem(restoreItem.symbol("arrow.clockwise"))
 
         // Redemption previously had no entry point at all — codes worked, but
         // only if the user already knew to go to the App Store app themselves.
         // Hidden once the lifetime unlock is owned (see refresh()).
         redeemItem.target = self
         redeemItem.action = #selector(redeemCode)
-        purchasesMenu.addItem(redeemItem)
+        purchasesMenu.addItem(redeemItem.symbol("giftcard"))
 
         let appStoreItem = NSMenuItem(title: "View in Mac App Store", action: #selector(openAppStore), keyEquivalent: "")
         appStoreItem.target = self
-        purchasesMenu.addItem(appStoreItem)
+        purchasesMenu.addItem(appStoreItem.symbol("arrow.up.forward.app"))
 
         purchasesItem.submenu = purchasesMenu
-        menu.addItem(purchasesItem)
+        menu.addItem(purchasesItem.symbol("bag"))
+
+        menu.addItem(.separator())
 
         // Single "Legal" item; Terms + Privacy + Support live in its submenu
         // (3.1.2 still satisfied — the links stay reachable from the purchase
@@ -225,23 +348,48 @@ final class MenuBarController {
         let legalMenu = NSMenu()
         let termsItem = NSMenuItem(title: "Terms of Use", action: #selector(openTerms), keyEquivalent: "")
         termsItem.target = self
-        legalMenu.addItem(termsItem)
+        legalMenu.addItem(termsItem.symbol("doc.text"))
         let privacyItem = NSMenuItem(title: "Privacy Policy", action: #selector(openPrivacy), keyEquivalent: "")
         privacyItem.target = self
-        legalMenu.addItem(privacyItem)
+        legalMenu.addItem(privacyItem.symbol("hand.raised"))
         // Separated from the two legal documents — it's a help link, not a
         // policy, and the gap keeps that distinction readable.
         legalMenu.addItem(.separator())
         let supportItem = NSMenuItem(title: "Get Support", action: #selector(openSupport), keyEquivalent: "")
         supportItem.target = self
-        legalMenu.addItem(supportItem)
+        legalMenu.addItem(supportItem.symbol("questionmark.circle"))
         legalItem.submenu = legalMenu
-        menu.addItem(legalItem)
+
+        // Behaviour switches, all off until the user turns them on.
+        let optionsItem = NSMenuItem(title: "Options", action: nil, keyEquivalent: "")
+        let optionsMenu = NSMenu()
+        clickItem.target = self
+        clickItem.action = #selector(toggleClickBehaviour)
+        optionsMenu.addItem(clickItem.symbol("cursorarrow.click"))
+        batteryItem.target = self
+        batteryItem.action = #selector(togglePauseOnBattery)
+        optionsMenu.addItem(batteryItem.symbol("battery.50"))
+        hotKeyItem.target = self
+        hotKeyItem.action = #selector(toggleHotKey)
+        optionsMenu.addItem(hotKeyItem.symbol("keyboard"))
+        let changeShortcutItem = NSMenuItem(title: "Change Shortcut…", action: #selector(changeShortcut), keyEquivalent: "")
+        changeShortcutItem.target = self
+        optionsMenu.addItem(changeShortcutItem.symbol("command"))
+        let appsItem = NSMenuItem(title: "Boost Only In", action: nil, keyEquivalent: "")
+        appsItem.submenu = appsMenu
+        optionsMenu.addItem(appsItem.symbol("macwindow"))
+        loginItem.target = self
+        loginItem.action = #selector(toggleLaunchAtLogin)
+        optionsMenu.addItem(loginItem.symbol("power"))
+        optionsItem.submenu = optionsMenu
+        // Settings before the documents: Options is used, Legal is consulted.
+        menu.addItem(optionsItem.symbol("gearshape"))
+        menu.addItem(legalItem.symbol("doc.plaintext"))
 
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: "Quit MaxCandela",
                                 action: #selector(NSApplication.terminate(_:)),
-                                keyEquivalent: "q"))
+                                keyEquivalent: "q").symbol("xmark.circle"))
     }
 
     /// Sync the icon and info lines with the current state.
@@ -256,6 +404,12 @@ final class MenuBarController {
             currentStatusSymbol = symbol
         }
         boostItem.state = brightness.isEnabled ? .on : .off
+        // Filled sun while boosting. Only on a change — this is the 5 Hz path.
+        let boostSymbol = brightness.isEnabled ? "sun.max.fill" : "sun.max"
+        if boostSymbol != currentBoostSymbol {
+            boostItem.symbol(boostSymbol)
+            currentBoostSymbol = boostSymbol
+        }
         let action = brightness.isEnabled ? "Turn Boost Off" : "Turn Boost On"
 
         // Headroom is per panel, so the figures are too. One display puts its
@@ -295,6 +449,30 @@ final class MenuBarController {
             }
         }
 
+        // The saved boost is being held off for the power source — say so, or
+        // an "off" icon with the boost supposedly left on looks like a fault.
+        if brightness.pausedForBattery {
+            note = "Paused on battery — resumes when plugged in"
+        } else if brightness.pausedForApp {
+            note = "Waiting for one of your chosen apps"
+        }
+        hotKeyItem.title = "Shortcut \(Preferences.shared.shortcut.display) Toggles Boost"
+
+        clickItem.state = clickTogglesBoost ? .on : .off
+        batteryItem.state = brightness.pauseOnBattery ? .on : .off
+        hotKeyItem.state = hotKey.isRegistered ? .on : .off
+
+        // Like the boost, the adjustments are part of Pro. Expired, they are
+        // already back at native (BrightnessController.suspendForLicense), so
+        // the sliders are disabled rather than left to do nothing.
+        let adjustable = licenseState != .expired
+        dimSlider.isEnabled = adjustable
+        warmthSlider.isEnabled = adjustable
+        for entry in lockedItems {
+            entry.tool.menuItem.isHidden = !ProGate.shared.isAllowed
+            entry.locked.isHidden = ProGate.shared.isAllowed
+        }
+
         setBoostTitle(action, detail: detail)
         headroomItem.title = note ?? ""
         headroomItem.isHidden = note == nil
@@ -314,7 +492,7 @@ final class MenuBarController {
             // Hover tooltip so the countdown is visible without opening the menu.
             statusItem.button?.toolTip = "MaxCandela — \(dayText) left in your free trial"
         case .expired:
-            licenseItem.title = "Trial ended — unlock to keep boosting"
+            licenseItem.title = "Trial ended — Pro tools are locked"
             [lifetimeItem, monthlyItem, restoreItem].forEach { $0.isHidden = false }
             statusItem.button?.toolTip = "MaxCandela — free trial ended"
         }
@@ -334,7 +512,14 @@ final class MenuBarController {
         return String(format: "%.2f× left", status.remaining)
     }
 
-    /// One dimmed row per display, directly under the toggle.
+    @objc private func toggleDisplayBoost(_ sender: NSMenuItem) {
+        guard let id = sender.representedObject as? String else { return }
+        // state .on == currently boosted, so a click takes it out.
+        brightness.setDisplay(id, boosted: sender.state != .on)
+        refresh()
+    }
+
+    /// One row per display, directly under the toggle.
     ///
     /// Rows are only inserted/removed when the set of displays actually
     /// changes; otherwise they are retitled in place. This runs several times a
@@ -351,8 +536,9 @@ final class MenuBarController {
             guard !statuses.isEmpty, anchor >= 0 else { return }
 
             for (offset, _) in statuses.enumerated() {
-                let item = NSMenuItem(title: "", action: nil, keyEquivalent: "")
-                item.isEnabled = false
+                // Clickable: each row is that display's own boost switch.
+                let item = NSMenuItem(title: "", action: #selector(toggleDisplayBoost(_:)), keyEquivalent: "")
+                item.target = self
                 item.indentationLevel = 1
                 menu.insertItem(item, at: anchor + 1 + offset)
                 perDisplayItems.append(item)
@@ -360,7 +546,13 @@ final class MenuBarController {
         }
 
         for (item, status) in zip(perDisplayItems, statuses) {
-            item.title = Self.remainingText(status).map { "\(status.name) — \($0)" } ?? status.name
+            item.representedObject = status.id
+            item.state = status.isExcluded ? .off : .on
+            if status.isExcluded {
+                item.title = "\(status.name) — not boosted"
+            } else {
+                item.title = Self.remainingText(status).map { "\(status.name) — \($0)" } ?? status.name
+            }
         }
     }
 
@@ -384,6 +576,24 @@ final class MenuBarController {
         boostItem.attributedTitle = title
     }
 
+    /// Text beside the status icon — a running timer's countdown. Only
+    /// written when it changes; a status item that re-lays-out every second
+    /// for an identical title makes its neighbours in the menu bar twitch.
+    private func refreshStatusText() {
+        guard let button = statusItem.button else { return }
+        let text = tools.compactMap(\.statusText).joined(separator: " ")
+        guard button.title != text else { return }
+        button.title = text
+        button.imagePosition = text.isEmpty ? .imageOnly : .imageLeading
+        // Fixed-width digits, or the countdown shifts the menu bar each second.
+        button.font = NSFont.monospacedDigitSystemFont(ofSize: NSFont.systemFontSize, weight: .regular)
+    }
+
+    /// Called at quit: let every tool release what it holds.
+    func shutdown() {
+        tools.forEach { $0.shutdown() }
+    }
+
     /// External license changes (renewal, refund, purchase on another Mac).
     func licenseDidChange() {
         refreshLicense()
@@ -399,8 +609,11 @@ final class MenuBarController {
     private func enforceLicense() {
         switch licenseState {
         case .licensed, .trial:
+            ProGate.shared.set(allowed: true)
+            brightness.setLicensed()
             brightness.restorePersistedBoostIfWanted()
         case .expired:
+            ProGate.shared.set(allowed: false)
             let wasBoosting = brightness.isEnabled || brightness.wantsPersistedBoost
             brightness.suspendForLicense()
             // Interrupt once per launch, not on every entitlement refresh.
@@ -435,6 +648,13 @@ final class MenuBarController {
 
         // Right-click / Control-click: always the menu.
         if event.type == .rightMouseUp || event.modifierFlags.contains(.control) {
+            showMenu()
+            return
+        }
+
+        // Toolbox behaviour: the click opens the menu, where the boost is the
+        // first row (and ⌘B while the menu is open).
+        if !clickTogglesBoost {
             showMenu()
             return
         }
@@ -499,9 +719,13 @@ final class MenuBarController {
                 // the boost off. A launch-time licence check can restore the
                 // saved boost while this one is in flight, and a blind
                 // toggle would then turn it straight back off.
+                brightness.setLicensed()
                 if !brightness.isEnabled {
                     brightness.toggle()
                     lastToggleAppliedAt = Date()
+                    refresh()
+                    showM5NoticeIfNeeded()
+                    ReviewPrompt.boostWasSwitchedOn(isPaying: licenseState == .licensed)
                 }
             case .expired:
                 showPaywallAlert()
@@ -512,6 +736,12 @@ final class MenuBarController {
 
     private func showMenu() {
         refreshLicense()
+        // Read from the system once per open, not in refresh(): the user can
+        // change it in System Settings, and refresh() is a 5 Hz hot path.
+        loginItem.state = LoginItem.isEnabled ? .on : .off
+        rebuildScheduleMenu()
+        rebuildAppsMenu()
+        tools.forEach { $0.menuWillOpen() }
         refresh()
         // Assign the menu just long enough to pop it up, then detach so the
         // next click keeps reaching statusButtonClicked (a permanently
@@ -537,6 +767,7 @@ final class MenuBarController {
         menuTicker?.invalidate()
         let timer = Timer(timeInterval: 0.2, repeats: true) { [weak self] _ in
             self?.refresh()
+            self?.tools.forEach { $0.tick() }
         }
         RunLoop.main.add(timer, forMode: .common)
         menuTicker = timer
@@ -569,6 +800,8 @@ final class MenuBarController {
         return NSApp.applicationIconImage
     }()
 
+    @objc private func showPaywallFromMenu() { showPaywallAlert() }
+
     private func showPaywallAlert() {
         Analytics.track("paywall_shown")
         let alert = NSAlert()
@@ -579,7 +812,7 @@ final class MenuBarController {
         let lifetimePrice = store.product(id: StoreManager.lifetimeProductID)?.displayPrice ?? "$9.99"
         let monthlyPrice = store.product(id: StoreManager.monthlyProductID)?.displayPrice ?? "$0.99"
         alert.informativeText = """
-        Keep the full brightness of your display with MaxCandela Pro. One purchase works on all your Macs.
+        MaxCandela Pro unlocks the display tools (XDR brightness boost, Extra Dim, Warmth) and the Pro tools: Hide Menu Bar Icons, Window Snapping, Copy Text from Screen, the searchable clipboard history, Shortcuts and Next Meeting. The everyday tools stay free. One purchase works on all your Macs.
 
         MaxCandela Pro Lifetime — \(lifetimePrice), one-time purchase.
 
@@ -628,6 +861,238 @@ final class MenuBarController {
         alert.icon = Self.brandIcon
         alert.messageText = SupportMessages.noHeadroomTitle
         alert.informativeText = SupportMessages.noHeadroomBody
+        alert.addButton(withTitle: "OK")
+        NSApp.activate(ignoringOtherApps: true)
+        alert.runModal()
+    }
+
+    /// One-time heads-up on the chips where macOS is reported to ignore the
+    /// gamma lift (see KnownIssues). Shown *after* switching on, so the user
+    /// can judge the screen against what the text says, and never blocks it.
+    private func showM5NoticeIfNeeded() {
+        guard KnownIssues.gammaLiftReportedBroken, !Preferences.shared.m5NoticeSeen else { return }
+        Preferences.shared.m5NoticeSeen = true
+        let alert = NSAlert()
+        alert.icon = Self.brandIcon
+        alert.messageText = SupportMessages.m5IssueTitle
+        alert.informativeText = SupportMessages.m5IssueBody
+        alert.addButton(withTitle: "OK")
+        alert.addButton(withTitle: "Get Support")
+        NSApp.activate(ignoringOtherApps: true)
+        if alert.runModal() == .alertSecondButtonReturn {
+            NSWorkspace.shared.open(Self.supportURL)
+        }
+    }
+
+    @objc private func togglePauseOnBattery() {
+        brightness.pauseOnBattery.toggle()
+        refresh()
+    }
+
+    @objc private func toggleHotKey() {
+        let shortcut = Preferences.shared.shortcut
+        if hotKey.isRegistered {
+            hotKey.unregister()
+            Preferences.shared.hotKeyEnabled = false
+        } else if hotKey.register(shortcut) {
+            Preferences.shared.hotKeyEnabled = true
+        } else {
+            showShortcutUnavailableAlert(shortcut)
+        }
+        refresh()
+    }
+
+    private func showShortcutUnavailableAlert(_ shortcut: Shortcut) {
+        showOptionFailedAlert(
+            title: "Shortcut unavailable",
+            body: "\(shortcut.display) could not be registered — another app is probably using it.")
+    }
+
+    /// Record a new shortcut. Choosing one also switches the shortcut on —
+    /// nobody records a shortcut they then want disabled.
+    @objc private func changeShortcut() {
+        let previous = Preferences.shared.shortcut
+        let recorder = ShortcutRecorderView(shortcut: previous)
+        let alert = NSAlert()
+        alert.icon = Self.brandIcon
+        alert.messageText = "Press the shortcut you want"
+        alert.informativeText = "Use ⌘, ⌃ or ⌥ with another key. It will toggle the boost from any app."
+        alert.accessoryView = recorder
+        alert.addButton(withTitle: "Save")
+        alert.addButton(withTitle: "Cancel")
+        alert.window.initialFirstResponder = recorder
+        // Our own shortcut must not fire (and toggle the boost) while the
+        // user is pressing it into the recorder.
+        let wasRegistered = hotKey.isRegistered
+        hotKey.unregister()
+        NSApp.activate(ignoringOtherApps: true)
+        let saved = alert.runModal() == .alertFirstButtonReturn
+
+        let chosen = saved ? recorder.shortcut : previous
+        if saved || wasRegistered {
+            if hotKey.register(chosen) {
+                Preferences.shared.shortcut = chosen
+                Preferences.shared.hotKeyEnabled = true
+            } else {
+                showShortcutUnavailableAlert(chosen)
+                // Fall back to what worked before rather than leaving none.
+                if wasRegistered { hotKey.register(previous) }
+            }
+        }
+        refresh()
+    }
+
+    // MARK: - Warmth schedule
+
+    private static let hourFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.setLocalizedDateFormatFromTemplate("j")   // "8 PM" or "20"
+        return formatter
+    }()
+
+    private static func hourTitle(_ hour: Int) -> String {
+        let date = Calendar.current.date(bySettingHour: hour, minute: 0, second: 0, of: Date()) ?? Date()
+        return hourFormatter.string(from: date)
+    }
+
+    private func rebuildScheduleMenu() {
+        let schedule = brightness.warmthSchedule
+        scheduleMenu.removeAllItems()
+
+        let always = NSMenuItem(title: "Always On", action: #selector(setScheduleMode(_:)), keyEquivalent: "")
+        always.target = self
+        always.tag = 0
+        always.state = schedule.enabled ? .off : .on
+        scheduleMenu.addItem(always)
+
+        let night = NSMenuItem(
+            title: "Only at Night (\(Self.hourTitle(schedule.startHour)) – \(Self.hourTitle(schedule.endHour)))",
+            action: #selector(setScheduleMode(_:)), keyEquivalent: "")
+        night.target = self
+        night.tag = 1
+        night.state = schedule.enabled ? .on : .off
+        scheduleMenu.addItem(night)
+
+        scheduleMenu.addItem(.separator())
+        // Evening hours to start, morning hours to end: every combination is
+        // a real night, so there is no invalid window to guard against.
+        scheduleMenu.addItem(hourSubmenu(title: "Starts", hours: Array(16...23),
+                                         selected: schedule.startHour,
+                                         action: #selector(setScheduleStart(_:))))
+        scheduleMenu.addItem(hourSubmenu(title: "Ends", hours: Array(4...10),
+                                         selected: schedule.endHour,
+                                         action: #selector(setScheduleEnd(_:))))
+    }
+
+    private func hourSubmenu(title: String, hours: [Int], selected: Int, action: Selector) -> NSMenuItem {
+        let item = NSMenuItem(title: title, action: nil, keyEquivalent: "")
+        let submenu = NSMenu()
+        for hour in hours {
+            let row = NSMenuItem(title: Self.hourTitle(hour), action: action, keyEquivalent: "")
+            row.target = self
+            row.tag = hour
+            row.state = hour == selected ? .on : .off
+            submenu.addItem(row)
+        }
+        item.submenu = submenu
+        return item
+    }
+
+    @objc private func setScheduleMode(_ sender: NSMenuItem) {
+        brightness.warmthSchedule.enabled = sender.tag == 1
+    }
+
+    // Picking an hour is also choosing to use the schedule.
+    @objc private func setScheduleStart(_ sender: NSMenuItem) {
+        var schedule = brightness.warmthSchedule
+        schedule.startHour = sender.tag
+        schedule.enabled = true
+        brightness.warmthSchedule = schedule
+    }
+
+    @objc private func setScheduleEnd(_ sender: NSMenuItem) {
+        var schedule = brightness.warmthSchedule
+        schedule.endHour = sender.tag
+        schedule.enabled = true
+        brightness.warmthSchedule = schedule
+    }
+
+    // MARK: - Boost only in chosen apps
+
+    /// Chosen apps on top (click to remove), then the running apps to add.
+    /// Picking from what is running avoids a file dialog — and with it the
+    /// sandbox's user-selected-file entitlement.
+    private func rebuildAppsMenu() {
+        let chosen = brightness.boostApps
+        appsMenu.removeAllItems()
+
+        if chosen.isEmpty {
+            let all = NSMenuItem(title: "Every App (no restriction)", action: nil, keyEquivalent: "")
+            all.isEnabled = false
+            all.state = .on
+            appsMenu.addItem(all)
+        }
+        for (bundleID, name) in chosen.sorted(by: { $0.value.localizedCaseInsensitiveCompare($1.value) == .orderedAscending }) {
+            let item = NSMenuItem(title: name, action: #selector(removeBoostApp(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = bundleID
+            item.state = .on
+            item.toolTip = "Click to remove"
+            appsMenu.addItem(item)
+        }
+
+        let ownPID = ProcessInfo.processInfo.processIdentifier
+        let running = NSWorkspace.shared.runningApplications
+            .filter { $0.activationPolicy == .regular && $0.processIdentifier != ownPID }
+            .compactMap { app -> (id: String, name: String)? in
+                guard let id = app.bundleIdentifier, chosen[id] == nil else { return nil }
+                return (id, app.localizedName ?? id)
+            }
+            .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        guard !running.isEmpty else { return }
+
+        appsMenu.addItem(.separator())
+        let header = NSMenuItem(title: "Add a Running App", action: nil, keyEquivalent: "")
+        header.isEnabled = false
+        appsMenu.addItem(header)
+        for app in running {
+            let item = NSMenuItem(title: app.name, action: #selector(addBoostApp(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = [app.id, app.name]
+            item.indentationLevel = 1
+            appsMenu.addItem(item)
+        }
+    }
+
+    @objc private func addBoostApp(_ sender: NSMenuItem) {
+        guard let pair = sender.representedObject as? [String], pair.count == 2 else { return }
+        brightness.boostApps[pair[0]] = pair[1]
+        refresh()
+    }
+
+    @objc private func removeBoostApp(_ sender: NSMenuItem) {
+        guard let bundleID = sender.representedObject as? String else { return }
+        brightness.boostApps[bundleID] = nil
+        refresh()
+    }
+
+    @objc private func toggleLaunchAtLogin() {
+        do {
+            try LoginItem.setEnabled(!LoginItem.isEnabled)
+        } catch {
+            NSLog("MaxCandela: launch at login failed: \(error.localizedDescription)")
+            showOptionFailedAlert(
+                title: "Couldn’t change Launch at Login",
+                body: "macOS reported: \(error.localizedDescription)\n\nYou can also add MaxCandela under System Settings ▸ General ▸ Login Items.")
+        }
+        loginItem.state = LoginItem.isEnabled ? .on : .off
+    }
+
+    private func showOptionFailedAlert(title: String, body: String) {
+        let alert = NSAlert()
+        alert.icon = Self.brandIcon
+        alert.messageText = title
+        alert.informativeText = body
         alert.addButton(withTitle: "OK")
         NSApp.activate(ignoringOtherApps: true)
         alert.runModal()

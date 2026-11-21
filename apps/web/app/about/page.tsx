@@ -5,9 +5,9 @@ import LegalShell from '@/components/LegalShell';
 
 export const metadata: Metadata = pageMetadata({
   path: '/about/',
-  title: 'About MaxCandela — the XDR brightness unlocker for Mac',
+  title: 'About MaxCandela — a menu-bar toolbox for Mac',
   description:
-    'Why MaxCandela exists: your MacBook Pro’s XDR display is rated for ~1,000 nits but macOS caps everyday content near 600. We hand that reserve back to you.',
+    'MaxCandela started as a way to unlock a MacBook Pro’s full XDR brightness and grew into a menu-bar toolbox: 17 small Mac tools under one icon.',
 });
 
 export default function AboutPage() {
@@ -18,7 +18,9 @@ export default function AboutPage() {
       crumb="About"
     >
       <p>
-        <strong>MaxCandela exists to answer one simple frustration:</strong>{' '}
+        <strong>MaxCandela is a toolbox that lives in your Mac’s menu
+        bar</strong> — 17 small tools under one icon, eight of them free. It
+        began with one simple frustration:{' '}
         your MacBook Pro’s screen is capable of far more brightness than
         macOS lets you use. The panel in a 14″ or 16″ MacBook Pro is rated
         for 1,000 nits of sustained brightness — but everyday content is
@@ -48,6 +50,16 @@ export default function AboutPage() {
         times and eases the boost back as your Mac heats up, collects no
         personal data, and never sees what’s on your screen.
         Free for 5 days, then $9.99 once or $0.99/month.
+      </p>
+      <p>
+        It has since grown into a small toolbox under the same ☀️ icon. Two
+        more display controls sit beside the boost — Extra Dim and Warmth —
+        along with free everyday tools (Keep Awake, a timer, clipboard text
+        tools, a color picker, generators, world clocks, a sound switcher and
+        a system read-out) and a set of Pro tools: window snapping, a
+        clipboard manager, hidden menu-bar icons, text capture from the
+        screen, your Shortcuts and your next meeting. The brightness boost is
+        still what only an XDR display can do; the rest works on any Mac.
       </p>
 
       <h2>This website</h2>

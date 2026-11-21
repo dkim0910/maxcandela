@@ -16,7 +16,7 @@ export default function PrivacyPage() {
       path="/privacy/"
       title="Privacy Policy"
       crumb="Privacy"
-      updated="October 7, 2026"
+      updated="November 21, 2026"
     >
       <p>
         MaxCandela is built to collect as little as possible. <strong>The Mac
@@ -29,9 +29,24 @@ export default function PrivacyPage() {
       <ul>
         <li>Collects no personal information: no name, email, Apple ID, or
           anything typed or displayed on your screen.</li>
-        <li>Never records, captures, or transmits your screen content — the
-          brightness boost works without ever reading what is on your
-          display.</li>
+        <li>Never transmits your screen content. The brightness boost works
+          without reading what is on your display at all. One optional tool,
+          Copy Text from Screen, does look at the screen: when you use it, it
+          captures only the box you draw, reads the text in it on your Mac
+          with Apple’s on-device text recognition, puts that text on your
+          clipboard and discards the image. It needs the macOS Screen
+          Recording permission, which is requested the first time you use it
+          and can be withdrawn in System Settings.</li>
+        <li>Window Snapping uses the macOS Accessibility permission, requested
+          the first time you snap a window, solely to move and resize the
+          front window. It does not read the contents of your windows.</li>
+        <li>Next Meeting reads your upcoming calendar events — after you grant
+          Calendar access — to show them in the menu and find a video-call
+          link to open. Events are read on your Mac each time the menu opens
+          and are not stored or transmitted.</li>
+        <li>Shortcuts stores only the names of the shortcuts you add and asks
+          the Shortcuts app to run them; MaxCandela does not see what a
+          shortcut does.</li>
         <li>Sends a few anonymous usage events (app launched, boost turned
           on/off, trial-ended prompt shown, purchase completed) to Google
           Analytics so we can understand
@@ -52,8 +67,25 @@ export default function PrivacyPage() {
         <li>Otherwise makes no network connections except to Apple’s App Store
           services for purchases and license verification (handled by Apple’s
           StoreKit framework).</li>
+        <li>Clipboard tools: the text tools read your clipboard only at the
+          moment you choose one, and write the result back to it. Clipboard
+          history is off until you turn it on; while on, it keeps the last 15
+          pieces of text you copy (200 with Pro) <em>in memory only</em> —
+          never sent anywhere, cleared when you quit — and skips anything a
+          password manager marks as confidential. Only if you also switch on
+          the Pro option <em>Remember After Quit</em> is the history saved, to
+          a file inside the app’s own private storage on your Mac; switching
+          that option or the history off deletes the file.</li>
+        <li>The Sound tool changes which audio device your Mac uses and can
+          mute the microphone. It never listens to or records audio.</li>
+        <li>The color picker uses the macOS system eyedropper. The app
+          receives only the single colour you pick, not an image of your
+          screen.</li>
+        <li>The system read-out (CPU, memory, disk, battery, local IP address)
+          is computed on your Mac and shown in the menu. None of it is
+          transmitted.</li>
         <li>Stores its settings (whether the boost is enabled, trial start
-          date) only on your Mac.</li>
+          date, your options, recently picked colours) only on your Mac.</li>
       </ul>
 
       <h2>Purchases</h2>
