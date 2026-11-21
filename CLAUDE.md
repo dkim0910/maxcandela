@@ -721,6 +721,18 @@ in the header comment of `app/globals.css`; the short version:
   popover text. Re-shoot them (`assets/screenshots/`, then
   `scripts/optimize-web-images.sh`).
 
+**App Store screenshots (2026-11-21).** `scripts/make-app-screenshots.sh`
+regenerates all five into `assets/screenshots/store/` (2880×1800, opaque PNG).
+They are composed from **real captures** of the menus: the debug app's
+screenshot mode (`MAXCANDELA_SHOT`, bottom of `MenuBarController.swift`)
+covers the whole screen with an opaque backdrop, opens one real menu over it
+and reports its rectangle; `screencapture -R` grabs only that, so no desktop
+content can be in the picture, and the composer refuses any capture whose
+corner is not the backdrop colour. Each shot blanks the screen for ~6 s.
+Re-run after any change to the menu. Not covered: the brightness effect
+itself (the old before/after pair is stale), the clipboard panel, and
+anything behind a permission.
+
 ### DEBUG-only preview flags (macOS)
 
 Compiled out of release builds, so they can never affect real users. Prefix the
