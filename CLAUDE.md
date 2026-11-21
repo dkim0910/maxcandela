@@ -699,6 +699,28 @@ pricing cards do list Extra Dim and Warmth, matching the code.
 tools is live** — pushes touching `apps/web/**` auto-deploy, and the store
 build (1.1.7) has none of these features.
 
+**Site redesign (2026-11-21, after Daniel called the first pass "AI slop").**
+Checked in a browser this time, desktop width only. What changed and why is
+in the header comment of `app/globals.css`; the short version:
+
+- No emoji, no card grids, no gradient headline, no pill eyebrow, nothing
+  centred by default. Left-aligned, hairlines, one accent.
+- The hero **is** a MacBook screen (`.hero`: bezel, notch, system menu bar
+  across the top, fading out at the bottom). The headline sits on the
+  desktop; `MockMenu` drops open from the ☀ in `MockMenuBar` at the right —
+  both in `components/MenuMock.tsx`, the app's menu drawn in HTML/CSS. **It must mirror `MenuBarController.buildMenu()`**; a row
+  the app lacks is a false claim. Replace it with a real screenshot when one
+  exists.
+- Free tools are a definition list (`.spec`); the six Pro tools are the only
+  boxed items (`.panels`, each with its category and any permission it asks
+  for); display tools are a three-up (`.trio`).
+- Buttons no longer lift on hover and the primary is flat amber.
+- **Not checked:** phone widths (breakpoints exist at 600–900 px but nobody
+  has looked), and the page under the live boost demo.
+- **Known stale asset:** the before/after screenshots show the *old* welcome
+  popover text. Re-shoot them (`assets/screenshots/`, then
+  `scripts/optimize-web-images.sh`).
+
 ### DEBUG-only preview flags (macOS)
 
 Compiled out of release builds, so they can never affect real users. Prefix the

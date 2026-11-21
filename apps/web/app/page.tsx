@@ -5,6 +5,7 @@ import NavBar from '@/components/NavBar';
 import SiteFooter from '@/components/SiteFooter';
 import ScrollLink from '@/components/ScrollLink';
 import BeforeAfter from '@/components/BeforeAfter';
+import { MockMenu, MockMenuBar } from '@/components/MenuMock';
 import { useBoost } from '@/components/BoostProvider';
 import { APP_STORE_URL, SITE_NAME, SITE_ORIGIN, SITE_URL } from '@/lib/site';
 
@@ -29,76 +30,76 @@ const COMPARE_BOOSTED = {
 // TOOLS.length, "17" is TOOLS + PRO_TOOLS + the three display tools.
 const TOOLS = [
   {
-    icon: '☕',
     title: 'Keep Awake',
     text: 'Stop your Mac’s display sleeping for half an hour, a few hours, or until you say so. Presentations, long downloads, reading.',
   },
   {
-    icon: '⏱️',
     title: 'Timer',
     text: 'A countdown that sits next to the menu-bar icon while it runs and chimes when it’s done.',
   },
   {
-    icon: '📋',
     title: 'Clipboard tools',
     text: 'Change the case of copied text, trim it, sort lines, URL- and Base64-encode or decode, format JSON. Optional history of the last 15 things you copied — kept in memory only.',
   },
   {
-    icon: '🎯',
     title: 'Color picker',
     text: 'Pick any colour on screen with the system eyedropper and get its hex code on your clipboard.',
   },
   {
-    icon: '🪄',
     title: 'Generate',
     text: 'A UUID, a strong password, a Unix timestamp, an ISO date or a paragraph of filler text — one click, straight to your clipboard.',
   },
   {
-    icon: '🌍',
     title: 'World clock',
     text: 'The time in the cities you work with, and whether it’s already tomorrow there.',
   },
   {
-    icon: '🔊',
     title: 'Sound',
     text: 'Switch between speakers, headphones and microphones, and mute the mic, without opening System Settings.',
   },
   {
-    icon: '📊',
     title: 'System at a glance',
     text: 'CPU, memory, free disk space, battery health and cycle count, uptime and your local IP address — live, and click any line to copy it.',
   },
 ];
 
 // The Pro tools — each one stands in for an app people buy on its own.
-const PRO_TOOLS = [
+// `kind` is that category; `needs` is the macOS permission the tool asks for
+// on first use (see the tool's type comment in apps/macos), or null.
+const PRO_TOOLS: { kind: string; needs: string | null; title: string; text: string }[] = [
   {
-    icon: '🙈',
+    kind: 'Menu bar organiser',
+    needs: null,
     title: 'Hide menu bar icons',
     text: 'Tuck the icons you rarely need behind a chevron and bring them back with a click. Hold ⌘ and drag to choose which.',
   },
   {
-    icon: '🗂️',
+    kind: 'Clipboard manager',
+    needs: null,
     title: 'Clipboard manager',
     text: 'The last 200 things you copied in a searchable window on ⌃⌥⌘V. Pin what you reuse, and keep it between restarts if you choose to.',
   },
   {
-    icon: '🪟',
+    kind: 'Window manager',
+    needs: 'Accessibility',
     title: 'Window snapping',
     text: 'Send the front window to a half, a quarter, the full screen or the centre — from the menu or with ⌃⌥ and the arrow keys.',
   },
   {
-    icon: '🔍',
+    kind: 'Screen text reader',
+    needs: 'Screen Recording',
     title: 'Copy text from screen',
     text: 'Drag a box over a video, an image or a PDF that won’t select, and the text in it is on your clipboard. Recognised on your Mac, never uploaded.',
   },
   {
-    icon: '⚙️',
+    kind: 'Automation',
+    needs: null,
     title: 'Your Shortcuts, one click away',
     text: 'Add any shortcut from Apple’s Shortcuts app to the menu — dark mode, a Focus, your smart lights — and run it from the menu bar.',
   },
   {
-    icon: '📅',
+    kind: 'Calendar',
+    needs: 'Calendar',
     title: 'Next meeting',
     text: 'What’s coming up on your calendar, right in the menu, with a Join button for Zoom, Meet, Teams and Webex calls.',
   },
@@ -107,32 +108,26 @@ const PRO_TOOLS = [
 // The display tools — the part of the app behind MaxCandela Pro.
 const FEATURES = [
   {
-    icon: '☀️',
     title: 'XDR brightness boost',
     text: 'On a MacBook Pro XDR display, lifts your whole screen — desktop, every app, every window — past the brightness macOS normally caps everyday content at.',
   },
   {
-    icon: '🌙',
     title: 'Extra Dim',
     text: 'Take the screen below the lowest step of the brightness keys, for a dark room late at night. Works on any Mac display.',
   },
   {
-    icon: '🌅',
     title: 'Warmth',
     text: 'Shift the picture toward a warmer white, all day or only at night — it eases in and out over half an hour rather than snapping. Works on any Mac display.',
   },
   {
-    icon: '🎨',
     title: 'True colors',
     text: 'The boost is colour-calibrated and preserves your display’s ColorSync profile. Brighter — never washed out.',
   },
   {
-    icon: '🌡️',
     title: 'Looks after your Mac',
     text: 'Never exceeds the limits macOS enforces for HDR. Because a bright screen makes heat, MaxCandela tracks how hard and how long it has been driving your display and eases the boost down as it warms — and cuts it entirely if it gets too hot, restoring it once things cool.',
   },
   {
-    icon: '🎛️',
     title: 'Works the way you do',
     text: 'Set a keyboard shortcut, pause the boost on battery, boost only in the apps you choose, and leave a second monitor alone.',
   },
@@ -229,104 +224,113 @@ export default function Home() {
       <NavBar />
 
       <main className="main">
-        {/* ---- Hero ---- */}
+        {/* ---- Hero: the whole section is a MacBook screen. The system menu
+            bar runs across the top, the headline sits on the desktop, and
+            the app's menu drops open from its ☀ icon at the right. ---- */}
         <section className="hero">
-          <p className="eyebrow">Menu-bar toolbox for Mac</p>
-          {/* Toolbox-first since the 2026-11 pivot. "Mac" and "menu bar" carry
-              the heading weight now; the MacBook Pro brightness query is
-              served by the display section's h2s and /how-it-works/. */}
-          <h1>
-            17 Mac tools.
-            <br />
-            <span className="hl">One menu-bar icon.</span>
-          </h1>
-          <p className="subtitle">
-            Keep Awake, a timer, clipboard tools, a color picker and more —
-            free. Pro replaces a shelf of paid utilities: window snapping, a
-            clipboard manager, hidden menu-bar icons, text capture, and an XDR
-            brightness boost for MacBook Pro.
-          </p>
-          <div className="cta-row">
-            <a className="app-store-link" href={APP_STORE_URL} aria-label="Download on the Mac App Store">
-              <img
-                className="app-store-badge"
-                src="/download-on-mac-app-store.svg"
-                alt="Download on the Mac App Store"
-                width={156}
-                height={40}
-              />
-            </a>
-            <ScrollLink targetId="tools" className="cta cta-secondary">
-              See the tools ↓
-            </ScrollLink>
-            <span className="cta-note">Free · no account</span>
+          <div className="mock-notch" aria-hidden="true" />
+          <MockMenuBar />
+          <div className="hero-desktop">
+          <div className="hero-copy">
+            <p className="kicker">Menu-bar toolbox for Mac</p>
+            {/* Toolbox-first since the 2026-11 pivot. "Mac" and "menu bar"
+                carry the heading weight now; the MacBook Pro brightness query
+                is served by the display section's h2 and /how-it-works/. */}
+            <h1>
+              17 Mac tools.
+              <br />
+              <span className="hl">One menu-bar icon.</span>
+            </h1>
+            <p className="subtitle">
+              Keep Awake, a timer, clipboard tools, a color picker and more —
+              free. Pro replaces a shelf of paid utilities: window snapping, a
+              clipboard manager, hidden menu-bar icons, text capture, and an
+              XDR brightness boost for MacBook Pro.
+            </p>
+            <div className="cta-row">
+              <a className="app-store-link" href={APP_STORE_URL} aria-label="Download on the Mac App Store">
+                <img
+                  className="app-store-badge"
+                  src="/download-on-mac-app-store.svg"
+                  alt="Download on the Mac App Store"
+                  width={156}
+                  height={40}
+                />
+              </a>
+              <ScrollLink targetId="tools" className="cta cta-secondary">
+                See the tools
+              </ScrollLink>
+            </div>
+            <ul className="hero-meta">
+              <li>Eight tools free, no time limit</li>
+              <li>Any Mac with macOS 15.6 or later</li>
+              <li>No account</li>
+            </ul>
           </div>
-          <div className="trust-row">
-            <span>Eight tools free, no time limit</span>
-            <span>Runs on any Mac · macOS 15.6+</span>
-            <span>No account, no personal data</span>
-            <span>Quit and everything is back to normal</span>
+          <MockMenu />
           </div>
         </section>
 
         {/* ---- Tools (free) ---- */}
-        <section className="features" id="tools">
+        <section className="block" id="tools">
           <div className="section-head">
-            <span className="section-eyebrow">Free, forever</span>
+            <span className="section-label">Free</span>
             <h2>The everyday Mac utilities, without eight separate apps</h2>
             <p className="section-sub">
-              One icon in the menu bar instead of a row of them. Each tool is
-              a click away and none of them needs an account, a permission
-              prompt or a window.
+              One icon in the menu bar instead of a row of them. None of these
+              needs an account, a permission prompt or a window.
             </p>
           </div>
-          <div className="cards">
+          <dl className="spec">
             {TOOLS.map((t) => (
-              <div className="card" key={t.title}>
-                <span className="card-icon" aria-hidden="true">{t.icon}</span>
-                <h3>{t.title}</h3>
-                <p>{t.text}</p>
+              <div className="spec-row" key={t.title}>
+                <dt>{t.title}</dt>
+                <dd>{t.text}</dd>
               </div>
             ))}
-          </div>
+          </dl>
         </section>
 
         {/* ---- Pro tools ---- */}
-        <section className="features" id="pro">
+        <section className="block" id="pro">
           <div className="section-head">
-            <span className="section-eyebrow">MaxCandela Pro · $9.99 once</span>
+            <span className="section-label">MaxCandela Pro</span>
             <h2>Six tools people usually buy one app at a time</h2>
             <p className="section-sub">
-              A window manager, a clipboard manager, a menu-bar tidier and a
-              screen text reader are each their own purchase elsewhere. Here
-              they are one unlock — free to try for 5 days.
+              A window manager, a clipboard manager, a menu-bar organiser and
+              a screen text reader are each their own purchase elsewhere. Here
+              they are one unlock, free to try for 5 days.
             </p>
           </div>
-          <div className="cards">
+          <div className="panels">
             {PRO_TOOLS.map((t) => (
-              <div className="card" key={t.title}>
-                <span className="card-icon" aria-hidden="true">{t.icon}</span>
+              <article className="panel" key={t.title}>
+                <span className="panel-kind">{t.kind}</span>
                 <h3>{t.title}</h3>
                 <p>{t.text}</p>
-              </div>
+                {t.needs && (
+                  <span className="panel-note">
+                    Asks for {t.needs} access the first time you use it
+                  </span>
+                )}
+              </article>
             ))}
           </div>
         </section>
 
         {/* ---- Display tools (Pro) ---- */}
-        <section className="features" id="display">
+        <section className="block" id="display">
           <div className="section-head">
-            <span className="section-eyebrow">MaxCandela Pro · display tools</span>
+            <span className="section-label">MaxCandela Pro · Display</span>
             <h2>Brighter, dimmer, warmer — control macOS doesn’t give you</h2>
             <p className="section-sub">
-              Free to try for 5 days. The brightness boost needs a MacBook Pro
-              XDR display; Extra Dim and Warmth work on any Mac.
+              The brightness boost needs a MacBook Pro XDR display. Extra Dim
+              and Warmth work on any Mac.
             </p>
           </div>
-          <div className="cards">
-            {FEATURES.map((f) => (
-              <div className="card" key={f.title}>
-                <span className="card-icon" aria-hidden="true">{f.icon}</span>
+          <div className="trio">
+            {FEATURES.slice(0, 3).map((f) => (
+              <div className="trio-item" key={f.title}>
                 <h3>{f.title}</h3>
                 <p>{f.text}</p>
               </div>
@@ -334,11 +338,10 @@ export default function Home() {
           </div>
         </section>
 
-        {/* ---- Product showcase: before/after ---- */}
+        {/* ---- The boost, shown: before/after ---- */}
         <section className="showcase">
-          <span className="section-eyebrow">The XDR brightness boost</span>
           <h2>How dark your MacBook Pro screen is now vs. how bright it gets</h2>
-          <p className="demo-copy">
+          <p className="section-sub">
             A MacBook Pro XDR panel can sustain around 1,000 nits; macOS holds
             everyday content near 600. Drag the slider — the left is the
             screen at its normal cap, the right is the same desktop with the
@@ -353,24 +356,32 @@ export default function Home() {
             afterLabel="With MaxCandela"
             alt="MacBook Pro XDR display at the macOS brightness cap next to the same desktop unlocked to full brightness by MaxCandela"
           />
-          <p className="device-caption">
-            Same Mac, same wallpaper — only the brightness changes. The app
-            boosts every app and window, system-wide.
-          </p>
+          <dl className="spec spec-tight">
+            {FEATURES.slice(3).map((f) => (
+              <div className="spec-row" key={f.title}>
+                <dt>{f.title}</dt>
+                <dd>{f.text}</dd>
+              </div>
+            ))}
+          </dl>
         </section>
 
         {/* ---- Live demo ---- */}
         <section className="demo" id="demo">
-          <span className="section-eyebrow">Try it free</span>
-          <h2>Don’t take our word for it — try the brightness boost</h2>
-          <p className="demo-copy">
-            On a MacBook Pro XDR display, this page can boost itself the same
-            way, right in your browser. Press the button and imagine your
-            whole Mac like this.
-          </p>
-          {/* Wrapper forces the button onto its own line so the status pill
-              sits BELOW it, not beside it (both are inline-flex). */}
-          <div className="demo-toggle-row">
+          <div className="demo-text">
+            <span className="section-label">Try it here</span>
+            <h2>Don’t take our word for it — try the brightness boost</h2>
+            <p className="demo-copy">
+              On a MacBook Pro XDR display, this page can boost itself the
+              same way, right in your browser. Press the button and imagine
+              your whole Mac like this.
+            </p>
+            <p className="demo-fineprint">
+              The web demo brightens this page only. The Mac app brightens
+              everything, system-wide.
+            </p>
+          </div>
+          <div className="demo-control">
             <button
               className={`toggle toggle-big ${enabled ? 'toggle-on' : ''}`}
               onClick={toggle}
@@ -380,83 +391,76 @@ export default function Home() {
               <span className="toggle-dot" aria-hidden="true" />
               {enabled ? 'Boost on — press to restore' : 'Try the boost'}
             </button>
-          </div>
-          <div className="demo-status-row">
             <div className={`status ${status.cls}`} role="status">
               <span className="status-dot" aria-hidden="true" />
               {status.text}
             </div>
+            {status.note && <p className="demo-fineprint">{status.note}</p>}
+            {enabled && unlocker?.error && (
+              <p className="diag">{unlocker.error}</p>
+            )}
           </div>
-          {status.note && <p className="demo-fineprint">{status.note}</p>}
-          {enabled && unlocker?.error && (
-            <p className="diag">⚠️ {unlocker.error}</p>
-          )}
-          <p className="demo-fineprint">
-            The web demo brightens this page only. The Mac app brightens
-            everything, system-wide.
-          </p>
         </section>
 
         {/* ---- Pricing ---- */}
-        <section className="pricing" id="pricing">
+        <section className="block pricing" id="pricing">
           <div className="section-head">
-            <span className="section-eyebrow">Pricing</span>
+            <span className="section-label">Pricing</span>
             <h2>Eight tools free — all 17 for $9.99 once</h2>
             <p className="section-sub">
               The everyday tools cost nothing. Pro is free for 5 days, then
-              pick what suits you. The brightness boost needs a
-              MacBook Pro XDR display — check that it works on yours during
-              the trial before you buy.
+              pick what suits you. The brightness boost needs a MacBook Pro XDR
+              display — check that it works on yours during the trial before
+              you buy.
             </p>
           </div>
-          <div className="price-cards price-cards-3">
+          <div className="price-cards">
             <div className="price-card">
               <h3>Free</h3>
               <p className="price">
                 $0<span className="price-per"> forever</span>
               </p>
               <ul>
-                <li>✓ Keep Awake and Timer</li>
-                <li>✓ Clipboard tools and Generate</li>
-                <li>✓ Color picker and World Clock</li>
-                <li>✓ Sound and System read-out</li>
+                <li>Keep Awake and Timer</li>
+                <li>Clipboard tools and Generate</li>
+                <li>Color picker and World Clock</li>
+                <li>Sound and System read-out</li>
               </ul>
               <a className="cta cta-secondary" href={APP_STORE_URL}>
                 Download free
               </a>
             </div>
             <div className="price-card">
-              <h3>Monthly</h3>
+              <h3>Pro Monthly</h3>
               <p className="price">
-                $0.99<span className="price-per">/month</span>
+                $0.99<span className="price-per"> / month</span>
               </p>
               <ul>
-                <li>✓ Everything in Free</li>
-                <li>✓ Window snapping, clipboard manager</li>
-                <li>✓ Hide menu bar icons, text capture</li>
-                <li>✓ Shortcuts and Next Meeting</li>
-                <li>✓ XDR brightness boost, Extra Dim, Warmth</li>
-                <li>✓ All future updates</li>
-                <li>✓ Cancel anytime in the App Store</li>
+                <li>Everything in Free</li>
+                <li>Window snapping, clipboard manager</li>
+                <li>Hide menu bar icons, text capture</li>
+                <li>Shortcuts and Next Meeting</li>
+                <li>XDR brightness boost, Extra Dim, Warmth</li>
+                <li>Cancel anytime in the App Store</li>
               </ul>
               <a className="cta cta-secondary" href={APP_STORE_URL}>
                 Start free trial
               </a>
             </div>
             <div className="price-card price-card-best">
-              <span className="badge">Best value</span>
-              <h3>Lifetime</h3>
+              <h3>
+                Pro Lifetime <span className="badge">Best value</span>
+              </h3>
               <p className="price">
                 $9.99<span className="price-per"> once</span>
               </p>
               <ul>
-                <li>✓ Everything in Free</li>
-                <li>✓ Window snapping, clipboard manager</li>
-                <li>✓ Hide menu bar icons, text capture</li>
-                <li>✓ Shortcuts and Next Meeting</li>
-                <li>✓ XDR brightness boost, Extra Dim, Warmth</li>
-                <li>✓ All future updates</li>
-                <li>✓ Pays for itself in 11 months</li>
+                <li>Everything in Free</li>
+                <li>Window snapping, clipboard manager</li>
+                <li>Hide menu bar icons, text capture</li>
+                <li>Shortcuts and Next Meeting</li>
+                <li>XDR brightness boost, Extra Dim, Warmth</li>
+                <li>Pays for itself in 11 months</li>
               </ul>
               <a className="cta cta-primary" href={APP_STORE_URL}>
                 Start free trial
@@ -466,38 +470,40 @@ export default function Home() {
           <p className="pricing-fineprint">
             Purchases via Apple. One purchase covers every Mac on your Apple
             ID. Requires macOS 15.6+; the brightness boost also needs an
-            HDR/XDR display (MacBook Pro 14″/16″ 2021 or later, or Pro Display
-            XDR). Subscriptions
-            renew monthly and can be cancelled anytime in App Store →
-            Subscriptions; payment is charged to your Apple Account. See our{' '}
+            HDR/XDR display (MacBook Pro 14″/16″ with a Liquid Retina XDR
+            display, or Pro Display XDR). Subscriptions renew monthly and can
+            be cancelled anytime in App Store → Subscriptions; payment is
+            charged to your Apple Account. See our{' '}
             <Link href="/terms/">Terms of Use</Link> and{' '}
             <Link href="/privacy/">Privacy Policy</Link>.
           </p>
         </section>
 
         {/* ---- FAQ ---- */}
-        <section className="faq" id="faq">
+        <section className="block faq" id="faq">
           <div className="section-head">
-            <span className="section-eyebrow">FAQ</span>
+            <span className="section-label">FAQ</span>
             <h2>Questions about the tools, the brightness boost and pricing</h2>
           </div>
-          {FAQS.map((f) => (
-            <details key={f.q}>
-              <summary>{f.q}</summary>
-              <p>{f.a}</p>
-            </details>
-          ))}
+          <div className="faq-list">
+            {FAQS.map((f) => (
+              <details key={f.q}>
+                <summary>{f.q}</summary>
+                <p>{f.a}</p>
+              </details>
+            ))}
+          </div>
           {/* The only in-body links to the deep pages. Footer-only links give a
               crawler almost nothing to weigh, and /support/ is the page most
               likely to answer a search that lands here. */}
           <p className="faq-more">
-            Want the full explanation? Read{' '}
+            Want the full explanation of the boost? Read{' '}
             <Link href="/how-it-works/">
               how to make your MacBook screen brighter than max
             </Link>{' '}
             — why macOS caps it, and why a bright wallpaper can’t fix it. Still
             stuck? Our <Link href="/support/">support guide</Link> covers
-            display-by-display troubleshooting, subscriptions and promo codes.
+            troubleshooting, subscriptions and promo codes.
           </p>
         </section>
       </main>
