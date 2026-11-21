@@ -142,6 +142,7 @@ final class MenuBarController {
         if ProcessInfo.processInfo.environment["MAXCANDELA_OPEN_MENU"] == "1" {
             DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in self?.showMenu() }
         }
+        runScreenshotModeIfAsked()
         #endif
         showWelcomeIfFirstRun()
     }
@@ -1317,3 +1318,80 @@ final class MenuBarController {
         alert.runModal()
     }
 }
+
+#if DEBUG
+// MARK: - Screenshot mode (scripts/make-app-screenshots.sh)
+
+/// Captures of the *real* menus for the App Store screenshots, without any of
+/// the user's desktop in them.
+///
+/// `MAXCANDELA_SHOT=<main|ToolTypeName>` covers the whole screen — menu bar
+/// and Dock included — with an opaque backdrop in the screenshots' background
+/// colour, opens the requested menu on top of it, writes the menu's on-screen
+/// rectangle to `MAXCANDELA_SHOT_OUT`, holds for a moment so the script can
+/// capture exactly that rectangle, then quits. Nothing behind the backdrop
+/// can end up in the picture.
+extension MenuBarController {
+    /// Must match `background` in scripts/make-app-screenshots.swift, so a
+    /// captured menu (and its shadow) drops onto the canvas without a seam.
+    static let screenshotBackdrop = NSColor(srgbRed: 0.047, green: 0.063, blue: 0.086, alpha: 1)
+
+    fileprivate func runScreenshotModeIfAsked() {
+        let environment = ProcessInfo.processInfo.environment
+        guard let shot = environment["MAXCANDELA_SHOT"],
+              let out = environment["MAXCANDELA_SHOT_OUT"],
+              let screen = NSScreen.main else { return }
+
+        let backdrop = NSWindow(contentRect: screen.frame, styleMask: .borderless,
+                                backing: .buffered, defer: false)
+        backdrop.backgroundColor = Self.screenshotBackdrop
+        backdrop.isOpaque = true
+        // Above the menu bar and the Dock, one level below menus.
+        backdrop.level = NSWindow.Level(rawValue: NSWindow.Level.popUpMenu.rawValue - 1)
+        backdrop.isReleasedWhenClosed = false
+        backdrop.orderFrontRegardless()
+        screenshotBackdropWindow = backdrop
+
+        // The menu's tracking loop blocks, so both timers must be in .common
+        // modes or they would sleep through exactly the moment they exist for.
+        let report = Timer(timeInterval: 2.6, repeats: false) { _ in
+            let pid = ProcessInfo.processInfo.processIdentifier
+            let windows = CGWindowListCopyWindowInfo([.optionOnScreenOnly], kCGNullWindowID) as? [[String: Any]] ?? []
+            let menus = windows.filter {
+                ($0[kCGWindowOwnerPID as String] as? Int32) == pid
+                    && ($0[kCGWindowLayer as String] as? Int) == Int(NSWindow.Level.popUpMenu.rawValue)
+            }.compactMap { ($0[kCGWindowBounds as String] as? NSDictionary).flatMap { CGRect(dictionaryRepresentation: $0) } }
+            guard let bounds = menus.reduce(nil as CGRect?, { $0?.union($1) ?? $1 }) else { return }
+            let text = "\(Int(bounds.minX)) \(Int(bounds.minY)) \(Int(bounds.width)) \(Int(bounds.height))"
+            try? text.write(toFile: out, atomically: true, encoding: .utf8)
+        }
+        RunLoop.main.add(report, forMode: .common)
+        let finish = Timer(timeInterval: 5.5, repeats: false) { [weak self] _ in
+            // An open menu holds the run loop in its tracking mode; close it
+            // or terminate() waits for a click that never comes. exit() is
+            // the backstop — a backdrop stuck over the screen is the one
+            // failure this mode must not have.
+            self?.menu.cancelTracking()
+            self?.tools.forEach { $0.menuItem.submenu?.cancelTracking() }
+            self?.brightness.shutdown()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { exit(0) }
+        }
+        RunLoop.main.add(finish, forMode: .common)
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
+            guard let self else { return }
+            if shot == "main" {
+                self.showMenu()
+            } else if let tool = self.tools.first(where: { String(describing: type(of: $0)) == shot }),
+                      let submenu = tool.menuItem.submenu {
+                tool.menuWillOpen()
+                submenu.popUp(positioning: nil,
+                              at: NSPoint(x: screen.frame.midX, y: screen.frame.maxY - 140), in: nil)
+            }
+        }
+    }
+}
+
+/// Keeps the backdrop alive for the life of the process.
+private var screenshotBackdropWindow: NSWindow?
+#endif
