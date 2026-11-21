@@ -41,15 +41,34 @@ final class GammaController {
         return base.map { $0 * gain }
     }
 
+    /// Linear-light channel gains for a warmth of 0 (neutral) … 1 (warmest).
+    ///
+    /// Red stays at 1 and the other two only ever come *down*, so warmth can
+    /// never push a channel above what the luminance scale already put there —
+    /// the "never exceed current headroom" clamp holds with no extra work. The
+    /// end point (green ×0.72, blue ×0.42) is an incandescent-ish white chosen
+    /// by eye-model, not measured; tune here if it reads too orange.
+    static func warmthGains(_ warmth: Float) -> (red: Float, green: Float, blue: Float) {
+        let w = max(0, min(1, warmth))
+        return (1, 1 - 0.28 * w, 1 - 0.58 * w)
+    }
+
+    /// Lowest luminance Extra Dim may reach. A floor rather than zero: a
+    /// screen dimmed to black cannot be used to undim itself.
+    static let minimumDim: CGFloat = 0.2
+
     // MARK: - Display application
 
-    /// Apply a luminance lift to one display. Returns true on success.
+    /// Apply a luminance scale (lift above 1.0, dim below) and a warmth to one
+    /// display. Returns true on success. The channel gains are linear-light
+    /// like the scale, so they go through the same encoded-gain conversion.
     @discardableResult
-    func applyLift(scale: CGFloat, to displayID: CGDirectDisplayID) -> Bool {
+    func apply(scale: CGFloat, warmth: CGFloat = 0, to displayID: CGDirectDisplayID) -> Bool {
         let base = cachedBase(for: displayID)
-        let red = Self.liftTable(base: base.red, luminanceScale: Float(scale))
-        let green = Self.liftTable(base: base.green, luminanceScale: Float(scale))
-        let blue = Self.liftTable(base: base.blue, luminanceScale: Float(scale))
+        let gains = Self.warmthGains(Float(warmth))
+        let red = Self.liftTable(base: base.red, luminanceScale: Float(scale) * gains.red)
+        let green = Self.liftTable(base: base.green, luminanceScale: Float(scale) * gains.green)
+        let blue = Self.liftTable(base: base.blue, luminanceScale: Float(scale) * gains.blue)
 
         let tableResult = CGSetDisplayTransferByTable(
             displayID,
@@ -62,12 +81,11 @@ final class GammaController {
         }
 
         // Fallback: formula path. Loses per-channel calibration but functional.
-        let gain = Self.encodedGain(forLuminanceScale: Float(scale))
         let formulaResult = CGSetDisplayTransferByFormula(
             displayID,
-            0, gain, 1,   // red   min/max/gamma
-            0, gain, 1,   // green
-            0, gain, 1    // blue
+            0, Self.encodedGain(forLuminanceScale: Float(scale) * gains.red), 1,    // red   min/max/gamma
+            0, Self.encodedGain(forLuminanceScale: Float(scale) * gains.green), 1,  // green
+            0, Self.encodedGain(forLuminanceScale: Float(scale) * gains.blue), 1    // blue
         )
         if formulaResult == .success {
             return true

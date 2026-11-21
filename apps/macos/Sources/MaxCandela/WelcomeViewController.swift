@@ -6,9 +6,11 @@ import AppKit
 final class WelcomeViewController: NSViewController {
     private let onDismiss: () -> Void
     private let icon: NSImage?
+    private let clickTogglesBoost: Bool
 
-    init(icon: NSImage?, onDismiss: @escaping () -> Void) {
+    init(icon: NSImage?, clickTogglesBoost: Bool, onDismiss: @escaping () -> Void) {
         self.icon = icon
+        self.clickTogglesBoost = clickTogglesBoost
         self.onDismiss = onDismiss
         super.init(nibName: nil, bundle: nil)
     }
@@ -31,13 +33,8 @@ final class WelcomeViewController: NSViewController {
 
         let title = makeLabel("MaxCandela lives up here", size: 15, weight: .semibold)
 
-        let body = makeLabel(
-            "There’s no window or Dock icon — just this sun in your menu bar.\n\n"
-            + "Click it to unlock your display’s full brightness, and click "
-            + "again to go back.\n\n"
-            + "Double-click (or right-click) for the menu: trial status, "
-            + "purchase options, support, and Quit.",
-            size: 13, weight: .regular)
+        let body = makeLabel(Self.bodyText(clickTogglesBoost: clickTogglesBoost),
+                             size: 13, weight: .regular)
         body.textColor = .secondaryLabelColor
         body.preferredMaxLayoutWidth = 260
 
@@ -62,6 +59,25 @@ final class WelcomeViewController: NSViewController {
             container.widthAnchor.constraint(equalToConstant: 300),
         ])
         view = container
+    }
+
+    /// Unit-tested: the popover must describe the click the app actually has.
+    static func bodyText(clickTogglesBoost: Bool) -> String {
+        let intro = "There’s no window or Dock icon — just this sun in your menu bar.\n\n"
+        if clickTogglesBoost {
+            return intro
+                + "Click it to unlock your display’s full brightness, and click "
+                + "again to go back.\n\n"
+                + "Double-click (or right-click) for everything else: Extra Dim, "
+                + "Warmth, Keep Awake, the timer, clipboard tools and more."
+        }
+        return intro
+            + "Click it for your tools: the brightness boost, Extra Dim and "
+            + "Warmth for your display, plus Keep Awake, a timer, clipboard "
+            + "tools, a color picker, world clocks and a system read-out.\n\n"
+            + "The display tools and the Pro tools — window snapping, hiding "
+            + "menu bar icons, copying text off the screen and more — are free "
+            + "to try for 5 days. The everyday tools are free to keep."
     }
 
     private func makeLabel(_ text: String, size: CGFloat, weight: NSFont.Weight) -> NSTextField {

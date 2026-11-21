@@ -14,6 +14,15 @@ struct DisplayInfo {
     var displayID: CGDirectDisplayID {
         (screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID) ?? 0
     }
+
+    /// An identifier that survives reboots and re-plugging, for remembering a
+    /// per-display choice. `displayID` does not — it is assigned per session.
+    var stableID: String {
+        guard let uuid = CGDisplayCreateUUIDFromDisplayID(displayID)?.takeRetainedValue() else {
+            return String(displayID)
+        }
+        return CFUUIDCreateString(nil, uuid) as String
+    }
 }
 
 /// Enumerates attached displays, reports their EDR capability, and notifies when

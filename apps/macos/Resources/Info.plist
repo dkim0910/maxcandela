@@ -19,9 +19,9 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.1.8</string>
+	<string>2.0.0</string>
 	<key>CFBundleVersion</key>
-	<string>18</string>
+	<string>19</string>
 	<key>GAApiSecret</key>
 	<string></string>
 	<key>GAMeasurementID</key>
@@ -32,6 +32,8 @@
 	<string>public.app-category.utilities</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>15.6</string>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>MaxCandela shows your upcoming meetings in its menu and lets you join calls with one click. Your calendar is read on this Mac only and is never sent anywhere.</string>
 	<key>LSUIElement</key>
 	<true/>
 	<key>NSHumanReadableCopyright</key>

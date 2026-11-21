@@ -44,7 +44,43 @@ final class BrightnessController {
         return abs(next - target) < snapWithin ? target : next
     }
 
+    /// The scale a display sits at while the boost is not driving it: Extra
+    /// Dim if the licence allows adjustments, otherwise native. Pure,
+    /// unit-tested. Clamped to `minimumDim` so a stored or dragged value can
+    /// never black the screen out, and to 1.0 so it can never *lift*.
+    static func idleScale(extraDim: CGFloat, licensed: Bool) -> CGFloat {
+        guard licensed else { return 1.0 }
+        return min(1.0, max(GammaController.minimumDim, extraDim))
+    }
+
+    /// Whether the boost should be held off for the power source. Pure,
+    /// unit-tested.
+    static func shouldPauseForBattery(optionOn: Bool, onBattery: Bool) -> Bool {
+        optionOn && onBattery
+    }
+
+    /// Which displays the user has actually taken out of the boost. Pure,
+    /// unit-tested. A saved exclusion only counts while there is a choice to
+    /// make: with one boost-capable display attached — or if it would leave
+    /// none boosted — it is ignored, because the menu only offers the
+    /// per-display rows when there are several, and a laptop undocked from its
+    /// monitors must not be left with a toggle that does nothing.
+    static func effectiveExclusions(boostCapable: [String], excluded: Set<String>) -> Set<String> {
+        let present = excluded.intersection(boostCapable)
+        guard boostCapable.count > 1, present.count < Set(boostCapable).count else { return [] }
+        return present
+    }
+
+    /// "Boost Only In": whether the frontmost app lets the boost run. Pure,
+    /// unit-tested. No chosen apps means no restriction.
+    static func appRuleAllows(frontmost: String?, chosen: Set<String>) -> Bool {
+        guard !chosen.isEmpty else { return true }
+        guard let frontmost else { return false }
+        return chosen.contains(frontmost)
+    }
+
     private let displayManager = DisplayManager()
+    private let power = PowerMonitor()
     private let gamma = GammaController()
     private let thermal = ThermalMonitor()
     private let prefs = Preferences.shared
@@ -71,10 +107,79 @@ final class BrightnessController {
     /// The user-requested boost multiplier (unclamped). 1.0 == native.
     private(set) var requestedBoost: CGFloat
 
+    /// Extra Dim (1.0 == off) and Warmth (0 == neutral) as the user set them.
+    /// What reaches the glass also depends on the licence — see `idleScale`
+    /// and `effectiveWarmth`.
+    private(set) var extraDim: CGFloat
+    private(set) var warmth: CGFloat
+
+    /// Whether the licence currently allows the boost and the adjustments.
+    /// False until MenuBarController has resolved it — the same reason the
+    /// persisted boost is not restored from `init`.
+    private var licensed = false
+
+    /// The boost is held off because the Mac is on battery and the user asked
+    /// for that. Like a licence suspension it leaves `prefs.isEnabled` alone,
+    /// so plugging back in restores the boost. Cleared by any explicit toggle:
+    /// a user who switches the boost on while on battery means it.
+    private(set) var pausedForBattery = false
+
+    /// The boost is held off because the frontmost app is not one of the
+    /// "Boost Only In" apps. Same contract as `pausedForBattery`.
+    private(set) var pausedForApp = false
+
+    /// The last app to come forward that was not us. Our own alerts activate
+    /// the app, and judging the rule against ourselves would drop the boost
+    /// every time a dialog of ours opened.
+    private var frontmostBundleID: String?
+    private var appObserver: NSObjectProtocol?
+    private var wakeObserver: NSObjectProtocol?
+    private var warmthTimer: Timer?
+
+    /// Fired when the running state changes without the user clicking —
+    /// battery or app-rule pause/resume — so the menu-bar icon can follow.
+    var onStateChange: (() -> Void)?
+
     init() {
         self.requestedBoost = CGFloat(prefs.boost)
+        self.extraDim = Self.idleScale(extraDim: CGFloat(prefs.extraDim), licensed: true)
+        self.warmth = max(0, min(1, CGFloat(prefs.warmth)))
         displayManager.onScreenConfigurationChanged = { [weak self] in
             self?.rebuildOverlays()
+            // A display that just arrived has none of the adjustments yet.
+            self?.applyIdleState()
+        }
+        power.onChange = { [weak self] in
+            self?.powerSourceChanged()
+        }
+        _ = wasPausingForBattery   // capture the launch-time answer
+
+        let ownPID = ProcessInfo.processInfo.processIdentifier
+        if let front = NSWorkspace.shared.frontmostApplication, front.processIdentifier != ownPID {
+            frontmostBundleID = front.bundleIdentifier
+        }
+        appObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main
+        ) { [weak self] note in
+            guard let app = note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
+                  app.processIdentifier != ownPID else { return }
+            self?.frontmostBundleID = app.bundleIdentifier
+            self?.appRuleChanged()
+        }
+
+        // Warmth "Only at Night": re-evaluated twice a minute. With the
+        // schedule off the factor is a constant 1 and the tick does nothing.
+        let timer = Timer(timeInterval: 30, repeats: true) { [weak self] _ in
+            self?.warmthScheduleTick()
+        }
+        timer.tolerance = 5
+        RunLoop.main.add(timer, forMode: .common)
+        warmthTimer = timer
+        // A Mac that slept through the evening wakes up hours past the ramp.
+        wakeObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didWakeNotification, object: nil, queue: .main
+        ) { [weak self] _ in
+            self?.warmthScheduleTick()
         }
         // React the instant the Mac heats up or cools, not just on the next poll.
         thermal.onChange = { [weak self] in
@@ -103,6 +208,8 @@ final class BrightnessController {
     func enable() {
         prefs.isEnabled = true
         isEnabled = true
+        pausedForBattery = false
+        pausedForApp = false
         // A fresh switch-on re-arms the heat guard: it re-evaluates on the very
         // first poll, so a still-hot Mac drops straight back to protecting.
         heatSuspended = false
@@ -117,6 +224,8 @@ final class BrightnessController {
     func disable() {
         prefs.isEnabled = false
         isEnabled = false
+        pausedForBattery = false
+        pausedForApp = false
         heatSuspended = false
         stopTimers()
         teardownAllOverlays()
@@ -126,18 +235,255 @@ final class BrightnessController {
     /// it can run *after* the licence check — see the note there.
     func restorePersistedBoostIfWanted() {
         guard prefs.isEnabled, !isEnabled else { return }
+        resumeIfStillWanted()
+    }
+
+    /// Bring the saved boost up unless something is holding it off. The one
+    /// place the holds are weighed, so the licence, the power source and the
+    /// app rule cannot each hand the boost back behind the others' backs.
+    /// Runs on every licence refresh, so it must also not *undo* a hold.
+    private func resumeIfStillWanted() {
+        guard prefs.isEnabled, licensed, !isEnabled else { return }
+        if !appRuleAllowsNow {
+            pausedForApp = true
+            return
+        }
+        // On battery with the option on, the saved boost stays an intent
+        // until the Mac is plugged in.
+        if Self.shouldPauseForBattery(optionOn: prefs.pauseOnBattery, onBattery: power.isOnBattery) {
+            pausedForBattery = true
+            return
+        }
         enable()
+    }
+
+    /// The licence check came back valid: the adjustments may reach the glass.
+    func setLicensed() {
+        guard !licensed else { return }
+        licensed = true
+        applyIdleState()
+        reapplyDrivenDisplays()
     }
 
     /// Stop boosting because the licence no longer allows it, *without*
     /// discarding the user's saved preference — buying or restoring should
     /// bring their setting straight back rather than making them re-toggle.
+    ///
+    /// Extra Dim and Warmth are suspended with it (also keeping their saved
+    /// values): `licensed` going false makes the idle state native again.
     func suspendForLicense() {
-        guard isEnabled else { return }
+        licensed = false
+        pausedForBattery = false
+        pausedForApp = false
         isEnabled = false
         heatSuspended = false
         stopTimers()
         teardownAllOverlays()
+    }
+
+    // MARK: - Pause on battery
+
+    var pauseOnBattery: Bool {
+        get { prefs.pauseOnBattery }
+        set {
+            prefs.pauseOnBattery = newValue
+            powerSourceChanged()
+        }
+    }
+
+    /// The last answer acted on. The notification also fires on every
+    /// charge-percentage tick; acting only on a *change* is what lets a boost
+    /// the user switched on by hand while on battery survive the next tick.
+    private lazy var wasPausingForBattery =
+        Self.shouldPauseForBattery(optionOn: prefs.pauseOnBattery, onBattery: power.isOnBattery)
+
+    private func powerSourceChanged() {
+        let shouldPause = Self.shouldPauseForBattery(optionOn: prefs.pauseOnBattery,
+                                                     onBattery: power.isOnBattery)
+        guard shouldPause != wasPausingForBattery else { return }
+        wasPausingForBattery = shouldPause
+
+        if shouldPause {
+            guard isEnabled else { return }
+            NSLog("MaxCandela: on battery — pausing the boost")
+            isEnabled = false
+            heatSuspended = false
+            stopTimers()
+            teardownAllOverlays()
+            pausedForBattery = true
+            onStateChange?()
+        } else if pausedForBattery {
+            pausedForBattery = false
+            // The trial can run out while paused; `licensed` (checked in
+            // resumeIfStillWanted) is what stops plugging in from quietly
+            // handing the boost back.
+            NSLog("MaxCandela: back on power")
+            resumeIfStillWanted()
+            onStateChange?()
+        }
+    }
+
+    // MARK: - Boost only in chosen apps
+
+    /// Bundle identifier → name. Empty means the boost runs in every app.
+    var boostApps: [String: String] {
+        get { prefs.boostApps }
+        set {
+            prefs.boostApps = newValue
+            appRuleChanged()
+        }
+    }
+
+    private var appRuleAllowsNow: Bool {
+        Self.appRuleAllows(frontmost: frontmostBundleID, chosen: Set(prefs.boostApps.keys))
+    }
+
+    /// Called when another app comes forward or the list is edited. A boost
+    /// the user switches on by hand in an app that is not on the list stays
+    /// up only until the next app switch — the rule is re-judged then.
+    private func appRuleChanged() {
+        if !appRuleAllowsNow {
+            guard isEnabled else { return }
+            isEnabled = false
+            heatSuspended = false
+            stopTimers()
+            teardownAllOverlays()
+            pausedForApp = true
+            onStateChange?()
+        } else if pausedForApp {
+            pausedForApp = false
+            resumeIfStillWanted()
+            onStateChange?()
+        }
+    }
+
+    // MARK: - Per-display boost
+
+    /// The displays the boost drives: capable of it, and not taken out by the
+    /// user. Everything that used to ask `supportsBoost` to decide what to
+    /// *drive* asks this instead.
+    private func boostTargets(in displays: [DisplayInfo]) -> [DisplayInfo] {
+        let capable = displays.filter(\.supportsBoost)
+        let excluded = Self.effectiveExclusions(boostCapable: capable.map(\.stableID),
+                                                excluded: prefs.excludedDisplays)
+        return capable.filter { !excluded.contains($0.stableID) }
+    }
+
+    func setDisplay(_ stableID: String, boosted: Bool) {
+        var excluded = prefs.excludedDisplays
+        if boosted { excluded.remove(stableID) } else { excluded.insert(stableID) }
+        prefs.excludedDisplays = excluded
+        // Same path as a monitor being unplugged: the display that left the
+        // set fades back, a new one gets its trigger.
+        rebuildOverlays()
+    }
+
+    // MARK: - Extra Dim + Warmth
+
+    /// Warmth that actually reaches the glass.
+    private var effectiveWarmth: CGFloat { licensed ? warmth * scheduleFactor : 0 }
+
+    /// While the Warmth slider is being dragged the schedule is ignored, so
+    /// setting it at noon still shows what is being set.
+    private var warmthPreviewUntil: Date?
+    private var lastScheduleFactor: CGFloat = 1
+
+    private var scheduleFactor: CGFloat {
+        guard prefs.warmthScheduled else { return 1 }
+        if let until = warmthPreviewUntil, Date() < until { return 1 }
+        return CGFloat(WarmthSchedule.factor(minuteOfDay: WarmthSchedule.minuteOfDay(),
+                                             startHour: prefs.warmthStartHour,
+                                             endHour: prefs.warmthEndHour))
+    }
+
+    private func warmthScheduleTick() {
+        let factor = scheduleFactor
+        guard factor != lastScheduleFactor else { return }
+        lastScheduleFactor = factor
+        applyIdleState()
+        reapplyDrivenDisplays()
+    }
+
+    var warmthSchedule: (enabled: Bool, startHour: Int, endHour: Int) {
+        get { (prefs.warmthScheduled, prefs.warmthStartHour, prefs.warmthEndHour) }
+        set {
+            prefs.warmthScheduled = newValue.enabled
+            prefs.warmthStartHour = newValue.startHour
+            prefs.warmthEndHour = newValue.endHour
+            warmthPreviewUntil = nil
+            warmthScheduleTick()
+        }
+    }
+
+    private var idleScale: CGFloat { Self.idleScale(extraDim: extraDim, licensed: licensed) }
+
+    /// Slider entry points. Applied as hard table writes rather than through
+    /// the fade animator: a slider drag already arrives as a stream of small
+    /// steps, which is the fade.
+    func setExtraDim(_ value: CGFloat) {
+        extraDim = Self.idleScale(extraDim: value, licensed: true)
+        prefs.extraDim = Double(extraDim)
+        applyIdleState()
+    }
+
+    func setWarmth(_ value: CGFloat) {
+        warmth = max(0, min(1, value))
+        prefs.warmth = Double(warmth)
+        if prefs.warmthScheduled {
+            warmthPreviewUntil = Date().addingTimeInterval(4)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 4.2) { [weak self] in
+                self?.warmthScheduleTick()
+            }
+        }
+        lastScheduleFactor = scheduleFactor
+        applyIdleState()
+        reapplyDrivenDisplays()
+    }
+
+    /// The displays whose scale the boost owns right now. Everything else
+    /// sits at the idle state.
+    private func drivenIDs(in displays: [DisplayInfo]) -> Set<CGDirectDisplayID> {
+        guard isEnabled else { return [] }
+        return Set(boostTargets(in: displays).map(\.displayID))
+    }
+
+    /// Put every display the boost is not driving at Extra Dim + Warmth — or,
+    /// when the boost is off and neither is set, hand the displays back to
+    /// ColorSync exactly as before these adjustments existed.
+    private func applyIdleState() {
+        let scale = idleScale
+        let warm = effectiveWarmth
+        let neutral = scale == 1.0 && warm == 0
+
+        if !isEnabled && neutral {
+            if !currentScales.isEmpty {
+                currentScales.removeAll()
+                gamma.restoreAll()
+            }
+            return
+        }
+        let displays = displayManager.currentDisplays()
+        let driven = drivenIDs(in: displays)
+        for info in displays where !driven.contains(info.displayID) {
+            let id = info.displayID
+            // Never touched and nothing to apply: leave its tables alone.
+            if neutral && currentScales[id] == nil { continue }
+            // Any fade still aimed at this display is superseded.
+            targetScales[id] = nil
+            if gamma.apply(scale: scale, warmth: warm, to: id) {
+                currentScales[id] = scale
+            }
+        }
+    }
+
+    /// Re-write the boosted displays at their current scale so a warmth change
+    /// shows without waiting for the next fade.
+    private func reapplyDrivenDisplays() {
+        guard isEnabled else { return }
+        for id in drivenIDs(in: displayManager.currentDisplays()) {
+            guard let current = currentScales[id] else { continue }
+            gamma.apply(scale: current, warmth: effectiveWarmth, to: id)
+        }
     }
 
     func toggle() {
@@ -156,6 +502,11 @@ final class BrightnessController {
         isEnabled = false
         stopTimers()
         teardownAllOverlays()
+        // The teardown leaves Extra Dim / Warmth on the glass by design; a
+        // quit must not. (Gamma is per-process and would revert on exit
+        // anyway — this is the explicit half of "quit == back to normal".)
+        currentScales.removeAll()
+        gamma.restoreAll()
     }
 
     /// Whether any attached display can be boosted at all.
@@ -181,10 +532,16 @@ final class BrightnessController {
         let name: String
         let applied: CGFloat
         let headroom: CGFloat
+        /// `DisplayInfo.stableID`, for the menu's per-display switch.
+        var id = ""
+        /// Taken out of the boost by the user.
+        var isExcluded = false
 
         /// Boost still available on this panel; 0 once it is driven to its
         /// current ceiling.
-        var remaining: CGFloat { max(0, headroom - applied) }
+        /// `applied` can sit below 1.0 (Extra Dim, a thermal dim); that is not
+        /// extra headroom, so it is floored at native here.
+        var remaining: CGFloat { max(0, headroom - max(1.0, applied)) }
 
         /// Live headroom sits at ~1.0 until something engages EDR, so below
         /// that threshold the value describes nothing the user would recognise
@@ -194,13 +551,16 @@ final class BrightnessController {
 
     /// Live per-display status for the menu, boost-capable displays only.
     func displayStatuses() -> [DisplayStatus] {
-        displayManager.currentDisplays()
-            .filter(\.supportsBoost)
-            .map { info in
-                DisplayStatus(name: info.screen.localizedName,
-                              applied: currentScales[info.displayID] ?? 1.0,
-                              headroom: info.currentHeadroom)
-            }
+        let capable = displayManager.currentDisplays().filter(\.supportsBoost)
+        let excluded = Self.effectiveExclusions(boostCapable: capable.map(\.stableID),
+                                                excluded: prefs.excludedDisplays)
+        return capable.map { info in
+            DisplayStatus(name: info.screen.localizedName,
+                          applied: currentScales[info.displayID] ?? 1.0,
+                          headroom: info.currentHeadroom,
+                          id: info.stableID,
+                          isExcluded: excluded.contains(info.stableID))
+        }
     }
 
     /// How heat is currently affecting brightness, for the menu to explain a
@@ -265,7 +625,7 @@ final class BrightnessController {
         // uniqueKeysWithValues would trap on that.
         let infoByID = Dictionary(displays.map { ($0.displayID, $0) },
                                   uniquingKeysWith: { first, _ in first })
-        let wanted = Set(displays.filter(\.supportsBoost).map(\.displayID))
+        let wanted = Set(boostTargets(in: displays).map(\.displayID))
         let existing = Set(overlays.keys)
 
         // Even when the display set is unchanged, a resolution or arrangement
@@ -294,8 +654,8 @@ final class BrightnessController {
             overlays[id]?.deactivate()
             overlays[id] = nil
             refusedTargets[id] = nil
-            if infoByID[id] != nil, let current = currentScales[id], current != 1.0 {
-                targetScales[id] = 1.0
+            if infoByID[id] != nil, let current = currentScales[id], current != idleScale {
+                targetScales[id] = idleScale
                 fadingBack = true
             } else {
                 currentScales[id] = nil
@@ -326,10 +686,10 @@ final class BrightnessController {
         overlays.removeAll()
         targetScales.removeAll()
         refusedTargets.removeAll()
-        if !currentScales.isEmpty {
-            currentScales.removeAll()
-            gamma.restoreAll()
-        }
+        // Every caller has already cleared `isEnabled`, so this either
+        // restores ColorSync (no adjustments — the original behaviour) or
+        // swaps the lift for Extra Dim / Warmth in one table write.
+        applyIdleState()
     }
 
     // MARK: - Heat suspension
@@ -393,7 +753,7 @@ final class BrightnessController {
         applyHeatSuspension(limits)
 
         var needsAnimation = false
-        for info in displayManager.currentDisplays() where info.supportsBoost {
+        for info in boostTargets(in: displayManager.currentDisplays()) {
             // The trigger patch rides the same thermal ceiling as the lift. It
             // is what holds the compositor in EDR mode, so leaving it at full
             // headroom while only the gamma comes down would dim the picture
@@ -448,7 +808,7 @@ final class BrightnessController {
             guard abs(current - target) > 0.001 else { continue }
 
             let next = Self.animationStep(current: current, target: target)
-            if gamma.applyLift(scale: next, to: id) {
+            if gamma.apply(scale: next, warmth: effectiveWarmth, to: id) {
                 // Only record progress the display actually accepted — otherwise
                 // displayStatuses() would report a boost that isn't on the glass.
                 currentScales[id] = next

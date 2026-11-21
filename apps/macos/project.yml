@@ -18,8 +18,8 @@ packages:
 
 settings:
   base:
-    MARKETING_VERSION: "1.1.8"
-    CURRENT_PROJECT_VERSION: "18"
+    MARKETING_VERSION: "2.0.0"
+    CURRENT_PROJECT_VERSION: "19"
     DEVELOPMENT_TEAM: YU66583SCF          # your Apple Developer team
     SWIFT_VERSION: "5.9"
 
