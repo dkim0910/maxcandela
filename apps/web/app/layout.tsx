@@ -9,9 +9,9 @@ const ADSENSE_CLIENT = 'ca-pub-7400069037778721';
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: 'MaxCandela — Unlock your MacBook Pro’s full XDR brightness',
+  title: 'MaxCandela — Menu-bar toolbox for Mac, with an XDR brightness boost',
   description:
-    'Your MacBook Pro XDR display can go 70% brighter than macOS allows. One click in the menu bar unlocks it — true colors, heat-aware, $9.99 once.',
+    '17 Mac tools under one menu-bar icon. Keep Awake, timer, clipboard tools and more — free. Pro: window snapping, clipboard manager, XDR brightness boost.',
   applicationName: SITE_NAME,
   // Self-referential canonical for the HOMEPAGE only. Every child route MUST
   // override this with its own path — metadata is inherited, so a child that
@@ -37,9 +37,9 @@ export const metadata: Metadata = {
     },
   },
   openGraph: {
-    title: 'MaxCandela — Unlock your MacBook Pro’s full XDR brightness',
+    title: 'MaxCandela — Menu-bar toolbox for Mac, with an XDR brightness boost',
     description:
-      'Your XDR display can go 70% brighter than macOS allows. One click in the menu bar unlocks it — true colors, automatic heat protection, $9.99 once.',
+      '17 Mac tools under one menu-bar icon — eight of them free. Pro adds window snapping, a clipboard manager, hidden menu-bar icons and an XDR brightness boost.',
     url: SITE_ORIGIN,
     siteName: SITE_NAME,
     type: 'website',
@@ -48,9 +48,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'MaxCandela — Unlock your MacBook Pro’s full XDR brightness',
+    title: 'MaxCandela — Menu-bar toolbox for Mac, with an XDR brightness boost',
     description:
-      'Your XDR display can go 70% brighter than macOS allows. One click in the menu bar unlocks it — true colors, automatic heat protection, $9.99 once.',
+      '17 Mac tools under one menu-bar icon — eight of them free. Pro adds window snapping, a clipboard manager, hidden menu-bar icons and an XDR brightness boost.',
     images: ['/og.png'],
   },
 };

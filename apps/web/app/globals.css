@@ -635,6 +635,11 @@ h2 {
   margin: 40px auto 0;
 }
 
+/* Three plans (Free + the two Pro options) need the wider measure. */
+.price-cards-3 {
+  max-width: 1020px;
+}
+
 .price-card {
   position: relative;
   padding: 34px 28px;
