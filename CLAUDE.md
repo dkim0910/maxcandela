@@ -387,7 +387,25 @@ EDROverlayWindow       → ~4×4 px borderless click-through corner window per
 MetalRenderer          → owns MTLDevice/queue; drives the CAMetalLayer render
                          loop (CADisplayLink via NSView.displayLink); clears
                          drawable to EDR white ×boost
-Preferences            → UserDefaults-backed enabled flag + boost level
+Preferences            → UserDefaults-backed enabled flag + boost level, Extra
+                         Dim, Warmth, and the three Options switches
+PowerMonitor           → on-battery? + change callback (public IOKit.ps)
+ShortcutRecorderView   → the key-capture box in Change Shortcut…
+WarmthSchedule         → "Only at Night" factor with 30-min ramps (pure)
+ReviewPrompt           → App Store rating ask, gated hard (see below)
+GlobalHotKey           → opt-in shortcut (default ⌃⌥⌘B) via Carbon RegisterEventHotKey; routes
+                         through MenuBarController.toggleBoost so the licence
+                         gate and "off is never gated" apply to it too
+LoginItem              → Launch at Login via SMAppService.mainApp; the system
+                         is the source of truth, never a cached flag
+SliderMenuItemView     → labelled NSSlider hosted in an NSMenuItem.view
+KnownIssues            → M5 Pro / M5 Max check for the one-time notice (below)
+Tools/                 → the toolbox: MenuTool (contract), KeepAwakeTool,
+                         TimerTool, ClipboardTool + ClipboardPanel +
+                         TextTransforms, ColorPickerTool, GeneratorTool,
+                         WorldClockTool, AudioTool, SystemTool; Pro (ProGate):
+                         MenuBarHiderTool, WindowSnapTool, ScreenTextTool,
+                         ShortcutsTool, CalendarTool. See "The toolbox pivot".
 ConversionTracker     → RevenueCat in "purchases completed by my app" mode:
                          registers the install at launch, records StoreKit 2
                          purchases after StoreManager verifies them, mirrors
@@ -418,8 +436,8 @@ swift build -c release      # release
 xcodegen generate && open MaxCandela.xcodeproj
                             # open in Xcode (Archive / App Store upload live there —
                             #   the .xcodeproj is gitignored, so generate it first)
-swift test                  # unit tests — 55 across BoostLogic, ConversionTracker,
-                            #   DisplayManager, SupportMessages. Pure logic only: no test can
+swift test                  # unit tests — 113 across Adjustments, BoostLogic,
+                            #   ConversionTracker, DisplayManager, SupportMessages, Tools. Pure logic only: no test can
                             #   observe the backlight, see "Verifying a
                             #   brightness change actually works".
 
@@ -451,6 +469,235 @@ xcodebuild -exportArchive -archivePath build/MaxCandela.xcarchive \
 # GUI alternative, same result (the archive from above shows up in Organizer):
 open -a Xcode               # Window ▸ Organizer ▸ Archives ▸ Distribute App ▸ App Store Connect ▸ Upload
 ```
+
+### Beyond the boost (2026-11-21) — built, NOT yet verified on the glass
+
+Added in one pass: **Extra Dim**, **Warmth**, **Options ▸** (Pause Boost on
+Battery, Shortcut ⌃⌥⌘B, Launch at Login) and a one-time M5 Pro / M5 Max
+notice. Builds, 64 tests pass. Nothing below has had the perceptual check this
+file requires — do that before shipping.
+
+- **The "idle state".** Every display the boost is *not* driving sits at
+  `idleScale` (Extra Dim, floored at `GammaController.minimumDim` 0.2 so the
+  screen can never black out, capped at 1.0 so it can never lift) plus Warmth.
+  `applyIdleState()` owns that; `teardownAllOverlays()` now ends in it. With
+  both adjustments at neutral and the boost off it calls `restoreAll()` —
+  byte-for-byte the old behaviour for anyone who never touches the sliders.
+  `shutdown()` restores unconditionally, so "quit == back to normal" holds.
+- **Warmth only ever lowers channels** (red ×1, green/blue down), so it cannot
+  break the clamp-to-headroom rule. The end point (G ×0.72, B ×0.42) is a
+  guess, not a measurement — tune `warmthGains` by eye.
+- **Sliders write the table directly, not through the 30 Hz animator** — a
+  drag is already a stream of small steps. The boost's own fades still carry
+  the current warmth (`gamma.apply(scale:warmth:to:)`).
+- **Licence.** `BrightnessController.licensed` is false until
+  `MenuBarController.enforceLicense()` calls `setLicensed()`; expired →
+  `suspendForLicense()` clears it and the adjustments go back to native (saved
+  values kept). The sliders are disabled when expired. So Extra Dim and Warmth
+  are **Pro features** — Daniel has not confirmed that choice.
+- **Pause on battery acts on transitions only** (`wasPausingForBattery`). The
+  IOKit notification fires on every charge-percentage tick; a level-triggered
+  version re-paused a boost the user had switched on by hand while on battery.
+  `pausedForBattery` leaves `prefs.isEnabled` alone, exactly like a licence
+  suspension, and resume checks `licensed` so plugging in can't outlive a trial.
+- **M5 Pro / M5 Max.** Apple Developer Forums thread 819331 (FB22273730, open
+  at macOS 27.2.1): `CGSetDisplayTransferByTable` returns success, reads back
+  correctly, and does nothing on screen. Reported, **not reproduced by us**
+  (dev Mac is an M1 Pro). Undetectable in code, so `showM5NoticeIfNeeded()`
+  asks once, after the first switch-on, whether the screen got brighter and
+  tells the user not to buy if it didn't. `/support` carries the same answer.
+  Extra Dim and Warmth use the same call and would be dead on the same Macs.
+  Delete `KnownIssues` once Apple ships a fix.
+- **Unverified, in order of risk:** (1) whether a cached base table goes stale
+  under Night Shift / True Tone while an adjustment is held for hours — the
+  boost has always had this exposure, but the adjustments are held far longer;
+  (2) slider look and alignment inside the menu; (3) `RegisterEventHotKey` and
+  `SMAppService.mainApp` inside the *sandboxed* build — `swift run` cannot
+  test Launch at Login at all (not a bundle; `register()` throws);
+  (4) Guideline 2.4.5(iii): Launch at Login must stay off by default.
+- No new analytics events, so `/privacy` and the privacy label are unchanged.
+  The App Store description does not mention any of this yet.
+- DEBUG: `MAXCANDELA_FORCE_BATTERY=1|0`, `MAXCANDELA_FORCE_CHIP="Apple M5 Max"`.
+
+Second pass, same day — also built, also **not verified on the glass**:
+
+- **Rating prompt** (`ReviewPrompt`). Paying customer only (not trial), ≥ 10
+  boost switch-ons over ≥ 7 days, once per app version, never on a chip in
+  `KnownIssues`, 3 s after the click. DEBUG logs instead of asking. Apple
+  decides whether the system sheet actually appears; whether it shows at all
+  for an `.accessory` app is untested.
+- **Warmth schedule** (`WarmthSchedule`): "Only at Night", whole hours, start
+  16–23 and end 4–10 so no invalid window exists. Fixed hours on purpose —
+  sunset/sunrise needs location (prompt + entitlement + privacy label). The
+  edges ramp over 30 min via a 30 s timer; dragging the slider previews full
+  warmth for 4 s so setting it at noon shows something.
+- **Per-display boost.** `boostTargets(in:)` replaced `supportsBoost` wherever
+  the controller decides what to *drive*; the per-display menu rows are now
+  that display's switch. Keyed on `DisplayInfo.stableID` (a UUID —
+  `displayID` changes per session). `effectiveExclusions` ignores a saved
+  exclusion when only one boost-capable display is attached or all would be
+  excluded: the rows only exist with several displays, so an undocked laptop
+  would otherwise have a toggle that does nothing and no way to fix it.
+  **Untested with a second HDR display** — none here.
+- **Configurable shortcut.** `Shortcut` + `ShortcutRecorderView` (Options ▸
+  Change Shortcut…). The recorder captures in `performKeyEquivalent`, because
+  `AppMenu`'s Edit menu takes ⌘C/⌘V before `keyDown`. Our own hot key is
+  unregistered while the dialog is open so pressing it doesn't toggle the boost.
+- **Boost Only In** (Options ▸). `pausedForApp`, judged on
+  `didActivateApplicationNotification`, ignoring our own activations (our
+  alerts would otherwise drop the boost). Apps are picked from the running
+  list — no NSOpenPanel, so no new entitlement. A manual switch-on in an
+  unlisted app lasts until the next app switch. **Each switch in or out of a
+  chosen app is a full EDR engage / teardown** (1–2 s headroom ramp up, hard
+  restore down) — judge on hardware whether that is tolerable when alt-tabbing.
+- `resumeIfStillWanted()` is now the single place the licence, battery and
+  app holds are weighed before the saved boost comes back.
+
+### The toolbox pivot (2026-11-21) — direction set by Daniel, first batch built
+
+Daniel's call: MaxCandela becomes a **menu-bar toolbox**; the brightness boost
+is one feature among many. What exists is the foundation and five tools. What
+has **not** been decided or changed is listed at the end — do not assume it.
+
+- **`Tools/MenuTool.swift`** is the contract: one top-level menu item per
+  tool, `menuWillOpen()`, `tick()` (5 Hz while the menu is open),
+  `statusText` (text beside the ☀️), `shutdown()`. Adding a tool = one file in
+  `Sources/MaxCandela/Tools/` + one entry in `MenuBarController.tools`.
+  Rules: public API only, no new entitlement, no persistent system state,
+  pure logic split out and tested (`ToolsTests`).
+- **Keep Awake** — `IOPMAssertion` (PreventUserIdleDisplaySleep), 30 min / 1 /
+  2 / 4 h / until off. Released at quit; the OS drops it anyway if we die.
+- **Timer** — presets, countdown shown beside the status icon
+  (`refreshStatusText`, monospaced digits so the menu bar doesn't twitch),
+  "Glass" sound at the end. No notification permission on purpose.
+- **Clipboard** — twelve text tools (`TextTransform`: case, trim, sort/dedupe
+  lines, URL, Base64, JSON) that rewrite the clipboard on click, returning nil
+  → beep rather than blanking it on invalid input. **History is opt-in, memory
+  only, capped at 15, and skips `org.nspasteboard.ConcealedType/TransientType`**
+  (password managers). Opt-in because of macOS pasteboard privacy
+  (`NSPasteboard.accessBehavior`, 15.4+): reports conflict on whether macOS 26
+  enforces the "app read your clipboard" alert by default. **Untested here** —
+  watch for a system prompt when history is switched on.
+- **Color Picker** — `NSColorSampler` (system loupe, no Screen Recording
+  permission), copies `#RRGGBB`, keeps 8 recents with swatches.
+- **System** — CPU (`host_statistics`, delta between 1 s samples), memory
+  (active + wired + compressed), disk free, battery % / health / cycles
+  (`AppleSmartBattery`, the entry `ChassisTemperature` already reads), uptime,
+  local IP (click to copy). **No fans, no temperatures beyond the battery
+  sensor** — SMC needs the privileged helper the sandbox forbids.
+- **Researched and ruled out for the App Store build:** volume boost (audio
+  driver), keyboard backlight / system brightness / DDC (private API), dark-mode
+  toggle and hide-desktop-icons the usual way (Apple Events / `defaults` +
+  killing Finder), lock screen and display-sleep-now (private), scheduled
+  power events (DTS: not supported in the sandbox), window snapping and
+  auto-paste (Accessibility permission — allowed on the MAS, but a permission
+  prompt and a different review conversation; not attempted).
+- **Feasible next, not built:** hide-menu-bar-icons (the Hidden Bar technique),
+  break reminders, a scratchpad, world clocks, mic mute (CoreAudio — sandbox
+  behaviour unverified), Bluetooth device quick-connect (needs the bluetooth
+  entitlement), a desktop "curtain".
+
+**Full overhaul, same day (Daniel: "change everything … to get users and be
+competitive", prompted by Apple's PROLED XDR MacBook Pro).** Decisions 1, 3
+and the site headline below were therefore *taken* — as defaults Daniel can
+reverse, not as things he spelled out:
+
+- **Tools free, display tools Pro.** Seven tools (now including **Generate** —
+  UUID / password via `SecRandomCopyBytes` with rejection sampling / Unix time
+  / ISO date / lorem — and **World Clock**, 20 fixed cities, "tomorrow /
+  yesterday" suffix) have no licence check. Pro = boost + Extra Dim + Warmth.
+  Paywall, licence line, welcome popover, site pricing (a third "Free" card)
+  and `docs/app-store-listing.md` all say so. Reversing it means gating
+  `MenuBarController.tools` and rewriting all of those.
+- **A single click opens the menu for new installs**; existing installs keep
+  click-to-toggle (`resolveClickBehaviour`, keyed on the welcome-seen flag,
+  must run before the welcome sets it). Options ▸ "Clicking the Icon Toggles
+  the Boost" flips it. The App Review dead-end (no-headroom Mac) is now
+  impossible by default rather than by special case.
+- **Site is toolbox-first**: `<h1>` "Ten Mac tools. One menu-bar icon.",
+  title/OG/description rewritten, sections Tools → Display → before/after →
+  demo → pricing → FAQ. This **gives up the home page's brightness-keyword
+  headline on purpose**; `/how-it-works/` and the display section's `<h2>`s
+  still carry that query. Watch Search Console after it ships.
+- **PROLED XDR (tandem OLED, 1,000 nits sustained / 2,000 peak per Apple's
+  paper) is untested** and the site says so, alongside the M5 Pro / M5 Max
+  caveat. Do not write "2021 or later" as if it covered every newer model.
+- **Version is 2.0.0 (19)** in `project.yml` + `Info.plist`. Not archived.
+- `docs/app-store-listing.md` is the draft listing (subtitle, description,
+  keywords, What's New). Not submitted; screenshots still brightness-only.
+- 96 tests.
+
+**Pro tools pack (same day; Daniel: users won't pay for ten small features).**
+Pro now = display tools + six tools that each stand in for a paid app.
+113 tests. **Everything in this block compiles and has tested pure logic, and
+almost none of it has been run** — treat it as unverified until someone uses
+it on a real Mac:
+
+- **`ProGate`** (`Tools/ProGate.swift`) is the single licence question for
+  tools. `MenuBarController.enforceLicense()` is the only writer;
+  `requestUpgrade` shows the paywall. `MenuTool.isPro` tools get a "— Pro" row
+  in their place when locked (`lockedItems`), and each stands down via
+  `ProGate.observe` (shortcuts unregistered, hidden icons released).
+- **`GlobalHotKey` now routes by id.** Carbon delivers every hot-key press to
+  every handler on the application target, so there is one static handler and
+  a registry; the old per-instance handler would have fired *all* shortcuts on
+  any one press as soon as a second existed.
+- **Hide Menu Bar Icons** — the Hidden Bar technique (divider status item
+  whose length goes to 10,000). No permission. *Unseen:* whether macOS 26
+  still pushes neighbours off-screen, and where the two items land.
+- **Window Snapping** — Accessibility API, prompt on first snap, ⌃⌥ arrows /
+  ↩ / C opt-in. *Not run:* the dev binary has no AX grant. Size→position→size
+  ordering is the usual fix for clamped moves; unverified here.
+- **Copy Text from Screen** — `RegionSelectionWindow` overlay →
+  `SCScreenshotManager.captureImage` (CGWindowListCreateImage is gone from the
+  macOS 15 SDK) → `VNRecognizeTextRequest`. Screen Recording permission.
+  *Not run.* Multi-display and Retina `sourceRect` scaling are the likely
+  bugs.
+- **Clipboard manager** — `ClipboardHistory` grew pins, search and a capacity
+  argument (15 free / 200 Pro; pins are never evicted); `ClipboardPanel` on
+  ⌃⌥⌘V; "Remember After Quit" writes
+  `Application Support/MaxCandela/clipboard-history.json` and turning it (or
+  history) off deletes the file. It **copies, it does not paste** — pasting
+  into the front app needs Accessibility. *Panel layout unseen.*
+- **Shortcuts** — typed names, run via `shortcuts://run-shortcut?name=`. No
+  public way to list a user's shortcuts from the sandbox.
+- **Next Meeting** — EventKit. Added the
+  `com.apple.security.personal-information.calendars` entitlement and
+  `NSCalendarsFullAccessUsageDescription`. **Inert under `swift run`** by
+  design: macOS kills a process that requests Calendar access without the
+  usage key, and a bare binary has no Info.plist. Test in `dist/`.
+- **Sound** (free) — CoreAudio HAL: default output/input, mic mute. Device
+  listing is tested on the dev Mac; whether the sandbox allows the *writes* is
+  not.
+- Three more clipboard text tools: SHA-256, MD5, Decode JWT (signature not
+  verified — it says so).
+- Site, `/privacy`, and `docs/app-store-listing.md` describe all of this
+  ("17 Mac tools", a Pro section, a permissions FAQ). **That copy is ahead of
+  the evidence**: do not ship it for a tool that fails its hardware check —
+  cut the card instead.
+- App Review: three permission prompts and a new entitlement where there were
+  none. Expect questions; the listing draft notes what to explain.
+
+**Still not decided — Daniel's calls:**
+1. **Name and icon.** Still "MaxCandela" and ☀️ — a name that means "maximum
+   brightness" on a toolbox. Renaming costs the domain, the ranking and the
+   store identity, so it was left alone.
+2. **`og.png` and the store screenshots** still show only a bright MacBook.
+3. **Menu vs panel.** Everything is an `NSMenu` with submenus. That scales to
+   roughly this many tools; "massive" wants a popover/panel with search.
+
+**Website follows the pivot (2026-11-21).** Home page gained a `#tools`
+section (`TOOLS` in `app/page.tsx`, reusing the feature-card styles), a "what
+else does it do" FAQ, and wording that scopes the XDR requirement to *the
+boost*; nav has a Tools link; `/about`, `/privacy` (clipboard, colour picker,
+system read-out are local-only) and `/support` updated. The hero, `<h1>` and
+`<title>` are **still brightness-led on purpose** — that is the query the site
+ranks for; a toolbox-first headline is a positioning call nobody has made.
+The site states no price for the tools (free-vs-Pro is undecided) but the
+pricing cards do list Extra Dim and Warmth, matching the code.
+⚠️ **Do not push this to `main` before the app release that contains the
+tools is live** — pushes touching `apps/web/**` auto-deploy, and the store
+build (1.1.7) has none of these features.
 
 ### DEBUG-only preview flags (macOS)
 
@@ -1154,7 +1401,8 @@ None of these are code; all were verified live on 2026-08-27.
       feature claims that must be checked by hand before publishing, not
       guessed. Decide the claims, then it's a straightforward page; the
       informational sibling, `/how-it-works/`, is already live in the repo.
-- [ ] App Store ratings: the listing has **0 ratings after ~5 weeks**, and the
+- [x] *(2026-11-21: built as `ReviewPrompt` — see "Beyond the boost". The
+      original note follows.)* App Store ratings: the listing has **0 ratings after ~5 weeks**, and the
       app never asks — `grep -rn 'SKStoreReviewController\|requestReview'
       apps/macos/Sources/` finds nothing. Ratings are an App Store ranking
       input and the most visible trust signal on the product page. Worth adding
