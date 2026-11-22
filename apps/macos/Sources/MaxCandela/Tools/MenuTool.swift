@@ -32,6 +32,10 @@ protocol MenuTool: AnyObject {
     /// available. A tool that is only *partly* Pro (Clipboard) leaves this
     /// false and consults `ProGate` itself.
     var isPro: Bool { get }
+
+    /// False when this macOS lacks the API the tool is built on; the tool is
+    /// then left out of the menu entirely (`MenuBarController.tools`).
+    var isSupported: Bool { get }
 }
 
 extension MenuTool {
@@ -40,4 +44,14 @@ extension MenuTool {
     var statusText: String? { nil }
     func shutdown() {}
     var isPro: Bool { false }
+    var isSupported: Bool { true }
+}
+
+/// Whether this process runs in the App Sandbox — true for the Mac App Store
+/// build, false under `swift run`. Tools whose API the sandbox blocks hide
+/// themselves on it (`isSupported`) rather than appear and silently fail.
+enum AppSandbox {
+    static var isActive: Bool {
+        ProcessInfo.processInfo.environment["APP_SANDBOX_CONTAINER_ID"] != nil
+    }
 }

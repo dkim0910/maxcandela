@@ -43,14 +43,25 @@ final class MenuBarController {
     /// The toolbox: everything in the menu that is not the display. Order
     /// here is the order in the menu. See `MenuTool`.
     private let tools: [MenuTool] = [
-        KeepAwakeTool(), TimerTool(), ClipboardTool(), ColorPickerTool(),
-        GeneratorTool(), WorldClockTool(), AudioTool(), SystemTool(),
+        KeepAwakeTool(), TimerTool(), FocusTool(), BreaksTool(),
+        ClipboardTool(), ScratchpadTool(), ColorPickerTool(),
+        GeneratorTool(), WorldClockTool(), MonthCalendarTool(), AudioTool(), SystemTool(), DesktopTool(),
         // Pro (`isPro`): listed under their own heading by buildMenu().
-        MenuBarHiderTool(), WindowSnapTool(), ScreenTextTool(), ShortcutsTool(), CalendarTool(),
-    ]
+        MenuBarHiderTool(), WindowSnapTool(), ScreenshotTool(),
+        ScreenTextTool(), ScreenTextTool(reading: .codes), ShortcutsTool(), CalendarTool(),
+        BluetoothTool(), FileShelfTool(), WindowDimmerTool(),
+        AppVolumeTool(),
+    ].filter { $0.isSupported }
     /// The "— Pro" row shown in place of each Pro tool while Pro is not
     /// available; clicking it opens the paywall.
     private var lockedItems: [(tool: MenuTool, locked: NSMenuItem)] = []
+    /// The tools section is the one part of the menu the user can re-lay-out
+    /// (Options ▸ Menu Layout), so it is tracked separately: where it starts,
+    /// what was inserted, and the group submenus holding tool rows.
+    private var toolSectionStart = 0
+    private var toolSectionItems: [NSMenuItem] = []
+    private var groupSubmenus: [NSMenu] = []
+    private var layoutItems: [(layout: MenuLayout, item: NSMenuItem)] = []
     private let clickItem = NSMenuItem(title: "Clicking the Icon Toggles the Boost", action: nil, keyEquivalent: "")
 
     /// One row per display, present only while more than one can boost.
@@ -122,6 +133,12 @@ final class MenuBarController {
         resolveClickBehaviour()
         configureStatusButton()
         buildMenu()
+        // Hide the Notch paints black under the menu bar, so it must know
+        // whether the menu bar is drawing dark text — and our status item is
+        // the one window that carries the menu bar's appearance.
+        for case let desktop as DesktopTool in tools {
+            desktop.menuBarAppearance = { [weak self] in self?.statusItem.button?.effectiveAppearance }
+        }
         // Battery pause/resume changes the running state with no click.
         brightness.onStateChange = { [weak self] in self?.refresh() }
         hotKey.onPress = { [weak self] in
@@ -276,21 +293,8 @@ final class MenuBarController {
         scheduleItem.submenu = scheduleMenu
         menu.addItem(scheduleItem.symbol("clock"))
 
-        menu.addSection("Tools")
-        for tool in tools where !tool.isPro {
-            menu.addItem(tool.menuItem)
-        }
-        menu.addSection("Pro Tools")
-        for tool in tools where tool.isPro {
-            menu.addItem(tool.menuItem)
-            let locked = NSMenuItem(title: "\(tool.menuItem.title) — Pro",
-                                    action: #selector(showPaywallFromMenu), keyEquivalent: "")
-            locked.target = self
-            locked.image = tool.menuItem.image
-            locked.isHidden = true
-            menu.addItem(locked)
-            lockedItems.append((tool, locked))
-        }
+        toolSectionStart = menu.items.count
+        installToolSection()
         tools.forEach { tool in
             tool.onStatusChange = { [weak self] in self?.refreshStatusText() }
         }
@@ -382,6 +386,18 @@ final class MenuBarController {
         loginItem.target = self
         loginItem.action = #selector(toggleLaunchAtLogin)
         optionsMenu.addItem(loginItem.symbol("power"))
+        // Menu Layout: grouped (fits every screen) or every tool in one list.
+        let layoutMenu = NSMenu()
+        layoutItems = MenuLayout.allCases.map { layout in
+            let item = NSMenuItem(title: layout.title, action: #selector(chooseMenuLayout(_:)), keyEquivalent: "")
+            item.target = self
+            item.toolTip = layout.toolTip
+            layoutMenu.addItem(item)
+            return (layout, item)
+        }
+        let layoutItem = NSMenuItem(title: "Menu Layout", action: nil, keyEquivalent: "")
+        layoutItem.submenu = layoutMenu
+        optionsMenu.addItem(layoutItem.symbol("list.bullet.indent"))
         optionsItem.submenu = optionsMenu
         // Settings before the documents: Options is used, Legal is consulted.
         menu.addItem(optionsItem.symbol("gearshape"))
@@ -391,6 +407,109 @@ final class MenuBarController {
         menu.addItem(NSMenuItem(title: "Quit MaxCandela",
                                 action: #selector(NSApplication.terminate(_:)),
                                 keyEquivalent: "q").symbol("xmark.circle"))
+    }
+
+    /// The layout in use: the user's choice (Options ▸ Menu Layout), the
+    /// flat list by default. DEBUG: `MAXCANDELA_MENU_LAYOUT=flat|grouped` overrides it,
+    /// for screenshots.
+    private var menuLayout: MenuLayout {
+        #if DEBUG
+        let override = ProcessInfo.processInfo.environment["MAXCANDELA_MENU_LAYOUT"]
+        #else
+        let override: String? = nil
+        #endif
+        return MenuLayout.resolve(stored: Preferences.shared.menuLayout, override: override)
+    }
+
+    /// The Pro tools this Mac actually has, as a sentence for the paywall. A
+    /// tool hidden here (`isSupported` — e.g. Window Snapping in the sandboxed
+    /// build) is never sold. The clipboard manager is the Pro half of the free
+    /// Clipboard tool, so it is named separately. Pure, unit-tested.
+    static func proToolList(_ titles: [String]) -> String {
+        let names = titles.map { $0.replacingOccurrences(of: "…", with: "") } + ["the searchable clipboard history"]
+        guard let last = names.last, names.count > 1 else { return names.joined() }
+        return names.dropLast().joined(separator: ", ") + " and " + last
+    }
+
+    /// The "— Pro" stand-in for a Pro tool, hidden until Pro is unavailable
+    /// (see refresh()). Goes right after the tool's own row.
+    private func makeLockedRow(for tool: MenuTool) -> NSMenuItem {
+        let locked = NSMenuItem(title: "\(tool.menuItem.title) — Pro",
+                                action: #selector(showPaywallFromMenu), keyEquivalent: "")
+        locked.target = self
+        locked.image = tool.menuItem.image
+        locked.isHidden = true
+        lockedItems.append((tool, locked))
+        return locked
+    }
+
+    /// Builds the tools section in the current layout and inserts it at
+    /// `toolSectionStart`.
+    ///  - Grouped (`MenuGroup`): one row per group, each opening its free
+    ///    tools and then, under a "Pro" heading, its Pro tools. ~506 pt
+    ///    in all — fits every Mac, so Quit never scrolls out of sight.
+    ///  - Flat: every tool as its own row, free then Pro. ~997 pt — taller
+    ///    than the screen on a 14″ or 13″, where macOS makes it scroll.
+    private func installToolSection() {
+        var items: [NSMenuItem] = [.separator(), .sectionHeader(title: "Tools")]
+        lockedItems.removeAll()
+        switch menuLayout {
+        case .grouped:
+            for group in MenuGroup.allCases {
+                let members = tools.filter { MenuGroup.group(forToolNamed: String(describing: type(of: $0))) == group }
+                guard !members.isEmpty else { continue }
+                let submenu = NSMenu()
+                for tool in members where !tool.isPro {
+                    submenu.addItem(tool.menuItem)
+                }
+                let pro = members.filter(\.isPro)
+                if !pro.isEmpty {
+                    submenu.addSection("Pro")
+                    for tool in pro {
+                        submenu.addItem(tool.menuItem)
+                        submenu.addItem(makeLockedRow(for: tool))
+                    }
+                }
+                groupSubmenus.append(submenu)
+                let item = NSMenuItem(title: group.title, action: nil, keyEquivalent: "")
+                item.submenu = submenu
+                items.append(item.symbol(group.symbol))
+            }
+            // A tool not yet placed in a group stays visible at the top level.
+            for tool in tools where MenuGroup.group(forToolNamed: String(describing: type(of: tool))) == nil {
+                items.append(tool.menuItem)
+                if tool.isPro { items.append(makeLockedRow(for: tool)) }
+            }
+        case .flat:
+            items += tools.filter { !$0.isPro }.map(\.menuItem)
+            items += [.separator(), .sectionHeader(title: "Pro Tools")]
+            for tool in tools where tool.isPro {
+                items.append(tool.menuItem)
+                items.append(makeLockedRow(for: tool))
+            }
+        }
+        for (offset, item) in items.enumerated() {
+            menu.insertItem(item, at: toolSectionStart + offset)
+        }
+        toolSectionItems = items
+    }
+
+    /// Re-lays-out the tools section after the user picks a layout. Tool rows
+    /// are reused, so each must first leave the menu it is in — an NSMenuItem
+    /// can only belong to one menu.
+    private func reinstallToolSection() {
+        toolSectionItems.forEach { menu.removeItem($0) }
+        groupSubmenus.forEach { $0.removeAllItems() }
+        groupSubmenus.removeAll()
+        installToolSection()
+        refresh()
+    }
+
+    @objc private func chooseMenuLayout(_ sender: NSMenuItem) {
+        guard let choice = layoutItems.first(where: { $0.item === sender })?.layout,
+              choice != menuLayout else { return }
+        Preferences.shared.menuLayout = choice.rawValue
+        reinstallToolSection()
     }
 
     /// Sync the icon and info lines with the current state.
@@ -460,15 +579,16 @@ final class MenuBarController {
         hotKeyItem.title = "Shortcut \(Preferences.shared.shortcut.display) Toggles Boost"
 
         clickItem.state = clickTogglesBoost ? .on : .off
+        let layout = menuLayout
+        layoutItems.forEach { $0.item.state = $0.layout == layout ? .on : .off }
         batteryItem.state = brightness.pauseOnBattery ? .on : .off
         hotKeyItem.state = hotKey.isRegistered ? .on : .off
 
-        // Like the boost, the adjustments are part of Pro. Expired, they are
-        // already back at native (BrightnessController.suspendForLicense), so
-        // the sliders are disabled rather than left to do nothing.
-        let adjustable = licenseState != .expired
-        dimSlider.isEnabled = adjustable
-        warmthSlider.isEnabled = adjustable
+        // Warmth is Pro, like the boost. Expired, it is already back at native
+        // (BrightnessController.suspendForLicense), so its slider is disabled
+        // rather than left to do nothing. Extra Dim is free: always enabled.
+        dimSlider.isEnabled = true
+        warmthSlider.isEnabled = licenseState != .expired
         for entry in lockedItems {
             entry.tool.menuItem.isHidden = !ProGate.shared.isAllowed
             entry.locked.isHidden = ProGate.shared.isAllowed
@@ -726,12 +846,51 @@ final class MenuBarController {
                     lastToggleAppliedAt = Date()
                     refresh()
                     showM5NoticeIfNeeded()
-                    ReviewPrompt.boostWasSwitchedOn(isPaying: licenseState == .licensed)
+                    ReviewPrompt.boostWasSwitchedOn(license: licenseState)
                 }
             case .expired:
                 showPaywallAlert()
             }
             refresh()
+        }
+    }
+
+    /// Shortcuts actions and `maxcandela://` links (see `BoostAutomation`).
+    /// The click's rules — off is never gated; on needs headroom and the
+    /// licence — minus everything that would put a dialog in front of someone
+    /// who may not be there: no paywall, no no-headroom alert, no M5 notice,
+    /// no rating prompt. Those wait for a real click.
+    @MainActor
+    func setBoostFromAutomation(_ command: BoostCommand) async -> BoostOutcome {
+        let wantOn: Bool
+        switch command {
+        case .on: wantOn = true
+        case .off: wantOn = false
+        case .toggle: wantOn = !brightness.isEnabled
+        }
+        if !wantOn {
+            if brightness.isEnabled {
+                brightness.toggle()
+                refresh()
+            }
+            return .off
+        }
+        if brightness.isEnabled { return .on }
+        guard brightness.canBoost() else { return .noHeadroom }
+        licenseState = await store.currentState()
+        switch licenseState {
+        case .licensed, .trial:
+            brightness.setLicensed()
+            // Re-checked after the await: a launch-time licence check may have
+            // restored the saved boost meanwhile, and toggle() would undo it.
+            if !brightness.isEnabled {
+                brightness.toggle()
+            }
+            refresh()
+            return .on
+        case .expired:
+            refresh()
+            return .needsPro
         }
     }
 
@@ -813,7 +972,7 @@ final class MenuBarController {
         let lifetimePrice = store.product(id: StoreManager.lifetimeProductID)?.displayPrice ?? "$9.99"
         let monthlyPrice = store.product(id: StoreManager.monthlyProductID)?.displayPrice ?? "$0.99"
         alert.informativeText = """
-        MaxCandela Pro unlocks the display tools (XDR brightness boost, Extra Dim, Warmth) and the Pro tools: Hide Menu Bar Icons, Window Snapping, Copy Text from Screen, the searchable clipboard history, Shortcuts and Next Meeting. The everyday tools stay free. One purchase works on all your Macs.
+        MaxCandela Pro unlocks the XDR brightness boost, Warmth and the Pro tools: \(Self.proToolList(tools.filter(\.isPro).map(\.menuItem.title))). Extra Dim and the everyday tools stay free. One purchase works on all your Macs.
 
         MaxCandela Pro Lifetime — \(lifetimePrice), one-time purchase.
 
@@ -1373,6 +1532,7 @@ extension MenuBarController {
             // failure this mode must not have.
             self?.menu.cancelTracking()
             self?.tools.forEach { $0.menuItem.submenu?.cancelTracking() }
+            self?.menu.items.forEach { $0.submenu?.cancelTracking() }
             self?.brightness.shutdown()
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { exit(0) }
         }
@@ -1380,8 +1540,21 @@ extension MenuBarController {
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
             guard let self else { return }
+            // MAXCANDELA_SHOT_RELAYOUT=1 rebuilds the tools section twice
+            // first — the path Options ▸ Menu Layout takes — so a row left in
+            // its old menu (an AppKit exception) shows up here, not in use.
+            if environment["MAXCANDELA_SHOT_RELAYOUT"] == "1" {
+                self.reinstallToolSection()
+                self.reinstallToolSection()
+            }
             if shot == "main" {
                 self.showMenu()
+            } else if let group = MenuGroup.allCases.first(where: { "group:\($0)" == shot }),
+                      let submenu = self.menu.items.first(where: { $0.title == group.title })?.submenu {
+                // MAXCANDELA_SHOT=group:time (with MAXCANDELA_MENU_LAYOUT=grouped).
+                self.tools.forEach { $0.menuWillOpen() }
+                submenu.popUp(positioning: nil,
+                              at: NSPoint(x: screen.frame.midX, y: screen.frame.maxY - 140), in: nil)
             } else if let tool = self.tools.first(where: { String(describing: type(of: $0)) == shot }),
                       let submenu = tool.menuItem.submenu {
                 tool.menuWillOpen()

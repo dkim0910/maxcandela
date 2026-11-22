@@ -19,11 +19,8 @@ final class CalendarTool: MenuTool {
     var isPro: Bool { true }
 
     private let submenu = NSMenu()
-    private let store = EKEventStore()
-
-    private static var canAsk: Bool {
-        Bundle.main.object(forInfoDictionaryKey: "NSCalendarsFullAccessUsageDescription") != nil
-    }
+    /// Shared with the Calendar tool's event dots — see `CalendarAccess`.
+    private var store: EKEventStore { CalendarAccess.store }
 
     init() {
         menuItem.submenu = submenu
@@ -51,11 +48,11 @@ final class CalendarTool: MenuTool {
         submenu.removeAllItems()
         menuItem.title = "Next Meeting"
 
-        guard Self.canAsk else {
+        guard CalendarAccess.canAsk else {
             addNote("Available in the installed app")
             return
         }
-        switch EKEventStore.authorizationStatus(for: .event) {
+        switch CalendarAccess.status {
         case .fullAccess:
             showEvents()
         case .notDetermined:
@@ -97,8 +94,7 @@ final class CalendarTool: MenuTool {
         let calendar = Calendar.current
         for event in events {
             let day = calendar.isDateInToday(event.startDate) ? "" : "Tomorrow "
-            let text = [event.url?.absoluteString, event.location, event.notes].compactMap { $0 }.joined(separator: "\n")
-            let link = Self.joinURL(in: text)
+            let link = CalendarAccess.joinURL(for: event)
             let title = "\(day)\(formatter.string(from: event.startDate)) — \(event.title ?? "Event")"
             let item = NSMenuItem(title: link == nil ? title : "\(title)   Join", action: #selector(open(_:)), keyEquivalent: "")
             item.target = self

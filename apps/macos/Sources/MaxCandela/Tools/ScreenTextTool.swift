@@ -1,44 +1,66 @@
 import AppKit
-import ScreenCaptureKit
 import Vision
 
-/// Copy Text from Screen (Pro): drag a box over anything — a video frame, a
-/// PDF that won't select, an image, a dialog — and the text in it lands on
-/// the clipboard. Recognition is Apple's on-device Vision framework; the
-/// captured image is discarded as soon as it has been read and nothing leaves
-/// the Mac.
+/// Copy Text from Screen and Scan QR Code from Screen (both Pro): drag a box
+/// over anything — a video frame, a PDF that won't select, an image, a
+/// dialog, a code on a slide — and what it says lands on the clipboard.
+/// Reading is Apple's on-device Vision framework; the captured image is
+/// discarded as soon as it has been read and nothing leaves the Mac.
+///
+/// Two rows, one class (`Reading`), because the user's intent differs:
+///  - **Copy Text** copies the text in the box. If the box holds no text but
+///    does hold a QR code or barcode — a bare code reads as no text at all —
+///    it copies the code's contents instead of beeping. Text wins when both
+///    are present: the row promises text.
+///  - **Scan QR Code** copies only what codes contain (several codes: one per
+///    line, top to bottom), and beeps if there are none. Text is not even
+///    read, so a code next to a caption gives the link, not the caption.
 ///
 /// Needs the Screen Recording permission (System Settings ▸ Privacy &
-/// Security ▸ Screen & System Audio Recording), requested on first use. This
-/// is the only place the app looks at the screen at all, and only at the box
-/// the user draws — say so in /privacy if this text changes.
+/// Security ▸ Screen & System Audio Recording), requested on first use —
+/// see `ScreenCapture.ensureAccess()`. Only the box the user draws is
+/// captured. The Screenshot tool also looks at the screen; say so in
+/// /privacy if either changes.
 ///
 /// ⚠️ Not exercised at runtime during development (no Screen Recording grant
-/// for the dev binary). The rectangle maths and text joining are unit-tested;
-/// the capture and the overlay are not.
+/// for the dev binary). The rectangle maths, text joining, code ordering and
+/// the code reader itself (on a generated QR image) are unit-tested; the
+/// capture and the overlay are not.
 final class ScreenTextTool: MenuTool {
-    let menuItem = NSMenuItem(title: "Copy Text from Screen…", action: nil, keyEquivalent: "")
+    enum Reading {
+        case text, codes
+
+        var title: String {
+            switch self {
+            case .text: return "Copy Text from Screen…"
+            case .codes: return "Scan QR Code from Screen…"
+            }
+        }
+
+        var symbol: String {
+            switch self {
+            case .text: return "text.viewfinder"
+            case .codes: return "qrcode.viewfinder"
+            }
+        }
+    }
+
+    let menuItem: NSMenuItem
     var onStatusChange: (() -> Void)?
     var isPro: Bool { true }
 
-    private var overlays: [RegionSelectionWindow] = []
+    private let reading: Reading
+    private let overlay = CaptureOverlay()
 
-    init() {
+    init(reading: Reading = .text) {
+        self.reading = reading
+        menuItem = NSMenuItem(title: reading.title, action: nil, keyEquivalent: "")
         menuItem.target = self
         menuItem.action = #selector(begin)
-        menuItem.symbol("text.viewfinder")
+        menuItem.symbol(reading.symbol)
     }
 
-    func shutdown() { closeOverlays() }
-
-    /// Pure, unit-tested. A selection in AppKit global coordinates (origin
-    /// bottom-left, y up) → the same box relative to its display with the
-    /// origin top-left and y down, which is what ScreenCaptureKit wants.
-    static func captureRect(selection: CGRect, screenFrame: CGRect) -> CGRect {
-        CGRect(x: selection.minX - screenFrame.minX,
-               y: screenFrame.maxY - selection.maxY,
-               width: selection.width, height: selection.height)
-    }
+    func shutdown() { overlay.close() }
 
     /// Pure, unit-tested. Lines in reading order, blanks dropped.
     static func join(lines: [String]) -> String {
@@ -47,67 +69,70 @@ final class ScreenTextTool: MenuTool {
             .joined(separator: "\n")
     }
 
-    @objc private func begin() {
-        guard CGPreflightScreenCaptureAccess() else {
-            // Shows the system prompt the first time; afterwards it is a
-            // no-op and the user has to flip the switch in System Settings.
-            CGRequestScreenCaptureAccess()
-            return
+    /// Pure, unit-tested. Code contents in reading order — top to bottom,
+    /// then left to right — each once. `box` is Vision's normalised bounding
+    /// box (origin bottom-left, so a larger maxY is higher up). Codes Vision
+    /// found but could not decode as text are skipped.
+    static func orderedPayloads(_ codes: [(payload: String?, box: CGRect)]) -> [String] {
+        // Rows: tops within about 2% of the height count as level. Bucketed
+        // rather than compared with a tolerance, which would not be a
+        // consistent ordering for sort().
+        func row(_ box: CGRect) -> Int { Int((box.maxY * 50).rounded()) }
+        let sorted = codes.sorted { a, b in
+            row(a.box) != row(b.box) ? row(a.box) > row(b.box) : a.box.minX < b.box.minX
         }
-        closeOverlays()
-        NSApp.activate(ignoringOtherApps: true)
-        for screen in NSScreen.screens {
-            let window = RegionSelectionWindow(screen: screen) { [weak self] selection in
-                self?.closeOverlays()
-                guard let selection, selection.width > 4, selection.height > 4 else { return }
-                self?.capture(selection, on: screen)
-            }
-            overlays.append(window)
-            window.makeKeyAndOrderFront(nil)
+        var seen = Set<String>()
+        return sorted.compactMap { code in
+            guard let payload = code.payload?.trimmingCharacters(in: .whitespacesAndNewlines),
+                  !payload.isEmpty, seen.insert(payload).inserted else { return nil }
+            return payload
         }
     }
 
-    private func closeOverlays() {
-        overlays.forEach { $0.orderOut(nil) }
-        overlays.removeAll()
+    /// Pure, unit-tested: what goes on the clipboard, or nil to beep. See the
+    /// type comment for why each row prefers what it does.
+    static func clipboardText(reading: Reading, text: String, codes: [String]) -> String? {
+        let codeText = codes.isEmpty ? nil : codes.joined(separator: "\n")
+        switch reading {
+        case .text: return text.isEmpty ? codeText : text
+        case .codes: return codeText
+        }
+    }
+
+    @objc private func begin() {
+        guard ScreenCapture.ensureAccess() else { return }
+        overlay.selectRegion { [weak self] selection, screen in
+            self?.capture(selection, on: screen)
+        }
     }
 
     private func capture(_ selection: CGRect, on screen: NSScreen) {
-        let displayID = (screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID) ?? 0
-        let rect = Self.captureRect(selection: selection, screenFrame: screen.frame)
-        let scale = screen.backingScaleFactor
+        let reading = self.reading
         Task {
             do {
-                // A beat for the overlay to leave the screen before the shot.
-                try await Task.sleep(nanoseconds: 120_000_000)
-                let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
-                guard let display = content.displays.first(where: { $0.displayID == displayID }) else { return }
-                let configuration = SCStreamConfiguration()
-                configuration.sourceRect = rect
-                configuration.width = Int(rect.width * scale)
-                configuration.height = Int(rect.height * scale)
-                configuration.showsCursor = false
-                let image = try await SCScreenshotManager.captureImage(
-                    contentFilter: SCContentFilter(display: display, excludingWindows: []),
-                    configuration: configuration)
-                let text = try Self.recognise(image)
+                let shot = try await ScreenCapture.region(selection, on: screen)
+                let text = reading == .text ? try Self.recogniseText(in: shot.image) : ""
+                // Copy Text only falls back to codes, so it only looks for
+                // them when there was no text.
+                let codes = text.isEmpty ? try Self.readCodes(in: shot.image) : []
+                let result = Self.clipboardText(reading: reading, text: text, codes: codes)
                 await MainActor.run {
-                    guard !text.isEmpty else {
+                    guard let result else {
                         NSSound.beep()
                         return
                     }
                     NSPasteboard.general.clearContents()
-                    NSPasteboard.general.setString(text, forType: .string)
+                    NSPasteboard.general.setString(result, forType: .string)
                     NSSound(named: "Pop")?.play()
                 }
             } catch {
-                NSLog("MaxCandela: screen text capture failed: \(error.localizedDescription)")
+                NSLog("MaxCandela: screen reading failed: \(error.localizedDescription)")
                 await MainActor.run { NSSound.beep() }
             }
         }
     }
 
-    private static func recognise(_ image: CGImage) throws -> String {
+    static func recogniseText(in image: CGImage) throws -> String {
         let request = VNRecognizeTextRequest()
         request.recognitionLevel = .accurate
         request.usesLanguageCorrection = true
@@ -115,82 +140,11 @@ final class ScreenTextTool: MenuTool {
         let lines = (request.results ?? []).compactMap { $0.topCandidates(1).first?.string }
         return join(lines: lines)
     }
-}
 
-/// A dimmed, full-screen window on which the user drags out a rectangle.
-/// Escape, or a click without a drag, cancels.
-final class RegionSelectionWindow: NSWindow {
-    private let onFinish: (CGRect?) -> Void
-
-    init(screen: NSScreen, onFinish: @escaping (CGRect?) -> Void) {
-        self.onFinish = onFinish
-        // Base designated init with global coordinates — the screen: variant
-        // traps in subclasses on newer macOS (see CLAUDE.md gotchas).
-        super.init(contentRect: screen.frame, styleMask: .borderless, backing: .buffered, defer: false)
-        isOpaque = false
-        backgroundColor = .clear
-        level = .screenSaver
-        isReleasedWhenClosed = false
-        collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
-        let view = RegionSelectionView(frame: NSRect(origin: .zero, size: screen.frame.size))
-        view.onFinish = { [weak self] local in
-            guard let self else { return }
-            // View coordinates → global AppKit coordinates.
-            self.onFinish(local.map { $0.offsetBy(dx: self.frame.minX, dy: self.frame.minY) })
-        }
-        contentView = view
-    }
-
-    // A borderless window refuses key status by default, and without it the
-    // Escape key never arrives.
-    override var canBecomeKey: Bool { true }
-
-    override func cancelOperation(_ sender: Any?) { onFinish(nil) }
-
-    override func keyDown(with event: NSEvent) {
-        if event.keyCode == 53 { onFinish(nil) } else { super.keyDown(with: event) }
-    }
-}
-
-private final class RegionSelectionView: NSView {
-    var onFinish: ((CGRect?) -> Void)?
-    private var start: CGPoint?
-    private var selection: CGRect?
-
-    override func resetCursorRects() {
-        addCursorRect(bounds, cursor: .crosshair)
-    }
-
-    override func draw(_ dirtyRect: NSRect) {
-        NSColor.black.withAlphaComponent(0.25).setFill()
-        bounds.fill()
-        guard let selection else { return }
-        // Punch the selection out of the dimming so its contents read clearly.
-        NSGraphicsContext.current?.compositingOperation = .clear
-        selection.fill()
-        NSGraphicsContext.current?.compositingOperation = .sourceOver
-        NSColor.white.setStroke()
-        let outline = NSBezierPath(rect: selection.insetBy(dx: 0.5, dy: 0.5))
-        outline.lineWidth = 1
-        outline.stroke()
-    }
-
-    override func mouseDown(with event: NSEvent) {
-        start = convert(event.locationInWindow, from: nil)
-        selection = nil
-    }
-
-    override func mouseDragged(with event: NSEvent) {
-        guard let start else { return }
-        let point = convert(event.locationInWindow, from: nil)
-        selection = CGRect(x: min(start.x, point.x), y: min(start.y, point.y),
-                           width: abs(point.x - start.x), height: abs(point.y - start.y))
-        needsDisplay = true
-    }
-
-    override func mouseUp(with event: NSEvent) {
-        onFinish?(selection)
-        start = nil
-        selection = nil
+    /// Every QR code and barcode Vision can find and decode, in reading order.
+    static func readCodes(in image: CGImage) throws -> [String] {
+        let request = VNDetectBarcodesRequest()
+        try VNImageRequestHandler(cgImage: image, options: [:]).perform([request])
+        return orderedPayloads((request.results ?? []).map { ($0.payloadStringValue, $0.boundingBox) })
     }
 }

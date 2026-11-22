@@ -45,12 +45,13 @@ final class BrightnessController {
     }
 
     /// The scale a display sits at while the boost is not driving it: Extra
-    /// Dim if the licence allows adjustments, otherwise native. Pure,
-    /// unit-tested. Clamped to `minimumDim` so a stored or dragged value can
-    /// never black the screen out, and to 1.0 so it can never *lift*.
-    static func idleScale(extraDim: CGFloat, licensed: Bool) -> CGFloat {
-        guard licensed else { return 1.0 }
-        return min(1.0, max(GammaController.minimumDim, extraDim))
+    /// Dim. Free since 2026-11-22 (BetterDisplay gives dimming away, and it is
+    /// the one display tool that works on every Mac), so no licence argument.
+    /// Pure, unit-tested. Clamped to `minimumDim` so a stored or dragged value
+    /// can never black the screen out, and to 1.0 so it can never *lift* —
+    /// which is what keeps a free feature from becoming a free boost.
+    static func idleScale(extraDim: CGFloat) -> CGFloat {
+        min(1.0, max(GammaController.minimumDim, extraDim))
     }
 
     /// Whether the boost should be held off for the power source. Pure,
@@ -108,12 +109,12 @@ final class BrightnessController {
     private(set) var requestedBoost: CGFloat
 
     /// Extra Dim (1.0 == off) and Warmth (0 == neutral) as the user set them.
-    /// What reaches the glass also depends on the licence — see `idleScale`
-    /// and `effectiveWarmth`.
+    /// Extra Dim is free and always reaches the glass; Warmth is Pro — see
+    /// `effectiveWarmth`.
     private(set) var extraDim: CGFloat
     private(set) var warmth: CGFloat
 
-    /// Whether the licence currently allows the boost and the adjustments.
+    /// Whether the licence currently allows the boost and Warmth.
     /// False until MenuBarController has resolved it — the same reason the
     /// persisted boost is not restored from `init`.
     private var licensed = false
@@ -142,7 +143,7 @@ final class BrightnessController {
 
     init() {
         self.requestedBoost = CGFloat(prefs.boost)
-        self.extraDim = Self.idleScale(extraDim: CGFloat(prefs.extraDim), licensed: true)
+        self.extraDim = Self.idleScale(extraDim: CGFloat(prefs.extraDim))
         self.warmth = max(0, min(1, CGFloat(prefs.warmth)))
         displayManager.onScreenConfigurationChanged = { [weak self] in
             self?.rebuildOverlays()
@@ -269,8 +270,9 @@ final class BrightnessController {
     /// discarding the user's saved preference — buying or restoring should
     /// bring their setting straight back rather than making them re-toggle.
     ///
-    /// Extra Dim and Warmth are suspended with it (also keeping their saved
-    /// values): `licensed` going false makes the idle state native again.
+    /// Warmth is suspended with it (keeping its saved value): `licensed` going
+    /// false takes it off the glass. Extra Dim is free and stays — the
+    /// teardown below ends in `applyIdleState()`, which re-applies it.
     func suspendForLicense() {
         licensed = false
         pausedForBattery = false
@@ -415,13 +417,13 @@ final class BrightnessController {
         }
     }
 
-    private var idleScale: CGFloat { Self.idleScale(extraDim: extraDim, licensed: licensed) }
+    private var idleScale: CGFloat { Self.idleScale(extraDim: extraDim) }
 
     /// Slider entry points. Applied as hard table writes rather than through
     /// the fade animator: a slider drag already arrives as a stream of small
     /// steps, which is the fade.
     func setExtraDim(_ value: CGFloat) {
-        extraDim = Self.idleScale(extraDim: value, licensed: true)
+        extraDim = Self.idleScale(extraDim: value)
         prefs.extraDim = Double(extraDim)
         applyIdleState()
     }

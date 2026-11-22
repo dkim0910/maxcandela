@@ -75,9 +75,10 @@ final class WelcomeViewController: NSViewController {
             + "Click it for your tools: the brightness boost, Extra Dim and "
             + "Warmth for your display, plus Keep Awake, a timer, clipboard "
             + "tools, a color picker, world clocks and a system read-out.\n\n"
-            + "The display tools and the Pro tools — window snapping, hiding "
-            + "menu bar icons, copying text off the screen and more — are free "
-            + "to try for 5 days. The everyday tools are free to keep."
+            + "The brightness boost, Warmth and the Pro tools — window "
+            + "snapping, hiding menu bar icons, copying text off the screen and "
+            + "more — are free to try for 14 days. Extra Dim and the everyday "
+            + "tools are free to keep."
     }
 
     private func makeLabel(_ text: String, size: CGFloat, weight: NSFont.Weight) -> NSTextField {

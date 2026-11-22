@@ -36,16 +36,13 @@ final class AdjustmentsTests: XCTestCase {
     // MARK: - Extra Dim
 
     func testIdleScaleNeverLiftsAndNeverBlacksOut() {
-        XCTAssertEqual(BrightnessController.idleScale(extraDim: 0.5, licensed: true), 0.5)
-        // A stored value above native must not become a paywall-free boost.
-        XCTAssertEqual(BrightnessController.idleScale(extraDim: 3.0, licensed: true), 1.0)
+        XCTAssertEqual(BrightnessController.idleScale(extraDim: 0.5), 0.5)
+        // Extra Dim is free, so a stored value above native must not become a
+        // paywall-free boost.
+        XCTAssertEqual(BrightnessController.idleScale(extraDim: 3.0), 1.0)
         // Zero (or garbage) must not leave an unusable black screen.
-        XCTAssertEqual(BrightnessController.idleScale(extraDim: 0, licensed: true), GammaController.minimumDim)
-        XCTAssertEqual(BrightnessController.idleScale(extraDim: -2, licensed: true), GammaController.minimumDim)
-    }
-
-    func testIdleScaleIsNativeWithoutALicence() {
-        XCTAssertEqual(BrightnessController.idleScale(extraDim: 0.3, licensed: false), 1.0)
+        XCTAssertEqual(BrightnessController.idleScale(extraDim: 0), GammaController.minimumDim)
+        XCTAssertEqual(BrightnessController.idleScale(extraDim: -2), GammaController.minimumDim)
     }
 
     func testDimDoesNotCountAsHeadroomLeft() {
@@ -158,10 +155,10 @@ final class AdjustmentsTests: XCTestCase {
 
     // MARK: - Rating prompt
 
-    private func shouldAsk(paying: Bool = true, boosts: Int = 10, daysAgo: Double = 8,
-                           asked: String? = nil, broken: Bool = false) -> Bool {
+    private func shouldAsk(license: StoreManager.LicenseState = .licensed, boosts: Int = 10,
+                           daysAgo: Double = 8, asked: String? = nil, broken: Bool = false) -> Bool {
         let now = Date()
-        return ReviewPrompt.shouldAsk(isPaying: paying, boostCount: boosts,
+        return ReviewPrompt.shouldAsk(license: license, boostCount: boosts,
                                       firstBoost: now.addingTimeInterval(-daysAgo * 86_400),
                                       lastAskedVersion: asked, currentVersion: "1.2.0",
                                       boostReportedBroken: broken, now: now)
@@ -169,7 +166,8 @@ final class AdjustmentsTests: XCTestCase {
 
     func testRatingPromptBar() {
         XCTAssertTrue(shouldAsk())
-        XCTAssertFalse(shouldAsk(paying: false))      // trial users have not decided
+        XCTAssertTrue(shouldAsk(license: .trial(daysRemaining: 6)))  // engaged trial users count
+        XCTAssertFalse(shouldAsk(license: .expired))  // they have just met the paywall
         XCTAssertFalse(shouldAsk(boosts: 9))
         XCTAssertFalse(shouldAsk(daysAgo: 6))
         XCTAssertFalse(shouldAsk(asked: "1.2.0"))     // once per version

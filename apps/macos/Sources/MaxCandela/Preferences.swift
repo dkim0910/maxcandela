@@ -24,6 +24,7 @@ final class Preferences {
         static let excludedDisplays = "com.maxcandela.excludedDisplays"
         static let boostApps = "com.maxcandela.boostApps"
         static let clickTogglesBoost = "com.maxcandela.clickTogglesBoost"
+        static let menuLayout = "com.maxcandela.menuLayout"
     }
 
     private let defaults: UserDefaults
@@ -136,5 +137,12 @@ final class Preferences {
     var boostApps: [String: String] {
         get { defaults.dictionary(forKey: Key.boostApps) as? [String: String] ?? [:] }
         set { defaults.set(newValue, forKey: Key.boostApps) }
+    }
+
+    /// Options ▸ Menu Layout — a `MenuLayout` raw value; nil until the user
+    /// picks one (then the flat list applies).
+    var menuLayout: String? {
+        get { defaults.string(forKey: Key.menuLayout) }
+        set { defaults.set(newValue, forKey: Key.menuLayout) }
     }
 }
