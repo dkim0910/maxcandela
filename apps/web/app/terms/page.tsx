@@ -16,7 +16,7 @@ export default function TermsPage() {
       path="/terms/"
       title="Terms of Use"
       crumb="Terms"
-      updated="July 27, 2026"
+      updated="November 22, 2026"
     >
       <p>
         These terms apply to the MaxCandela macOS application and this
@@ -46,10 +46,11 @@ export default function TermsPage() {
 
       <h2>Trial, pricing, and subscriptions</h2>
       <ul>
-        <li>The app is free to download and fully functional for a 5-day
+        <li>The app is free to download and fully functional for a 14-day
           trial. The trial period is measured from the date your Apple Account
           first downloads MaxCandela.</li>
-        <li>After the trial, continued use of the brightness boost requires
+        <li>After the trial, continued use of the brightness boost, Warmth and
+          the Pro tools requires
           either a one-time lifetime purchase (<strong>$9.99</strong>) or a
           monthly subscription (<strong>$0.99/month</strong>).</li>
         <li>Payment is charged to your Apple Account at confirmation of

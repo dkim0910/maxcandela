@@ -1,36 +1,20 @@
 /**
- * The product shot: a MacBook's menu bar and MaxCandela's menu, drawn in HTML
- * and CSS. The home page hero *is* the MacBook screen — `MockMenuBar` runs
- * across its top and `MockMenu` drops open from the ☀ status item, with the
- * headline sitting on the desktop beside it (see `.hero` in globals.css).
+ * The product shot. The home page hero *is* a MacBook screen: `MockMenuBar`
+ * (drawn in HTML/CSS) runs across its top, and `MenuShot` — the app's real
+ * menu — drops open from the ☀ status item, with the headline sitting on the
+ * desktop beside it (see `.hero` in globals.css).
  *
- * A real screenshot would be better and should replace this once one exists.
- * Until then this is the honest alternative to stock imagery — it shows the
- * actual sections and rows of the app's menu, in the app's own order. Keep it
- * in step with `MenuBarController.buildMenu()` and `MenuBarController.tools`
- * in apps/macos: a row here that the app does not have is a false claim.
+ * The menu used to be drawn in HTML too, and it drifted from the app: no
+ * icons, no Warmth Schedule, nothing below Pro Tools, sliders the app does not
+ * draw. Replaced 2026-11-22 with a real capture so it cannot drift silently
+ * again — it can only go stale, and then it is regenerated rather than
+ * re-drawn:
  *
- * Purely presentational, so it is one image to assistive tech (`role="img"`)
- * rather than forty unlabelled spans.
+ *   scripts/make-app-screenshots.sh      (captures the real menus)
+ *   scripts/optimize-web-images.sh       (crops main.png → menu-main-*.webp)
+ *
+ * Run both after any change to `MenuBarController.buildMenu()`.
  */
-
-const FREE = ['Keep Awake', 'Timer', 'Clipboard', 'Color Picker', 'Generate', 'World Clock', 'Sound', 'System'];
-const PRO = ['Hide Menu Bar Icons', 'Window Snapping', 'Copy Text from Screen…', 'Shortcuts', 'Next Meeting'];
-
-function Slider({ label, value, fill }: { label: string; value: string; fill: number }) {
-  return (
-    <div className="mock-slider">
-      <div className="mock-slider-head">
-        <span>{label}</span>
-        <span className="mock-hint">{value}</span>
-      </div>
-      <div className="mock-track">
-        <div className="mock-fill" style={{ width: `${fill}%` }} />
-        <div className="mock-knob" style={{ left: `${fill}%` }} />
-      </div>
-    </div>
-  );
-}
 
 /** The system menu bar across the top of the screen. Decorative. */
 export function MockMenuBar() {
@@ -60,37 +44,23 @@ export function MockMenuBar() {
   );
 }
 
-/** The app's menu, open. One image to assistive tech. */
-export function MockMenu() {
+/**
+ * The app's main menu, open — a real capture (licensed, boost off, the
+ * sandboxed build's tool list, "All Tools in One List" layout), shown at its
+ * true size in points. width/height are the 1× file's pixels; update them —
+ * and `.menu-shot`'s negative bottom margin in globals.css — if a re-capture
+ * changes the menu's size.
+ */
+export function MenuShot() {
   return (
-    <div
-      className="mock-menu"
-      role="img"
-      aria-label="The MaxCandela menu, open from its menu-bar icon: a Display section with the brightness boost, Extra Dim and Warmth; a Tools section with eight free tools; and a Pro Tools section with five more."
-    >
-      <div className="mock-head">Display</div>
-      <div className="mock-row mock-row-on">
-        <span>Turn Boost Off</span>
-        <span className="mock-hint">0.42× left</span>
-      </div>
-      <Slider label="Extra Dim" value="Off" fill={0} />
-      <Slider label="Warmth" value="40%" fill={40} />
-      <div className="mock-sep" />
-      <div className="mock-head">Tools</div>
-      {FREE.map((name) => (
-        <div className="mock-row" key={name}>
-          <span>{name}</span>
-          <span className="mock-chev">›</span>
-        </div>
-      ))}
-      <div className="mock-sep" />
-      <div className="mock-head">Pro Tools</div>
-      {PRO.map((name) => (
-        <div className="mock-row" key={name}>
-          <span>{name}</span>
-          {!name.endsWith('…') && <span className="mock-chev">›</span>}
-        </div>
-      ))}
-    </div>
+    <img
+      className="menu-shot"
+      src="/menu-main-1x.webp"
+      srcSet="/menu-main-1x.webp 1x, /menu-main-2x.webp 2x"
+      width={278}
+      height={973}
+      decoding="async"
+      alt="The MaxCandela menu, open: a Display section with Turn Boost On, Extra Dim, Warmth and Warmth Schedule; Tools with Keep Awake, Timer, Focus, Breaks, Clipboard, Scratchpad, Color Picker, Generate, World Clock, Calendar, Sound, System and Desktop; Pro Tools with Hide Menu Bar Icons, Screenshot, Copy Text from Screen, Scan QR Code from Screen, Shortcuts, Next Meeting, Bluetooth, File Shelf, Dim Background Windows and App Volume; then MaxCandela Pro, Purchases, Options, Legal and Quit MaxCandela."
+    />
   );
 }

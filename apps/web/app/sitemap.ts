@@ -26,6 +26,7 @@ export const dynamic = 'force-static';
 const ROUTES = [
   { path: '', source: 'app/page.tsx' },
   { path: 'how-it-works/', source: 'app/how-it-works/page.tsx' },
+  { path: 'betterdisplay-alternative/', source: 'app/betterdisplay-alternative/page.tsx' },
   { path: 'about/', source: 'app/about/page.tsx' },
   { path: 'privacy/', source: 'app/privacy/page.tsx' },
   { path: 'terms/', source: 'app/terms/page.tsx' },
