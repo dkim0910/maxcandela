@@ -4,7 +4,7 @@
 
 <h1 align="center">MaxCandela</h1>
 
-<p align="center"><strong>Your MacBook Pro screen can go far brighter than macOS lets it. MaxCandela unlocks it.</strong></p>
+<p align="center"><strong>27 Mac tools under one menu-bar icon — including an XDR brightness boost that takes your MacBook Pro screen past the limit macOS sets.</strong></p>
 
 <p align="center">
   <a href="https://maxcandela.com">maxcandela.com</a>
@@ -22,9 +22,11 @@ just isn't enough.
 
 ## Two ways to use it
 
-**🖥️ The Mac app** — a single ☀️ button in your menu bar. Click to boost your
-entire screen (every app, every window); click again to go back. That's the
-whole thing.
+**🖥️ The Mac app** — a ☀️ in your menu bar. Open it to boost your entire
+screen (every app, every window) or to reach the rest of the toolbox. You can
+set a click on the icon to toggle the boost directly (Options ▸ Clicking the
+Icon Toggles the Boost), and a keyboard shortcut, the Shortcuts app or a
+`maxcandela://boost/toggle` link can switch it too.
 
 **🌐 The website** — visit **[maxcandela.com](https://maxcandela.com)** and press
 **Try the boost** to see the effect right in your browser, no install needed.
@@ -33,20 +35,34 @@ whole thing.
 ## Why people like it
 
 - **Your whole Mac, brighter** — not just one window or one app.
-- **One click** — click the ☀️ in your menu bar to turn the boost on, click
-  again to turn it off. Double-click for the menu. No sliders, nothing to
-  calibrate.
+- **One click** — turn the boost on from the ☀️ menu (or a single click on the
+  icon, if you set it to), off the same way. No sliders, nothing to calibrate.
 - **True colors** — a color-calibrated boost that keeps your display's profile
   intact. Brighter, never washed out.
 - **Panel-safe** — it never pushes past the limits macOS itself allows for HDR,
   and it automatically eases off when your Mac runs hot.
-- **Private** — no accounts, no screen recording. The app never sees what's on
-  your screen; it only makes it brighter. Anonymous usage statistics only, as
-  described in the [privacy policy](https://maxcandela.com/privacy/).
+- **Private** — no accounts. The boost never looks at your screen; the tools
+  that do (Screenshot, Copy Text and Scan QR Code from Screen) ask for Screen
+  Recording the first time you use them, and work on your Mac only. Anonymous
+  usage statistics only, as described in the
+  [privacy policy](https://maxcandela.com/privacy/).
 - **Instantly reversible** — turn it off, or just quit, and your display returns
   to exactly where it was.
 
-## Will it work on my Mac?
+## The toolbox
+
+The same ☀️ menu holds 26 more tools. **Free:** Keep Awake, Timer, Focus
+(work/break cycles), Breaks (look-away reminders), clipboard tools with a short
+history, Scratchpad, Color Picker, Generate (UUID, password, timestamp, QR
+code), World Clock, a Calendar month view, Sound, a System read-out, Desktop
+(hide desktop icons or the notch) and Extra Dim. **Pro:** Screenshot with
+markup, Copy Text and Scan QR Code from Screen, a clipboard manager, File
+Shelf, Dim Background Windows, Bluetooth quick-connect, App Volume (per-app
+volume), Shortcuts, Next Meeting, Hide Menu Bar Icons (macOS 26 and earlier),
+Warmth and the brightness boost. Every tool except the boost works on any Mac
+running macOS 15.6 or later.
+
+## Will the brightness boost work on my Mac?
 
 You need a display with HDR headroom to unlock:
 
@@ -69,16 +85,17 @@ Requires macOS 15.6 or later.
 
 ## Pricing
 
-Free to download with a **5-day trial**, fully unlocked. After that:
+Free to download; the everyday tools and Extra Dim are free to keep. **Pro**
+is free to try for **14 days**, fully unlocked. After that:
 
 - **$9.99** once — yours for life, or
 - **$0.99 / month**
 
 One purchase covers every Mac on your Apple ID. The trial clock starts when your
 Apple ID first downloads the app, so open it soon after installing to get the
-full five days.
+full 14 days.
 
-Got a promo code? Use **Redeem Code…** in the ☀️ menu, or redeem it at
+Got a promo code? Use **Purchases ▸ Redeem Code…** in the ☀️ menu, or redeem it at
 [apps.apple.com/redeem](https://apps.apple.com/redeem). Codes unlock the app
 straight away — they don't wait for the trial to finish.
 

@@ -630,9 +630,10 @@ reverse, not as things he spelled out:
 - **PROLED XDR (tandem OLED, 1,000 nits sustained / 2,000 peak per Apple's
   paper) is untested** and the site says so, alongside the M5 Pro / M5 Max
   caveat. Do not write "2021 or later" as if it covered every newer model.
-- **Version is 2.0.0 (19)** in `project.yml` + `Info.plist`. Not archived.
-- `docs/app-store-listing.md` is the draft listing (subtitle, description,
-  keywords, What's New). Not submitted; screenshots still brightness-only.
+- *(Superseded.)* This pass was versioned 2.0.0; it went to review as
+  2.0.0 (20) and was then withdrawn in favour of **2.1.0 (22)** — see the
+  version list under "Current status / TODO". `docs/app-store-listing.md`
+  now holds the 2.1.0 listing.
 - 96 tests.
 
 **Pro tools pack (same day; Daniel: users won't pay for ten small features).**
@@ -804,12 +805,11 @@ recommendation from it. What landed, in that order:
    November 22, 2026 (material change), and its "continued use" bullet now
    names Warmth and the Pro tools, not just the boost.
 
-`docs/app-store-listing.md` now describes this next version, not 2.0.0 (2.0.0
-went to review with the text in commit `7f65659`). ⚠️ **None of the web
-changes may reach `main` before the version carrying them is live** — the
-site would promise a 14-day trial, free Extra Dim and Shortcuts actions that
-the 2.0.0 binary does not have. Version numbers are not bumped yet: 2.0.0 is
-still in review.
+`docs/app-store-listing.md` (and the localized file) describe **2.1.0 (22)**,
+written as the update from 1.1.8. **The site went live with all of this on
+2026-11-22** (merge `ee78141`, Daniel's call, knowing the store still had
+1.1.8): until 2.1.0 is approved, maxcandela.com describes features the store
+build does not have.
 
 ### Ten more tools (2026-11-22) — built, unit-tested, menus seen; NOT used on the glass
 
@@ -879,10 +879,10 @@ exclude our own windows via the SCK filter (the 120 ms sleep is gone).
 - **Site, both listing drafts and `/privacy` now describe this release**
   (2026-11-22): 27 tools, 14 free; Window Snapping removed everywhere; new
   permissions disclosed; App Review notes cover the four new entitlements.
-  They are working-tree changes, held until this release is live. Before
-  deploying, click through every new tool on real hardware and **cut the card
-  (site + listings) for any that fails** — the copy is ahead of the evidence
-  for most of them. Still console-side: the App Store **privacy label** needs
+  **Deployed 2026-11-22** (Daniel merged to main ahead of the 2.1.0 review).
+  Click through every new tool on real hardware and **cut the card (site +
+  listings) for any that fails** — the copy is ahead of the evidence for most
+  of them. Still console-side: the App Store **privacy label** needs
   the new data types reviewed, and the localized drafts need a fluent reader.
 - New DEBUG flags: `MAXCANDELA_FAST_TIME=60` (Focus/Breaks clock ×60),
   `MAXCANDELA_FORCE_NO_WINDOW_BOUNDS=1` (dimmer fail-safe path).
@@ -1345,7 +1345,18 @@ does disabling instantly restore it) is required before claiming it works.
       SwiftPM dev targets 14; falls back to `apps.apple.com/redeem`, which is
       also the *only* route for non-consumable IAP promo codes — the sheet takes
       subscription offer codes). `/support` + home FAQ document it.
-- [x] **1.1.8 (18)** — current source version, set 2026-10-01 for the bug
+- [x] **2.1.0 (22)** — current source version, **uploaded 2026-11-22**
+      (archive verified first: universal, sandboxed, seven entitlements, GA
+      secret + RevenueCat key injected, no DEBUG code). This is the toolbox
+      release plus the ten new tools. History: 2.0.0 (20) went to review on
+      2026-11-21 with Window Snapping in it; build 21 was a 2.0.0 re-upload
+      that stays unused; Daniel then chose 2.1.0. **To ship it in App Store
+      Connect:** remove 2.0.0 from review → rename the version to 2.1.0 →
+      attach build 22 → paste `docs/app-store-listing.md` (+ the six
+      localizations) → replace the screenshots with the six in
+      `assets/screenshots/store/` → Submit. The version/build change in
+      `project.yml` + `Info.plist` may still be uncommitted — check git.
+- [x] **1.1.8 (18)** — set 2026-10-01 for the bug
       sweep (see "Bug sweep (2026-10-01)" above). 1.1.7 is live on the store
       (iTunes lookup, 2026-10-01), so both numbers moved. Not archived yet —
       Archive → Distribute as described under 1.1.7 below, picking 1.1.8 (18).
@@ -1381,14 +1392,15 @@ does disabling instantly restore it) is required before claiming it works.
       reports (checked 2026-09-03) and what the store lists as ready.
       Bump the *build* number for every upload; Apple only
       requires increasing values, so the skipped 1.1.0–1.1.4 are harmless.
-      Version numbering state, as of 2026-10-01 (three different things, easy to
-      confuse — check all three before assuming a fix is missing):
+      Version numbering state, as of 2026-11-22 (several different things,
+      easy to confuse — check them all before assuming a fix is missing):
 
   | Where | Version | Note |
   |---|---|---|
-  | This repo | 1.1.8 (18) | not archived — carries the 2026-10-01 bug sweep |
-  | `/Applications/MaxCandela.app` | 1.1.7 (17) | store install, checked 2026-10-01 |
-  | App Store (live) | 1.1.7 | RevenueCat release |
+  | This repo | 2.1.0 (22) | uploaded 2026-11-22 |
+  | App Store Connect | 2.0.0 (20) "Waiting for Review" | to be withdrawn and renamed 2.1.0 with build 22; build 21 (2.0.0) unused |
+  | `/Applications/MaxCandela.app` | 1.1.8 (18) | store install, checked 2026-11-22 |
+  | App Store (live) | 1.1.8 | bug-sweep release |
 
       **A fix you can't see is usually a build older than the fix** — confirm
       with `defaults read /Applications/MaxCandela.app/Contents/Info
