@@ -38,32 +38,45 @@ struct Shot {
 // The full menu, dimmed, stands behind an open submenu to show where it lives.
 // Kept clear of the submenu beside it: each capture is a rectangle of backdrop
 // around its menu, and where two overlap the front one would cut a visible
-// notch out of the one behind.
-let menuBehind = Layer(file: "main", scale: 0.98, centre: CGPoint(x: 1640, y: 900), alpha: 0.38)
+// notch out of the one behind. The menu is 973 pt since the 2026-11 tools, so
+// it is scaled to fit the canvas height.
+let menuBehind = Layer(file: "main", scale: 0.8, centre: CGPoint(x: 1640, y: 900), alpha: 0.38)
 
+// Layers draw in order, so where two captures' backdrop margins meet, the one
+// drawn last must not cover the other's menu — positions below are worked out
+// from the capture sizes (points + 88, ×2 pixels) so none does.
 let shots: [Shot] = [
     Shot(name: "1-toolbox",
-         headline: "17 Mac tools.\nOne menu-bar icon.",
-         body: "Eight are free. Pro adds window snapping, a clipboard manager, hidden menu bar icons and an XDR brightness boost.",
-         layers: [Layer(file: "main", scale: 1.06, centre: CGPoint(x: 2200, y: 900))]),
-    Shot(name: "2-window-snapping",
-         headline: "Snap windows\ninto place.",
-         body: "Halves, quarters, maximize and centre — from the menu, or with ⌃⌥ and the arrow keys.",
-         layers: [menuBehind, Layer(file: "WindowSnapTool", scale: 1.55, centre: CGPoint(x: 2420, y: 900))]),
-    Shot(name: "3-clipboard",
+         headline: "27 Mac tools.\nOne menu-bar icon.",
+         body: "14 are free. Pro adds screenshots with markup, a file shelf, per-app volume, a clipboard manager and an XDR brightness boost.",
+         layers: [Layer(file: "main", scale: 0.82, centre: CGPoint(x: 2200, y: 900))]),
+    Shot(name: "2-calendar",
+         headline: "Your month,\nin the menu bar.",
+         body: "A calendar a click away, with week numbers if you want them. Pro adds your events and a one-click Join.",
+         layers: [menuBehind, Layer(file: "MonthCalendarTool", scale: 1.5, centre: CGPoint(x: 2420, y: 900))]),
+    Shot(name: "3-focus",
+         headline: "Focus, then\nrest your eyes.",
+         body: "Work in 25, 50 or 90-minute sessions with a countdown in the menu bar, and get a gentle reminder to look away.",
+         layers: [menuBehind,
+                  Layer(file: "FocusTool", scale: 1.6, centre: CGPoint(x: 2420, y: 1180)),
+                  Layer(file: "BreaksTool", scale: 1.6, centre: CGPoint(x: 2420, y: 560))]),
+    Shot(name: "4-clipboard",
          headline: "Fix copied text\nin one click.",
          body: "Change case, trim, sort lines, encode and decode, format JSON, hash. Plus a searchable history of what you copied.",
          layers: [menuBehind, Layer(file: "ClipboardTool", scale: 1.3, centre: CGPoint(x: 2420, y: 900))]),
-    Shot(name: "4-generate-and-clocks",
+    Shot(name: "5-present",
+         headline: "Ready to\npresent.",
+         body: "Hide desktop icons and the notch, keep the display awake, and dim every window but the one you are showing.",
+         layers: [menuBehind,
+                  Layer(file: "DesktopTool", scale: 1.45, centre: CGPoint(x: 2420, y: 1430)),
+                  Layer(file: "WindowDimmerTool", scale: 1.45, centre: CGPoint(x: 2420, y: 330)),
+                  Layer(file: "KeepAwakeTool", scale: 1.45, centre: CGPoint(x: 2420, y: 900))]),
+    Shot(name: "6-generate-and-clocks",
          headline: "The small things,\nalready there.",
-         body: "A UUID, a strong password or a timestamp straight to your clipboard. The time in the cities you work with.",
+         body: "A UUID, a strong password, a timestamp or a QR code straight to your clipboard. The time in the cities you work with.",
          layers: [menuBehind,
                   Layer(file: "GeneratorTool", scale: 1.5, centre: CGPoint(x: 2420, y: 1160)),
                   Layer(file: "WorldClockTool", scale: 1.5, centre: CGPoint(x: 2420, y: 600))]),
-    Shot(name: "5-keep-awake",
-         headline: "Keep your Mac\nawake.",
-         body: "For half an hour, a few hours, or until you say so. Presentations, downloads, long reads.",
-         layers: [menuBehind, Layer(file: "KeepAwakeTool", scale: 1.7, centre: CGPoint(x: 2420, y: 900))]),
 ]
 
 func capture(_ name: String) -> NSBitmapImageRep? {
