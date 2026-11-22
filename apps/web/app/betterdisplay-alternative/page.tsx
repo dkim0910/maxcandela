@@ -25,8 +25,8 @@ export const metadata: Metadata = pageMetadata({
  * Re-check all of them before editing this page, and change CHECKED when you
  * do: a comparison page that misstates a competitor's price is worse than no
  * page. Claims about MaxCandela must match the app — the 14-day trial and free
- * Extra Dim ship in the version after 2.0.0, so this page must not deploy
- * before that version is live.
+ * Extra Dim ship in 2.1.0 (the page went live with the site on 2026-11-22,
+ * ahead of that release).
  *
  * Deliberately left out: anything their pages do not say (e.g. whether their
  * methods work on M5 Pro / M5 Max), and rows that would read as "they lack X"

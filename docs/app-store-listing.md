@@ -1,15 +1,16 @@
-# App Store listing — the version after 2.0.0
+# App Store listing — 2.1.0 (build 22)
 
-Paste-ready text for App Store Connect. **This describes the version after
-2.0.0, not 2.0.0.** 2.0.0 went to review with the text in commit `7f65659`.
-Since then: Extra Dim is free, the Pro trial is 14 days (was 5), there are
-Shortcuts actions and `maxcandela://boost/…` links, ten more tools, a Menu
-Layout option, and Window Snapping is gone from the App Store build
-(2026-11-22). Guideline 2.3 requires the listing to match the binary, so this text goes in with the build
-that carries those changes, not before. Translations for six more locales are
-in `app-store-listing-localized.md`. Character counts are checked by
-`scripts/check-listing-lengths.py`; every claim was checked against the code on
-2026-11-22. Re-check if the tools change before submission.
+Paste-ready text for App Store Connect, for **2.1.0 (22)**, uploaded
+2026-11-22. History: 2.0.0 (build 20) went to review with the text in commit
+`7f65659` and was then withdrawn, so **2.1.0 is the update from 1.1.8** —
+the version users have. Everything below is written for someone coming from
+1.1.8 (a brightness-only app). In App Store Connect: remove 2.0.0 from review,
+rename that version to 2.1.0, attach build 22 (build 21 was a 2.0.0 upload
+and stays unused). Guideline 2.3 requires the listing to match the binary.
+Translations for six more locales are in `app-store-listing-localized.md`.
+Character counts are checked by `scripts/check-listing-lengths.py`; every
+claim was checked against the code on 2026-11-22. Re-check if the tools change
+before submission.
 
 Each field's text is the fenced block under its heading, exactly as it should
 be pasted.
@@ -105,17 +106,15 @@ Privacy Policy: https://maxcandela.com/privacy/
 ## What's New in This Version (4000 max)
 
 ```
-• New free tools: Focus (work and break cycles), Breaks (look-away reminders), Scratchpad, a Calendar month view, Desktop (hide desktop icons, hide the notch), and QR codes in Generate.
-• New Pro tools: Screenshot with a markup editor, Scan QR Code from Screen, File Shelf with image conversion and PDF merging, App Volume for per-app volume, Bluetooth quick-connect, Dim Background Windows, and your events in the Calendar view.
-• Options > Menu Layout: keep every tool in one list, or group them into five short menus that fit any screen.
-• Shortcuts actions: turn the brightness boost on, off or toggle it from the Shortcuts app, Spotlight or Siri — or from Raycast, Alfred and other launchers with maxcandela://boost/on, /off and /toggle links.
-• Extra Dim is now free for everyone, on any Mac.
-• The free trial of Pro is now 14 days.
-• Window Snapping has been removed: apps from the Mac App Store cannot move other apps' windows.
-```
+MaxCandela is now a menu bar toolbox: 27 Mac tools under the same sun icon, 14 of them free. The brightness boost is still here.
 
-The last line assumes 2.0.0 reached users with Window Snapping in it (it is
-in the 2.0.0 binary). Drop it if 2.0.0 never ships.
+• Free tools: Keep Awake, Timer, Focus (work and break cycles), Breaks (look-away reminders), clipboard tools with a short history, Scratchpad, Color Picker, Generate (UUIDs, passwords, timestamps and QR codes), World Clock, a Calendar month view, Sound, a System read-out, Desktop (hide desktop icons or the notch) and Extra Dim.
+• Pro tools: Screenshot with a markup editor, Copy Text and Scan QR Code from Screen, a clipboard manager, File Shelf with image conversion and PDF merging, App Volume for per-app volume, Bluetooth quick-connect, Dim Background Windows, Shortcuts, Next Meeting with your events in the Calendar view, Hide Menu Bar Icons (macOS 26 and earlier), Warmth and the XDR brightness boost.
+• Shortcuts actions: turn the boost on, off or toggle it from the Shortcuts app, Spotlight or Siri — or from Raycast, Alfred and other launchers with maxcandela://boost/on, /off and /toggle links.
+• Options: your own keyboard shortcut, pause the boost on battery, boost only in chosen apps, choose which display to boost, launch at login, and a Menu Layout that groups the tools into five short menus.
+• Pro is now free to try for 14 days.
+• If you used MaxCandela before, a click on the icon still toggles the boost; double-click or right-click opens the menu. Change it under Options.
+```
 
 ## URLs
 
@@ -159,8 +158,8 @@ FREE: Keep Awake, Timer, Focus, Breaks, Clipboard, Scratchpad, Color Picker, Gen
 
 PRO ("Display" and "Pro Tools"): unlocked by the 14-day trial or either in-app purchase; afterwards shown as "… — Pro" rows that open the purchase dialog. Quit and Purchases > Restore Purchases are always available.
 
-WINDOW SNAPPING REMOVED
-2.0.0 had a Window Snapping tool using the Accessibility API. Apple has said a sandboxed app cannot move other apps' windows, so it is not in this build and the app no longer asks for Accessibility.
+NO ACCESSIBILITY
+An earlier submission (2.0.0, withdrawn before review) contained a Window Snapping tool that used the Accessibility API. A sandboxed app cannot move other apps' windows, so it is not in this build and the app no longer asks for Accessibility.
 
 PERMISSIONS AND ENTITLEMENTS
 Requested only on first use of the tool, never at launch. Nothing they give access to is transmitted.

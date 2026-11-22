@@ -1,4 +1,4 @@
-# App Store listing — localizations (for the version after 2.0.0)
+# App Store listing — localizations (2.1.0, build 22)
 
 Paste-ready metadata for six more App Store localizations. **Nothing here has
 been submitted.** Drafted 2026-11-22 by Claude, not by native speakers: have
@@ -14,12 +14,12 @@ own description for the people who land there. BetterDisplay ships its app in
 
 Rules these follow:
 
-- **They describe the next version, not 2.0.0**: Extra Dim is free, the Pro
-  trial is 14 days, there are Shortcuts actions, ten more tools (27 in all,
-  14 free) and a Menu Layout option, and Window Snapping is gone from the App
-  Store build. A localization is added to an editable version in App Store
-  Connect, so it goes in with that build. The counts follow
-  `docs/app-store-listing.md`.
+- **They describe 2.1.0, the update from 1.1.8.** 2.0.0 was withdrawn from
+  review and never reached users, so "What's New" covers the whole toolbox
+  (27 tools, 14 free), Shortcuts actions, the Options and the 14-day trial —
+  and says nothing about Window Snapping, which no user ever had. A
+  localization is added to an editable version in App Store Connect, so it
+  goes in with build 22. The counts follow `docs/app-store-listing.md`.
 - **No prices.** Apple shows localized prices on the listing itself, and a
   hard-coded `$9.99` is wrong in every one of these storefronts. The
   description still names both purchases, the 14-day trial, the auto-renewal
@@ -102,13 +102,13 @@ macOS 15.6以降(メニューバーアイコンの非表示はmacOS 26以前の�
 ### What's New in This Version
 
 ```
-• 新しい無料ツール:フォーカス(作業と休憩のサイクル)、休憩リマインダー、スクラッチパッド、月表示のカレンダー、デスクトップ(アイコンとノッチを隠す)、ジェネレーターのQRコード。
-• 新しいProツール:注釈付きスクリーンショット、画面上のQRコードの読み取り、ファイルシェルフ、アプリごとの音量、Bluetoothのワンクリック接続、背景のウインドウを暗くする機能、カレンダーの予定表示。
-• Options > Menu Layoutで、ツールをひとつのリストに並べるか、5つの短いグループにまとめるかを選べます。
-• ショートカットApp、Spotlight、Siriから輝度ブーストをオン・オフ・切り替えできるようになりました。maxcandela://boost/on などのリンクにも対応しています。
-• Extra Dimがすべてのユーザーに無料になりました。
-• Proの無料体験が14日間になりました。
-• ウインドウの整列(Window Snapping)は削除しました。Mac App Storeのアプリは、ほかのアプリのウインドウを動かせないためです。
+MaxCandelaはメニューバーのツールボックスになりました。27のMacツールをひとつのアイコンに、そのうち14は無料です。輝度ブーストもそのまま使えます。
+
+• 無料ツール:スリープ防止、タイマー、フォーカス(作業と休憩のサイクル)、休憩リマインダー、クリップボードツール、スクラッチパッド、カラーピッカー、ジェネレーター(UUID・パスワード・QRコードなど)、世界時計、月表示のカレンダー、サウンド、システム情報、デスクトップ(アイコンとノッチを隠す)、Extra Dim。
+• Proツール:注釈付きスクリーンショット、画面上の文字のコピーとQRコードの読み取り、クリップボードマネージャ、ファイルシェルフ、アプリごとの音量、Bluetoothのワンクリック接続、背景のウインドウを暗くする機能、ショートカット、次の会議、メニューバーアイコンの非表示(macOS 26以前)、Warmth、XDR輝度ブースト。
+• ショートカットApp、Spotlight、Siriから輝度ブーストをオン・オフ・切り替えできます。maxcandela://boost/on などのリンクにも対応しています。
+• Optionsでキーボードショートカット、バッテリー駆動時の一時停止、ブーストするアプリやディスプレイの選択、ログイン時の起動、メニューのレイアウトを設定できます。
+• Proの無料体験は14日間になりました。
 ```
 
 ---
@@ -173,13 +173,13 @@ Datenschutzerklärung: https://maxcandela.com/privacy/
 ### What's New in This Version
 
 ```
-• Neue kostenlose Tools: Fokus (Arbeits- und Pausenzyklen), Pausen-Erinnerung, Notizzettel, Monatskalender, Schreibtisch (Symbole und Notch ausblenden) und QR-Codes im Generator.
-• Neue Pro-Tools: Bildschirmfoto mit Markierungen, QR-Codes vom Bildschirm scannen, Dateiablage, Lautstärke pro App, Bluetooth mit einem Klick, Hintergrundfenster abdunkeln und Termine im Kalender.
-• Options > Menu Layout: alle Tools in einer Liste oder in fünf kurzen Gruppen.
-• Kurzbefehle-Aktionen: den Helligkeitsboost per Kurzbefehle-App, Spotlight oder Siri ein-, aus- oder umschalten – oder mit Links wie maxcandela://boost/on.
-• Extra Dim ist jetzt für alle kostenlos.
-• Die kostenlose Pro-Testphase dauert jetzt 14 Tage.
-• „Fenster einrasten“ (Window Snapping) wurde entfernt: Apps aus dem Mac App Store dürfen keine Fenster anderer Apps bewegen.
+MaxCandela ist jetzt eine Werkzeugkiste für die Menüleiste: 27 Mac-Tools unter einem Symbol, 14 davon kostenlos. Der Helligkeitsboost ist weiterhin dabei.
+
+• Kostenlos: Wach bleiben, Timer, Fokus (Arbeits- und Pausenzyklen), Pausen-Erinnerung, Zwischenablage-Werkzeuge, Notizzettel, Farbwähler, Generator (UUID, Passwort, QR-Codes und mehr), Weltzeituhr, Monatskalender, Audio, Systeminfos, Schreibtisch (Symbole und Notch ausblenden) und Extra Dim.
+• Pro: Bildschirmfoto mit Markierungen, Text und QR-Codes vom Bildschirm, Zwischenablage-Manager, Dateiablage, Lautstärke pro App, Bluetooth mit einem Klick, Hintergrundfenster abdunkeln, Kurzbefehle, nächstes Meeting, Menüleisten-Symbole ausblenden (bis macOS 26), Wärme (Warmth) und der XDR-Helligkeitsboost.
+• Kurzbefehle-Aktionen: den Boost per Kurzbefehle-App, Spotlight oder Siri schalten – oder mit Links wie maxcandela://boost/on.
+• Optionen: eigener Tastaturkurzbefehl, Pause im Akkubetrieb, Boost nur in gewählten Apps, Auswahl des Displays, Start bei der Anmeldung und ein Menü-Layout.
+• Pro lässt sich jetzt 14 Tage kostenlos testen.
 ```
 
 ---
@@ -244,13 +244,13 @@ Confidentialité : https://maxcandela.com/privacy/
 ### What's New in This Version
 
 ```
-• Nouveaux outils gratuits : Focus (cycles travail/pause), rappels de pause, bloc-notes, calendrier du mois, Bureau (masquer les icônes et l’encoche) et QR codes dans le générateur.
-• Nouveaux outils Pro : capture d’écran annotée, lecture des QR codes à l’écran, étagère à fichiers, volume par app, Bluetooth en un clic, assombrissement des fenêtres d’arrière-plan et événements dans le calendrier.
-• Options > Menu Layout : tous les outils dans une seule liste, ou en cinq groupes courts.
-• Actions Raccourcis : activez, coupez ou basculez le boost de luminosité depuis l’app Raccourcis, Spotlight ou Siri, ou avec des liens comme maxcandela://boost/on.
-• Extra Dim est désormais gratuit pour tous.
+MaxCandela devient une boîte à outils pour la barre des menus : 27 outils Mac sous une seule icône, dont 14 gratuits. Le boost de luminosité est toujours là.
+
+• Gratuit : Rester éveillé, minuteur, Focus (cycles de travail et de pause), rappels de pause, outils de presse-papiers, bloc-notes, pipette, générateur (UUID, mots de passe, codes QR…), horloge mondiale, calendrier mensuel, son, infos système, Bureau (masquer les icônes ou l’encoche) et Extra Dim.
+• Pro : capture d’écran annotée, texte et codes QR depuis l’écran, gestionnaire de presse-papiers, étagère de fichiers, volume par app, Bluetooth en un clic, assombrir les fenêtres d’arrière-plan, Raccourcis, prochaine réunion, masquer des icônes de la barre des menus (jusqu’à macOS 26), Chaleur (Warmth) et le boost XDR.
+• Actions Raccourcis : activez ou coupez le boost depuis l’app Raccourcis, Spotlight ou Siri, ou avec des liens comme maxcandela://boost/on.
+• Options : raccourci clavier, pause sur batterie, boost dans les apps choisies, choix de l’écran, ouverture à la connexion et disposition du menu.
 • L’essai gratuit de Pro dure désormais 14 jours.
-• L’ancrage des fenêtres (Window Snapping) a été retiré : les apps du Mac App Store ne peuvent pas déplacer les fenêtres d’autres apps.
 ```
 
 ---
@@ -315,13 +315,13 @@ macOS 15.6 이상(메뉴 막대 아이콘 숨기기는 macOS 26 이하에서만)
 ### What's New in This Version
 
 ```
-• 새 무료 도구: 집중(작업·휴식 주기), 휴식 알림, 메모장, 월간 달력, 데스크탑(아이콘·노치 숨기기), 생성기의 QR 코드.
-• 새 Pro 도구: 주석 스크린샷, 화면 속 QR 코드 읽기, 파일 선반, 앱별 음량, 블루투스 원클릭 연결, 뒤쪽 창 어둡게 하기, 달력의 일정 표시.
-• Options > Menu Layout: 모든 도구를 한 목록에 두거나 짧은 그룹 다섯 개로 묶을 수 있습니다.
-• 단축어 동작: 단축어 앱, Spotlight, Siri에서 밝기 부스트를 켜고, 끄고, 전환할 수 있습니다. maxcandela://boost/on 같은 링크도 지원합니다.
-• 이제 Extra Dim을 누구나 무료로 쓸 수 있습니다.
+MaxCandela가 메뉴 막대 도구 모음이 되었습니다. 아이콘 하나에 Mac 도구 27가지, 그중 14가지는 무료입니다. 밝기 부스트도 그대로 있습니다.
+
+• 무료: 잠자기 방지, 타이머, Focus(작업·휴식 주기), 휴식 알림, 클립보드 도구, 스크래치패드, 컬러 피커, 생성기(UUID·비밀번호·QR 코드 등), 세계 시계, 월간 캘린더, 사운드, 시스템 정보, 데스크톱(아이콘·노치 숨기기), Extra Dim.
+• Pro: 주석 달기 스크린샷, 화면 속 텍스트·QR 코드 읽기, 클립보드 관리자, 파일 선반, 앱별 음량, 블루투스 원클릭 연결, 뒤쪽 창 어둡게, 단축어, 다음 회의, 메뉴 막대 아이콘 숨기기(macOS 26 이하), 따뜻한 색(Warmth), XDR 밝기 부스트.
+• 단축어 동작: 단축어 앱, Spotlight, Siri에서 부스트를 켜고 끌 수 있으며, maxcandela://boost/on 같은 링크도 지원합니다.
+• 옵션: 키보드 단축키, 배터리 사용 시 일시 정지, 선택한 앱에서만 부스트, 디스플레이 선택, 로그인 시 실행, 메뉴 레이아웃.
 • Pro 무료 체험이 14일로 늘었습니다.
-• 창 정렬(Window Snapping)은 제거되었습니다. Mac App Store 앱은 다른 앱의 창을 움직일 수 없기 때문입니다.
 ```
 
 ---
@@ -386,13 +386,13 @@ App 界面为英文。
 ### What's New in This Version
 
 ```
-• 新增免费工具：专注（工作与休息循环）、休息提醒、便笺、月历、桌面（隐藏图标和刘海），以及生成器中的二维码。
-• 新增 Pro 工具：带标注的截图、识别屏幕上的二维码、文件架、按 App 调节音量、一键连接蓝牙、调暗后台窗口，以及月历中的日程。
-• Options > Menu Layout：可以把所有工具放在一个列表里，或分成五个简短的分组。
-• 快捷指令操作：可在“快捷指令”App、Spotlight 或 Siri 中打开、关闭或切换亮度增强，也支持 maxcandela://boost/on 等链接。
-• Extra Dim 现已对所有人免费。
+MaxCandela 现在是菜单栏工具箱：一个图标里有 27 款 Mac 工具，其中 14 款免费。亮度增强依然在。
+
+• 免费：防休眠、计时器、专注（工作与休息循环）、休息提醒、剪贴板工具、便笺、取色器、生成器（UUID、密码、二维码等）、世界时钟、月历、声音、系统信息、桌面（隐藏图标或刘海）以及 Extra Dim。
+• Pro：带标注的截图、读取屏幕上的文字和二维码、剪贴板管理器、文件架、按 App 调节音量、一键连接蓝牙、调暗后台窗口、快捷指令、下一个会议、隐藏菜单栏图标（macOS 26 及更早版本）、暖色（Warmth）和 XDR 亮度增强。
+• 快捷指令操作：可在“快捷指令”App、Spotlight 或 Siri 中开关亮度增强，也支持 maxcandela://boost/on 等链接。
+• 选项：键盘快捷键、使用电池时暂停、仅在所选 App 中增强、选择显示器、登录时启动以及菜单布局。
 • Pro 免费试用延长至 14 天。
-• 已移除窗口吸附（Window Snapping）：Mac App Store 中的 App 不能移动其他 App 的窗口。
 ```
 
 ---
@@ -457,11 +457,11 @@ Privacidad: https://maxcandela.com/privacy/
 ### What's New in This Version
 
 ```
-• Nuevas herramientas gratis: Focus (ciclos de trabajo y descanso), recordatorios de descanso, bloc de notas, calendario del mes, Escritorio (oculta iconos y el notch) y códigos QR en el generador.
-• Nuevas herramientas Pro: capturas con anotaciones, lectura de códigos QR en pantalla, estante de archivos, volumen por app, Bluetooth en un clic, atenuar ventanas del fondo y eventos en el calendario.
-• Options > Menu Layout: todas las herramientas en una sola lista o en cinco grupos cortos.
-• Acciones de Atajos: enciende, apaga o alterna el aumento de brillo desde la app Atajos, Spotlight o Siri, o con enlaces como maxcandela://boost/on.
-• Extra Dim ahora es gratis para todos.
+MaxCandela ahora es una caja de herramientas para la barra de menús: 27 herramientas para Mac en un solo icono, 14 de ellas gratis. El aumento de brillo sigue ahí.
+
+• Gratis: Mantener despierto, temporizador, Focus (ciclos de trabajo y descanso), recordatorios de descanso, herramientas del portapapeles, bloc de notas, selector de color, generador (UUID, contraseñas, códigos QR y más), reloj mundial, calendario mensual, sonido, información del sistema, Escritorio (ocultar iconos o el notch) y Extra Dim.
+• Pro: captura de pantalla con anotaciones, texto y códigos QR de la pantalla, gestor del portapapeles, estante de archivos, volumen por app, Bluetooth con un clic, atenuar ventanas de fondo, Atajos, próxima reunión, ocultar iconos de la barra de menús (hasta macOS 26), Calidez (Warmth) y el aumento de brillo XDR.
+• Acciones de Atajos: enciende o apaga el aumento desde la app Atajos, Spotlight o Siri, o con enlaces como maxcandela://boost/on.
+• Opciones: atajo de teclado, pausa con batería, aumento solo en las apps elegidas, elección de pantalla, abrir al iniciar sesión y diseño del menú.
 • La prueba gratuita de Pro ahora dura 14 días.
-• Se eliminó el ajuste de ventanas (Window Snapping): las apps de la Mac App Store no pueden mover las ventanas de otras apps.
 ```
