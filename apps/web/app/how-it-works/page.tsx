@@ -192,7 +192,7 @@ export default function HowItWorksPage() {
         display, the app will too.
       </p>
       <p>
-        It is free for 5 days from the{' '}
+        It is free for 14 days from the{' '}
         <a href={APP_STORE_URL}>Mac App Store</a>, then $9.99 once or $0.99 a
         month. It needs a MacBook Pro 14″/16″ (2021 or later) or a Pro Display
         XDR — a MacBook Air or an ordinary external monitor has no headroom to

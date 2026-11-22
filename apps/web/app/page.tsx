@@ -5,7 +5,7 @@ import NavBar from '@/components/NavBar';
 import SiteFooter from '@/components/SiteFooter';
 import ScrollLink from '@/components/ScrollLink';
 import BeforeAfter from '@/components/BeforeAfter';
-import { MockMenu, MockMenuBar } from '@/components/MenuMock';
+import { MenuShot, MockMenuBar } from '@/components/MenuMock';
 import { useBoost } from '@/components/BoostProvider';
 import { APP_STORE_URL, SITE_NAME, SITE_ORIGIN, SITE_URL } from '@/lib/site';
 
@@ -26,8 +26,11 @@ const COMPARE_BOOSTED = {
 
 // The free tools. Each line states what the app does today — check it
 // against apps/macos/Sources/MaxCandela/Tools before adding or rewording a
-// card. The counts in the copy are derived from these arrays: "eight" is
-// TOOLS.length, "17" is TOOLS + PRO_TOOLS + the three display tools.
+// card. The counts in the copy are derived from these arrays: "14 free" is
+// TOOLS.length (13) + Extra Dim (free since 2026-11-22), "27" is TOOLS +
+// PRO_TOOLS (11) + the three display tools. Hide Menu Bar Icons is counted
+// although macOS 27 hides it (see its card); Window Snapping is not — the
+// App Store build hides it everywhere (WindowSnapTool.isAvailable).
 const TOOLS = [
   {
     title: 'Keep Awake',
@@ -38,8 +41,20 @@ const TOOLS = [
     text: 'A countdown that sits next to the menu-bar icon while it runs and chimes when it’s done.',
   },
   {
+    title: 'Focus',
+    text: 'Work in blocks with breaks between them — 25/5, 50/10 or 90/20 minutes, with a longer break after every fourth block. The countdown sits in the menu bar and a chime marks each change.',
+  },
+  {
+    title: 'Breaks',
+    text: 'After 20, 30, 45 or 60 minutes of screen time, a small panel asks you to look at something 20 feet away for 20 seconds, then closes itself. It never takes focus, so your typing carries on.',
+  },
+  {
     title: 'Clipboard tools',
     text: 'Change the case of copied text, trim it, sort lines, URL- and Base64-encode or decode, format JSON. Optional history of the last 15 things you copied — kept in memory only.',
+  },
+  {
+    title: 'Scratchpad',
+    text: 'A small floating notes window for text you need for a minute. It saves as you type and is still there after a restart.',
   },
   {
     title: 'Color picker',
@@ -47,11 +62,15 @@ const TOOLS = [
   },
   {
     title: 'Generate',
-    text: 'A UUID, a strong password, a Unix timestamp, an ISO date or a paragraph of filler text — one click, straight to your clipboard.',
+    text: 'A UUID, a strong password, a Unix timestamp, an ISO date or a paragraph of filler text — one click, straight to your clipboard. It also turns the link or text you copied into a QR code.',
   },
   {
     title: 'World clock',
     text: 'The time in the cities you work with, and whether it’s already tomorrow there.',
+  },
+  {
+    title: 'Calendar',
+    text: 'This month as a grid in the menu, with week numbers and the date in the menu bar if you want them. With Pro and Calendar access, days with events get a dot and a click lists them.',
   },
   {
     title: 'Sound',
@@ -61,6 +80,10 @@ const TOOLS = [
     title: 'System at a glance',
     text: 'CPU, memory, free disk space, battery health and cycle count, uptime and your local IP address — live, and click any line to copy it.',
   },
+  {
+    title: 'Desktop',
+    text: 'Hide your desktop icons under a copy of your wallpaper or a plain colour; clicks still reach them. Hide the Notch paints the menu-bar strip black so the camera housing blends in, while the menu bar shows white text.',
+  },
 ];
 
 // The Pro tools — each one stands in for an app people buy on its own.
@@ -68,10 +91,22 @@ const TOOLS = [
 // on first use (see the tool's type comment in apps/macos), or null.
 const PRO_TOOLS: { kind: string; needs: string | null; title: string; text: string }[] = [
   {
-    kind: 'Menu bar organiser',
-    needs: null,
-    title: 'Hide menu bar icons',
-    text: 'Tuck the icons you rarely need behind a chevron and bring them back with a click. Hold ⌘ and drag to choose which.',
+    kind: 'Screenshot app',
+    needs: 'Screen Recording',
+    title: 'Screenshot and markup',
+    text: 'Capture a region, a window or the whole screen, then mark it up — arrow, rectangle, text, highlighter, pixelate, redact, crop, with undo — and copy it or save it.',
+  },
+  {
+    kind: 'Screen text reader',
+    needs: 'Screen Recording',
+    title: 'Copy text from screen',
+    text: 'Drag a box over a video, an image or a PDF that won’t select, and the text in it is on your clipboard. Recognised on your Mac, never uploaded.',
+  },
+  {
+    kind: 'QR code reader',
+    needs: 'Screen Recording',
+    title: 'Scan QR code from screen',
+    text: 'Drag a box over a QR code or barcode on a slide, a web page or a video call, and what it holds is on your clipboard. Read on your Mac.',
   },
   {
     kind: 'Clipboard manager',
@@ -80,16 +115,34 @@ const PRO_TOOLS: { kind: string; needs: string | null; title: string; text: stri
     text: 'The last 200 things you copied in a searchable window on ⌃⌥⌘V. Pin what you reuse, and keep it between restarts if you choose to.',
   },
   {
-    kind: 'Window manager',
-    needs: 'Accessibility',
-    title: 'Window snapping',
-    text: 'Send the front window to a half, a quarter, the full screen or the centre — from the menu or with ⌃⌥ and the arrow keys.',
+    kind: 'File shelf',
+    needs: null,
+    title: 'File Shelf',
+    text: 'Park files on a floating shelf mid-task and drag them out where they’re needed. Convert images to JPEG, PNG or HEIC, resize them and leave out the location; merge PDFs. New files go to Downloads.',
   },
   {
-    kind: 'Screen text reader',
-    needs: 'Screen Recording',
-    title: 'Copy text from screen',
-    text: 'Drag a box over a video, an image or a PDF that won’t select, and the text in it is on your clipboard. Recognised on your Mac, never uploaded.',
+    kind: 'Volume mixer',
+    needs: 'System Audio Recording',
+    title: 'App Volume',
+    text: 'A volume slider and mute for each app that is playing sound, from silent to 200%. The sound is adjusted live on your Mac — never recorded or sent.',
+  },
+  {
+    kind: 'Bluetooth menu',
+    needs: 'Bluetooth',
+    title: 'Bluetooth',
+    text: 'Your paired headphones, speakers, keyboards and mice, each one click to connect or disconnect. Battery levels show for devices that report them the standard way; AirPods and Apple’s Magic accessories don’t.',
+  },
+  {
+    kind: 'Window dimmer',
+    needs: null,
+    title: 'Dim background windows',
+    text: 'Darken every window except the app you’re working in, with a slider for how dark. Menus and alerts stay bright.',
+  },
+  {
+    kind: 'Menu bar organiser',
+    needs: null,
+    title: 'Hide menu bar icons',
+    text: 'Tuck the icons you rarely need behind a chevron and bring them back with a click. Hold ⌘ and drag to choose which. macOS 26 and earlier: macOS 27 has its own overflow, and the tool is not offered there.',
   },
   {
     kind: 'Automation',
@@ -105,7 +158,8 @@ const PRO_TOOLS: { kind: string; needs: string | null; title: string; text: stri
   },
 ];
 
-// The display tools — the part of the app behind MaxCandela Pro.
+// The display tools. The boost and Warmth are MaxCandela Pro; Extra Dim is
+// free (BrightnessController.idleScale takes no licence).
 const FEATURES = [
   {
     title: 'XDR brightness boost',
@@ -148,15 +202,15 @@ const FAQS = [
   },
   {
     q: 'Which Macs are supported?',
-    a: 'Every tool except the brightness boost runs on any Mac with macOS 15.6 or later — MacBook Air, iMac and Mac mini included. The brightness boost needs a display with HDR headroom: a MacBook Pro 14″ or 16″ with the Liquid Retina XDR display, or a Pro Display XDR. Those panels can sustain ~1,000 nits while macOS holds everyday content near 600. MacBook Air, iMac and ordinary external monitors have no headroom to unlock. Two newer cases we have not been able to confirm: MacBook Pros with an M5 Pro or M5 Max chip, where a macOS bug is reported to stop display adjustments of this kind from taking effect, and the PROLED XDR display, which we have not tested. The app tells you straight away if your display has no headroom, the browser demo on this page is an honest test, and the display tools are free to try for 5 days — check that the boost visibly works on your Mac before you buy.',
+    a: 'Every tool except the brightness boost runs on any Mac with macOS 15.6 or later — MacBook Air, iMac and Mac mini included — with one exception: Hide Menu Bar Icons is offered on macOS 26 and earlier only, because macOS 27 has its own menu-bar overflow and the App Store sandbox blocks the technique there. The brightness boost needs a display with HDR headroom: a MacBook Pro 14″ or 16″ with the Liquid Retina XDR display, or a Pro Display XDR. Those panels can sustain ~1,000 nits while macOS holds everyday content near 600. MacBook Air, iMac and ordinary external monitors have no headroom to unlock. Two newer cases we have not been able to confirm: MacBook Pros with an M5 Pro or M5 Max chip, where a macOS bug is reported to stop display adjustments of this kind from taking effect, and the PROLED XDR display, which we have not tested. The app tells you straight away if your display has no headroom, the browser demo on this page is an honest test, and the boost is free to try for 14 days — check that the boost visibly works on your Mac before you buy.',
   },
   {
     q: 'What is free and what is Pro?',
-    a: 'The eight everyday tools — Keep Awake, Timer, the clipboard text tools with a short history, the color picker, Generate, World Clock, Sound and the system read-out — are free with no time limit. MaxCandela Pro adds the six Pro tools (Hide Menu Bar Icons, the clipboard manager, Window Snapping, Copy Text from Screen, Shortcuts and Next Meeting) and the three display tools (the XDR brightness boost, Extra Dim and Warmth). Pro is free for 5 days, then $0.99/month or $9.99 once.',
+    a: 'The 13 everyday tools — Keep Awake, Timer, Focus, Breaks, the clipboard text tools with a short history, Scratchpad, the color picker, Generate, World Clock, the Calendar month view, Sound, the system read-out and Desktop — are free with no time limit. So is Extra Dim. MaxCandela Pro adds the eleven Pro tools (Screenshot, Copy Text from Screen, Scan QR Code from Screen, the clipboard manager, File Shelf, App Volume, Bluetooth, Dim Background Windows, Hide Menu Bar Icons, Shortcuts and Next Meeting), events in the Calendar month view, the XDR brightness boost and Warmth. Pro is free for 14 days, then $0.99/month or $9.99 once.',
   },
   {
     q: 'Which tools ask for a system permission?',
-    a: 'Three, and only when you first use them: Window Snapping needs Accessibility (it is the only way one app may move another app’s windows), Copy Text from Screen needs Screen Recording (to read the box you draw, and nothing else), and Next Meeting needs Calendar access. None of the free tools asks for anything, and MaxCandela never asks at launch.',
+    a: 'Six of the Pro tools, and only when you first use them. Screenshot, Copy Text from Screen and Scan QR Code from Screen need Screen Recording, to capture what you select and nothing else. Next Meeting needs Calendar access (the Calendar month view shows events only if you have already granted it, and never asks). Bluetooth needs Bluetooth access, to list and connect your paired devices. App Volume needs System Audio Recording: to change one app’s volume, macOS passes that app’s sound through MaxCandela, which plays it at the level you set — live, never recorded or sent. None of the free tools asks for anything, and MaxCandela never asks at launch.',
   },
   {
     q: 'Will it drain my battery?',
@@ -164,7 +218,7 @@ const FAQS = [
   },
   {
     q: 'How does the free trial work?',
-    a: 'Download free from the Mac App Store and get 5 days with all of Pro unlocked as well as the free tools. The clock starts when your Apple ID first downloads MaxCandela, so open it soon after installing to get the full five days. After that, keep Pro for $0.99/month or unlock it forever for $9.99; the everyday tools stay free either way. One purchase works on all Macs signed into your Apple ID.',
+    a: 'Download free from the Mac App Store and get 14 days with all of Pro unlocked as well as the free tools. The clock starts when your Apple ID first downloads MaxCandela, so open it soon after installing to get the full 14 days. After that, keep Pro for $0.99/month or unlock it forever for $9.99; the everyday tools stay free either way. One purchase works on all Macs signed into your Apple ID.',
   },
   {
     q: 'I have a promo code — how do I use it?',
@@ -237,15 +291,16 @@ export default function Home() {
                 carry the heading weight now; the MacBook Pro brightness query
                 is served by the display section's h2 and /how-it-works/. */}
             <h1>
-              17 Mac tools.
+              27 Mac tools.
               <br />
               <span className="hl">One menu-bar icon.</span>
             </h1>
             <p className="subtitle">
-              Keep Awake, a timer, clipboard tools, a color picker and more —
-              free. Pro replaces a shelf of paid utilities: window snapping, a
-              clipboard manager, hidden menu-bar icons, text capture, and an
-              XDR brightness boost for MacBook Pro.
+              Keep Awake, focus sessions, break reminders, clipboard tools, a
+              scratchpad and more — free. Pro replaces a shelf of paid
+              utilities: screenshots with markup, a clipboard manager, a file
+              shelf, per-app volume, text capture, and an XDR brightness boost
+              for MacBook Pro.
             </p>
             <div className="cta-row">
               <a className="app-store-link" href={APP_STORE_URL} aria-label="Download on the Mac App Store">
@@ -262,12 +317,12 @@ export default function Home() {
               </ScrollLink>
             </div>
             <ul className="hero-meta">
-              <li>Eight tools free, no time limit</li>
+              <li>14 tools free, no time limit</li>
               <li>Any Mac with macOS 15.6 or later</li>
               <li>No account</li>
             </ul>
           </div>
-          <MockMenu />
+          <MenuShot />
           </div>
         </section>
 
@@ -275,10 +330,10 @@ export default function Home() {
         <section className="block" id="tools">
           <div className="section-head">
             <span className="section-label">Free</span>
-            <h2>The everyday Mac utilities, without eight separate apps</h2>
+            <h2>The everyday Mac utilities, without 13 separate apps</h2>
             <p className="section-sub">
               One icon in the menu bar instead of a row of them. None of these
-              needs an account, a permission prompt or a window.
+              needs an account or a permission prompt.
             </p>
           </div>
           <dl className="spec">
@@ -295,11 +350,11 @@ export default function Home() {
         <section className="block" id="pro">
           <div className="section-head">
             <span className="section-label">MaxCandela Pro</span>
-            <h2>Six tools people usually buy one app at a time</h2>
+            <h2>Eleven tools people usually buy one app at a time</h2>
             <p className="section-sub">
-              A window manager, a clipboard manager, a menu-bar organiser and
-              a screen text reader are each their own purchase elsewhere. Here
-              they are one unlock, free to try for 5 days.
+              A screenshot tool, a clipboard manager, a file shelf, a volume
+              mixer and a menu-bar organiser are each their own purchase
+              elsewhere. Here they are one unlock, free to try for 14 days.
             </p>
           </div>
           <div className="panels">
@@ -321,11 +376,12 @@ export default function Home() {
         {/* ---- Display tools (Pro) ---- */}
         <section className="block" id="display">
           <div className="section-head">
-            <span className="section-label">MaxCandela Pro · Display</span>
+            <span className="section-label">Display</span>
             <h2>Brighter, dimmer, warmer — control macOS doesn’t give you</h2>
             <p className="section-sub">
               The brightness boost needs a MacBook Pro XDR display. Extra Dim
-              and Warmth work on any Mac.
+              and Warmth work on any Mac. Extra Dim is free; the boost and
+              Warmth are part of Pro.
             </p>
           </div>
           <div className="trio">
@@ -406,9 +462,9 @@ export default function Home() {
         <section className="block pricing" id="pricing">
           <div className="section-head">
             <span className="section-label">Pricing</span>
-            <h2>Eight tools free — all 17 for $9.99 once</h2>
+            <h2>14 tools free — all 27 for $9.99 once</h2>
             <p className="section-sub">
-              The everyday tools cost nothing. Pro is free for 5 days, then
+              The everyday tools and Extra Dim cost nothing. Pro is free for 14 days, then
               pick what suits you. The brightness boost needs a MacBook Pro XDR
               display — check that it works on yours during the trial before
               you buy.
@@ -421,10 +477,12 @@ export default function Home() {
                 $0<span className="price-per"> forever</span>
               </p>
               <ul>
-                <li>Keep Awake and Timer</li>
+                <li>Keep Awake, Timer and Focus</li>
+                <li>Breaks, Scratchpad and Calendar</li>
                 <li>Clipboard tools and Generate</li>
                 <li>Color picker and World Clock</li>
-                <li>Sound and System read-out</li>
+                <li>Sound, System and Desktop</li>
+                <li>Extra Dim for dark rooms</li>
               </ul>
               <a className="cta cta-secondary" href={APP_STORE_URL}>
                 Download free
@@ -437,10 +495,11 @@ export default function Home() {
               </p>
               <ul>
                 <li>Everything in Free</li>
-                <li>Window snapping, clipboard manager</li>
-                <li>Hide menu bar icons, text capture</li>
-                <li>Shortcuts and Next Meeting</li>
-                <li>XDR brightness boost, Extra Dim, Warmth</li>
+                <li>Screenshot and markup, text and QR capture</li>
+                <li>Clipboard manager and File Shelf</li>
+                <li>App Volume, Bluetooth, window dimming</li>
+                <li>Hidden icons, Shortcuts, Next Meeting</li>
+                <li>XDR brightness boost and Warmth</li>
                 <li>Cancel anytime in the App Store</li>
               </ul>
               <a className="cta cta-secondary" href={APP_STORE_URL}>
@@ -456,10 +515,11 @@ export default function Home() {
               </p>
               <ul>
                 <li>Everything in Free</li>
-                <li>Window snapping, clipboard manager</li>
-                <li>Hide menu bar icons, text capture</li>
-                <li>Shortcuts and Next Meeting</li>
-                <li>XDR brightness boost, Extra Dim, Warmth</li>
+                <li>Screenshot and markup, text and QR capture</li>
+                <li>Clipboard manager and File Shelf</li>
+                <li>App Volume, Bluetooth, window dimming</li>
+                <li>Hidden icons, Shortcuts, Next Meeting</li>
+                <li>XDR brightness boost and Warmth</li>
                 <li>Pays for itself in 11 months</li>
               </ul>
               <a className="cta cta-primary" href={APP_STORE_URL}>
@@ -537,8 +597,8 @@ const homeSchema = {
       sameAs: [APP_STORE_URL],
       publisher: { '@id': `${SITE_ORIGIN}#organization` },
       description:
-        'MaxCandela is a menu-bar toolbox for Mac. Free: Keep Awake, a timer, clipboard tools, a color picker, generators, world clocks, a sound switcher and a system read-out. Pro: window snapping, a clipboard manager, hidden menu-bar icons, text capture from the screen, Shortcuts, next meeting, and display tools including an XDR brightness boost for MacBook Pro.',
-      // The app itself is free to download and the eight tools are free to
+        'MaxCandela is a menu-bar toolbox for Mac. Free: Keep Awake, a timer, focus sessions, break reminders, clipboard tools, a scratchpad, a color picker, generators including QR codes, world clocks, a month calendar, a sound switcher, a system read-out, desktop icon and notch hiding, and Extra Dim. Pro: screenshots with markup, text and QR code capture from the screen, a clipboard manager, a file shelf, per-app volume, Bluetooth quick-connect, background window dimming, hidden menu-bar icons, Shortcuts, next meeting, and display tools including an XDR brightness boost for MacBook Pro.',
+      // The app itself is free to download and the free tools are free to
       // keep; the two Offers below are the optional Pro unlock.
       isAccessibleForFree: true,
       // `category: In-app purchase` matters: the App Store listing is Free, so

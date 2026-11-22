@@ -2,8 +2,9 @@ import AppKit
 import Security
 
 /// Generate: small values people otherwise open a website for — a UUID, a
-/// strong password, the current timestamp, filler text. Each goes straight to
-/// the clipboard. Nothing is stored and nothing touches the network.
+/// strong password, the current timestamp, filler text, a QR code. Each goes
+/// straight to the clipboard. Nothing is stored and nothing touches the
+/// network.
 enum Generator: CaseIterable {
     case uuid, password, unixTime, isoDate, loremIpsum
 
@@ -79,6 +80,11 @@ final class GeneratorTool: MenuTool {
             item.tag = index
             submenu.addItem(item.symbol(generator.symbol))
         }
+        submenu.addItem(.separator())
+        let qrItem = NSMenuItem(title: "QR Code from Clipboard", action: #selector(makeQRCode), keyEquivalent: "")
+        qrItem.target = self
+        qrItem.toolTip = "Turns the text on the clipboard — a link, a note, anything — into a QR code picture to paste."
+        submenu.addItem(qrItem.symbol("qrcode"))
         menuItem.submenu = submenu
         menuItem.symbol("wand.and.stars")
     }
@@ -91,5 +97,17 @@ final class GeneratorTool: MenuTool {
         }
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(value, forType: .string)
+    }
+
+    /// Replaces the clipboard's text with a picture of it as a QR code. Beeps
+    /// and leaves the clipboard alone when there is no text, or too much for
+    /// a QR code to hold (see `QRCode.image(for:)`).
+    @objc private func makeQRCode() {
+        guard let text = NSPasteboard.general.string(forType: .string),
+              let image = QRCode.image(for: text),
+              ImageExport.copy(image, pixelsPerPoint: 1) else {
+            NSSound.beep()
+            return
+        }
     }
 }

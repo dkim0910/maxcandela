@@ -34,7 +34,8 @@ Shared tooling lives in `scripts/`.
 
 ## Business model / App Store
 
-Free download on the Mac App Store, 5-day full trial, then in-app purchase:
+Free download on the Mac App Store, 14-day full trial (5 days until 2026-11-22),
+then in-app purchase:
 
 - `com.maxcandela.pro.lifetime` — non-consumable, **$9.99**
 - `com.maxcandela.pro.monthly` — auto-renewable subscription, **$0.99/month**
@@ -308,7 +309,7 @@ deliberately lives in the demo section); `components/LegalShell.tsx` +
   the values landed within seconds (verified `trial` / `3` from a
   `FORCE_TRIAL=3` run). `syncPurchases()` runs after Restore Purchases. App user ID is
   `Analytics.clientID` — the GA UUID — so there is still exactly one anonymous
-  identifier. **Our 5-day trial does not appear on RevenueCat's "Trials"
+  identifier. **Our app-side trial does not appear on RevenueCat's "Trials"
   chart**: that chart counts App Store introductory free trials on
   subscriptions, which we don't offer; the app-side clock is invisible to the
   store. Filter on `license_state` instead. Key handling mirrors GA: public
@@ -406,6 +407,10 @@ Tools/                 → the toolbox: MenuTool (contract), KeepAwakeTool,
                          WorldClockTool, AudioTool, SystemTool; Pro (ProGate):
                          MenuBarHiderTool, WindowSnapTool, ScreenTextTool,
                          ShortcutsTool, CalendarTool. See "The toolbox pivot".
+BoostAutomation       → Shortcuts actions + maxcandela://boost/on|off|toggle
+                         route through MenuBarController.setBoostFromAutomation:
+                         the click's rules, no dialogs. BoostIntents holds the
+                         App Intents (metadata only in the Xcode build).
 ConversionTracker     → RevenueCat in "purchases completed by my app" mode:
                          registers the install at launch, records StoreKit 2
                          purchases after StoreManager verifies them, mirrors
@@ -436,7 +441,7 @@ swift build -c release      # release
 xcodegen generate && open MaxCandela.xcodeproj
                             # open in Xcode (Archive / App Store upload live there —
                             #   the .xcodeproj is gitignored, so generate it first)
-swift test                  # unit tests — 113 across Adjustments, BoostLogic,
+swift test                  # unit tests — 303 across Adjustments, BoostLogic,
                             #   ConversionTracker, DisplayManager, SupportMessages, Tools. Pure logic only: no test can
                             #   observe the backlight, see "Verifying a
                             #   brightness change actually works".
@@ -492,9 +497,10 @@ file requires — do that before shipping.
   the current warmth (`gamma.apply(scale:warmth:to:)`).
 - **Licence.** `BrightnessController.licensed` is false until
   `MenuBarController.enforceLicense()` calls `setLicensed()`; expired →
-  `suspendForLicense()` clears it and the adjustments go back to native (saved
-  values kept). The sliders are disabled when expired. So Extra Dim and Warmth
-  are **Pro features** — Daniel has not confirmed that choice.
+  `suspendForLicense()` clears it and Warmth goes back to native (saved value
+  kept); its slider is disabled when expired. Warmth is a **Pro feature**.
+  Extra Dim was too until 2026-11-22, when it went free and stopped depending
+  on `licensed` at all (see "BetterDisplay follow-ups").
 - **Pause on battery acts on transitions only** (`wasPausingForBattery`). The
   IOKit notification fires on every charge-percentage tick; a level-triggered
   version re-paused a boost the user had switched on by hand while on battery.
@@ -521,7 +527,8 @@ file requires — do that before shipping.
 
 Second pass, same day — also built, also **not verified on the glass**:
 
-- **Rating prompt** (`ReviewPrompt`). Paying customer only (not trial), ≥ 10
+- **Rating prompt** (`ReviewPrompt`). Paying or trial customer (never
+  expired — trial users were let in 2026-11-22, see below), ≥ 10
   boost switch-ons over ≥ 7 days, once per app version, never on a chip in
   `KnownIssues`, 3 s after the click. DEBUG logs instead of asking. Apple
   decides whether the system sheet actually appears; whether it shows at all
@@ -605,7 +612,8 @@ reverse, not as things he spelled out:
 - **Tools free, display tools Pro.** Seven tools (now including **Generate** —
   UUID / password via `SecRandomCopyBytes` with rejection sampling / Unix time
   / ISO date / lorem — and **World Clock**, 20 fixed cities, "tomorrow /
-  yesterday" suffix) have no licence check. Pro = boost + Extra Dim + Warmth.
+  yesterday" suffix) have no licence check. Pro = boost + Warmth (Extra Dim
+  went free 2026-11-22).
   Paywall, licence line, welcome popover, site pricing (a third "Free" card)
   and `docs/app-store-listing.md` all say so. Reversing it means gating
   `MenuBarController.tools` and rewriting all of those.
@@ -707,10 +715,16 @@ in the header comment of `app/globals.css`; the short version:
   centred by default. Left-aligned, hairlines, one accent.
 - The hero **is** a MacBook screen (`.hero`: bezel, notch, system menu bar
   across the top, fading out at the bottom). The headline sits on the
-  desktop; `MockMenu` drops open from the ☀ in `MockMenuBar` at the right —
-  both in `components/MenuMock.tsx`, the app's menu drawn in HTML/CSS. **It must mirror `MenuBarController.buildMenu()`**; a row
-  the app lacks is a false claim. Replace it with a real screenshot when one
-  exists.
+  desktop; `MenuShot` drops open from the ☀ in `MockMenuBar` at the right —
+  both in `components/MenuMock.tsx`. The menu bar is drawn in HTML/CSS; the
+  **menu is a real capture** (`public/menu-main-{1x,2x}.webp`, true size 278
+  CSS px; since 2026-11-22 the next release's sandbox-gated flat menu, 973 pt,
+  cropped by the hero's fade via a −410 px bottom margin) since 2026-11-22. The HTML drawing it replaced had drifted (no
+  icons, no Warmth Schedule, nothing below Pro Tools). After any change to
+  `MenuBarController.buildMenu()`, re-run `scripts/make-app-screenshots.sh`
+  then `scripts/optimize-web-images.sh` (which crops `raw/main.png` via
+  `scripts/crop-menu-shot.swift`), and update the `<img>` width/height if the
+  menu's size changed.
 - Free tools are a definition list (`.spec`); the six Pro tools are the only
   boxed items (`.panels`, each with its category and any permission it asks
   for); display tools are a three-up (`.trio`).
@@ -721,8 +735,14 @@ in the header comment of `app/globals.css`; the short version:
   popover text. Re-shoot them (`assets/screenshots/`, then
   `scripts/optimize-web-images.sh`).
 
-**App Store screenshots (2026-11-21).** `scripts/make-app-screenshots.sh`
-regenerates all five into `assets/screenshots/store/` (2880×1800, opaque PNG).
+**App Store screenshots (2026-11-21; new set 2026-11-22).** `scripts/make-app-screenshots.sh`
+regenerates all six into `assets/screenshots/store/` (2880×1800, opaque PNG):
+toolbox, calendar, focus/breaks, clipboard, present (desktop/keep
+awake/dimmer), generate/clocks. Captures run with `APP_SANDBOX_CONTAINER_ID`
+set so they show the App Store build's tool list (no Window Snapping), the
+flat layout, and — for the calendar — an expired trial, so no real events can
+appear. A markup-editor screenshot was tried twice and dropped (Daniel:
+"looks bad"); don't re-add it unasked.
 They are composed from **real captures** of the menus: the debug app's
 screenshot mode (`MAXCANDELA_SHOT`, bottom of `MenuBarController.swift`)
 covers the whole screen with an opaque backdrop, opens one real menu over it
@@ -732,6 +752,144 @@ corner is not the backdrop colour. Each shot blanks the screen for ~6 s.
 Re-run after any change to the menu. Not covered: the brightness effect
 itself (the old before/after pair is stale), the clipboard panel, and
 anything behind a permission.
+
+### BetterDisplay follow-ups (2026-11-22) — built, NOT yet released or verified on the glass
+
+Daniel asked for a comparison with BetterDisplay and then for every
+recommendation from it. What landed, in that order:
+
+1. **Rating prompt asks trial users too** (`ReviewPrompt.shouldAsk(license:)`):
+   anything but `.expired`. The store had 0 ratings. Only reachable now that
+   the trial (14 days) is longer than the 7-day usage bar.
+2. **Boost coverage research** — `docs/boost-coverage.md`. BetterDisplay's four
+   methods, what a non-gamma-table path would cost (capture-and-remap), and the
+   order to act in. **External HDR monitors already qualify in code**
+   (`supportsBoost` is just `potentialHeadroom > 1.0`) but are untested.
+3. **Extra Dim is free.** `idleScale(extraDim:)` lost its licence argument; the
+   1.0 cap is what stops a free feature becoming a free boost. Warmth stays Pro.
+   Paywall, welcome, site, listing and support copy updated. **Verified on
+   hardware**: Extra Dim 0.6 reads back 0.7928 (= 0.6^(1/2.2)) on an expired
+   trial; boost on lifts past it, off returns to 0.7928 rather than ColorSync.
+4. **Shortcuts actions + URL scheme.** `BoostAutomation.swift`,
+   `BoostIntents.swift`, `CFBundleURLTypes` in Info.plist,
+   `AppDelegate.application(_:open:)`. Verified: an Xcode build extracts all
+   three intents and three App Shortcuts into `Metadata.appintents`.
+   **Links verified on hardware 2026-11-22** (Xcode debug build, M1 Pro,
+   results read back with `CGGetDisplayTransferByTable` from another process —
+   that *does* see our tables): on / off / toggle; on-while-on and
+   off-while-off change nothing; unknown links ignored; expired → `needsPro`
+   with no paywall; forced no-headroom → `noHeadroom` with no alert; a link
+   that cold-launches the app is queued until the menu exists, then runs.
+   That run found a real bug, now fixed: an `on` waiting on the licence check
+   could be overtaken by a later `off` (off, on, off, on ran as off, off, on,
+   on), so `BoostAutomation` now runs commands strictly in arrival order.
+   Two batches before the fix also took 5–6 s to run; after it, ~60 ms. The
+   cause of the delay was not pinned down. **Shortcuts app itself not run**:
+   the unsigned debug build cannot reach `linkd` (`NSCocoaErrorDomain 4097`
+   in the log), so test the actions in a signed build. The scheme could only
+   be driven with `open -a <build> <url>`: LaunchServices would not route
+   `maxcandela:` to a build in /private/tmp while the installed 1.1.8 (no
+   scheme) owns the bundle ID.
+5. **Six listing localizations** — `docs/app-store-listing-localized.md`
+   (ja, de-DE, fr-FR, ko, zh-Hans, es-MX), drafted by Claude, no prices, each
+   says the app is English-only. Need a native read before submitting.
+   `check-listing-lengths.py` takes the file as an argument.
+6. **`/betterdisplay-alternative/`** — comparison page, in the sitemap and the
+   footer. Every BetterDisplay claim is sourced and dated in the file's header
+   comment; re-check them before any edit. Checked in Chrome at desktop width
+   and at 390 px (in an iframe — the window would not resize): the table's
+   520 px floor hid the BetterDisplay column on phones, so under 600 px it now
+   shrinks to fit. No page on the site overflows sideways at 390 px.
+7. **Trial 5 → 14 days** (`StoreManager.trialDays`). `/terms` bumped to
+   November 22, 2026 (material change), and its "continued use" bullet now
+   names Warmth and the Pro tools, not just the boost.
+
+`docs/app-store-listing.md` now describes this next version, not 2.0.0 (2.0.0
+went to review with the text in commit `7f65659`). ⚠️ **None of the web
+changes may reach `main` before the version carrying them is live** — the
+site would promise a 14-day trial, free Extra Dim and Shortcuts actions that
+the 2.0.0 binary does not have. Version numbers are not bumped yet: 2.0.0 is
+still in review.
+
+### Ten more tools (2026-11-22) — built, unit-tested, menus seen; NOT used on the glass
+
+From the research in `reports/Menu bar tools to add next.md` (ranked list,
+sources, and the "don't build" list with reasons). Built by seven parallel
+builders in private copies, merged here; `swift test` = **299 tests, 0
+failures** (302 with the Menu Layout tests). Every menu was captured from the real app (screenshot mode) and
+renders; nothing beyond that has been clicked through.
+
+| Tool | Tier | Files | New entitlement / prompt |
+|---|---|---|---|
+| Focus (work/break cycles, menu-bar countdown) | free | `FocusTool`, `ToolClock` | none |
+| Breaks (look-away reminder panel) | free | `BreaksTool`, `BreakPanel` | none — counts screen time via lock/sleep/screensaver notifications, not input |
+| Scratchpad | free | `ScratchpadTool`, `ScratchpadPanel` | none |
+| Calendar (month grid; events Pro) | free | `MonthCalendarTool`, `MonthGridView`, `MonthLayout`, `CalendarAccess` | none (shares Next Meeting's store) |
+| Desktop (Hide Desktop Icons, Hide the Notch) | free | `DesktopTool`, `OverlayWindow` | none; a photo wallpaper outside the container is unreadable → plain colour |
+| QR Code from Clipboard (in Generate) | free | `QRCode` | none |
+| Screenshot + markup editor | Pro | `ScreenshotTool`, `ScreenCapture`, `CaptureOverlay`, `Annotation*`, `ScreenshotEditor`, `ImageExport` | `files.user-selected.read-write` (Save…) |
+| Scan QR Code from Screen | Pro | `ScreenTextTool(reading: .codes)` | none (Screen Recording, as before) |
+| File Shelf (+ convert, merge PDFs) | Pro | `FileShelf*` | `files.user-selected.read-write`, `files.downloads.read-write` |
+| Dim Background Windows | Pro | `WindowDimmerTool` | none *if* window bounds stay readable without Screen Recording — undocumented; fails safe ("Paused") |
+| Bluetooth quick-connect | Pro | `BluetoothTool`, `BluetoothCentral` | `device.bluetooth` + `NSBluetoothAlwaysUsageDescription`; battery only via GATT Battery Service (AirPods/Magic devices show none) |
+| App Volume (per-app 0–200%) | Pro | `AppVolume*`, `ProcessTap` | `device.audio-input` + `NSAudioCaptureUsageDescription`; Core Audio process taps, macOS 14.2+ (`isSupported` hides it below). **Unproven sandboxed** — run the spike first: `scripts/spikes/tapspike/run-sandboxed.sh` |
+
+`ScreenTextTool`'s region overlay moved to `CaptureOverlay` and captures now
+exclude our own windows via the SCK filter (the 120 ms sleep is gone).
+`MenuTool` gained `isSupported`. The paywall text lists every Pro tool.
+
+- **Gated out where they can't work (2026-11-22)** — each tool's
+  `isAvailable` skips all setup (no hot keys, no status items) and
+  `isSupported` drops it from the menu:
+  - **Window Snapping: hidden in every sandboxed build.** Apple DTS: the
+    Accessibility API it moves windows with is not sandbox-compatible and no
+    entitlement fixes it (forums 820594, 854711; 794253 shows the failure).
+    Not tested on hardware — the gate rests on Apple's word. Re-test:
+    `defaults write <bundle id> com.maxcandela.windowSnapInSandbox -bool true`.
+  - **Hide Menu Bar Icons: hidden on macOS 27+ when sandboxed** (Hidden Bar's
+    App Store listing says the sandbox blocks the technique there; 27 has a
+    native overflow). Kept on 26 and earlier. Re-test on 27:
+    `com.maxcandela.menuBarHiderOn27`.
+  - The paywall's Pro list is built from the tools actually present
+    (`MenuBarController.proToolList`), so a hidden tool is never sold.
+  - Verified by capturing the real menu with `APP_SANDBOX_CONTAINER_ID` set:
+    Window Snapping gone, Hide Menu Bar Icons present, flat menu 973 pt.
+- **Dim Background Windows works without Screen Recording on macOS 26**
+  (measured 2026-11-22, macOS 26.6.2): a sandboxed probe app with no Screen
+  Recording grant got PID, layer, bounds and owner name for every other
+  app's window (window *titles*: 1 of 7). macOS 27 untested.
+- **App Volume:** the spike's read-only `list` mode runs sandboxed (devices
+  and the process list visible). The tap itself is still unproven — it needs
+  audio playing and a human to answer the System Audio Recording prompt:
+  `scripts/spikes/tapspike/run-sandboxed.sh list` to find a PLAYING pid,
+  then `… <pid> 150 15` (+7 dB for 15 s). Its header lists every check.
+- **Menu Layout is a user choice** (Options ▸ Menu Layout, `MenuLayout` in
+  `MenuGroups.swift`). **"All Tools in One List" is the default** (Daniel's
+  call, 2026-11-22, over the recommendation): 997 pt — taller than the space
+  under the menu bar on a 14″ MacBook Pro (~949 pt) or 13″ Air (~923 pt),
+  where macOS scrolls it and Options/Legal/Quit drop below the fold (the
+  reachability App Review raised in the 1.0.4 rejection — mention the
+  setting in the review notes). "Grouped by Category" is five rows
+  (`MenuGroup`), 506 pt, fits every Mac.
+  Switching re-lays-out live (`reinstallToolSection`); tool rows are reused,
+  so each must leave its old menu first. `MenuGroupsTests` fails if a tool
+  in `tools` has no group. DEBUG: `MAXCANDELA_MENU_LAYOUT=flat|grouped`,
+  `MAXCANDELA_SHOT=group:time` (open one group), `MAXCANDELA_SHOT_RELAYOUT=1`
+  (exercise the re-layout before capturing).
+- **Site, both listing drafts and `/privacy` now describe this release**
+  (2026-11-22): 27 tools, 14 free; Window Snapping removed everywhere; new
+  permissions disclosed; App Review notes cover the four new entitlements.
+  They are working-tree changes, held until this release is live. Before
+  deploying, click through every new tool on real hardware and **cut the card
+  (site + listings) for any that fails** — the copy is ahead of the evidence
+  for most of them. Still console-side: the App Store **privacy label** needs
+  the new data types reviewed, and the localized drafts need a fluent reader.
+- New DEBUG flags: `MAXCANDELA_FAST_TIME=60` (Focus/Breaks clock ×60),
+  `MAXCANDELA_FORCE_NO_WINDOW_BOUNDS=1` (dimmer fail-safe path).
+- A sandboxed test copy can be made from the Xcode Debug build: copy the
+  .app, set `CFBundleIdentifier` to `com.maxcandela.MaxCandela.sandboxtest`
+  (own container — never the store app's), then
+  `codesign --force --deep --sign - --entitlements Resources/MaxCandela.entitlements`.
 
 ### DEBUG-only preview flags (macOS)
 
@@ -1124,7 +1282,8 @@ does disabling instantly restore it) is required before claiming it works.
       moment kept boosting. Versioned as **1.0.9 (9)** — LIVE on the Mac App
       Store since 2026-07-27.
 - [x] **Trial starts at download, not first open — SETTLED 2026-07-28, do not
-      re-open.** `AppTransaction.originalPurchaseDate` anchors the 5-day clock,
+      re-open.** `AppTransaction.originalPurchaseDate` anchors the trial clock
+      (5 days then, 14 since 2026-11-22 — the anchor is settled, the length is not),
       so someone who downloads today and opens in a week gets a short trial,
       and at 6+ days none at all — their first click is the paywall. That is
       the accepted cost of a tamper-proof anchor, chosen over fairness on
@@ -1134,7 +1293,7 @@ does disabling instantly restore it) is required before claiming it works.
       *not* the fix: it adds friction, but the user can still delete the item.
       Disclosed in both places, verified 2026-07-28 — `/terms` ("measured from
       the date your Apple Account first downloads MaxCandela") and the home FAQ
-      ("open it soon after installing to get the full five days"); keep that
+      ("open it soon after installing to get the full 14 days"); keep that
       copy accurate if the clock ever changes.
       The one idea worth costing if it is ever reconsidered: start at first
       launch but hard-expire at `originalPurchaseDate + N days`, which bounds
@@ -1429,6 +1588,8 @@ None of these are code; all were verified live on 2026-08-27.
       Do this *after* the canonical fix deploys — before it, the four secondary
       pages will keep reporting as "Alternate page with proper canonical tag"
       and any Request-Indexing quota spent on them is wasted.
+- [x] *(2026-11-22: `/betterdisplay-alternative/` built — see "BetterDisplay
+      follow-ups". The Vivid page below is still not.)*
 - [ ] Content: a `/vivid-alternative/` comparison page is the highest-value
       addition still outstanding (competitors rank for "Vivid alternative" with
       dedicated pages). **Not built** — it requires competitor pricing and
@@ -1450,6 +1611,14 @@ None of these are code; all were verified live on 2026-08-27.
 Keep this list current as work lands.
 
 ## Gotchas
+
+- **`defaults write com.maxcandela.MaxCandela …` edits the *store* app's
+  sandbox container**, not the plist an unsandboxed dev build reads: the
+  `defaults` CLI redirects a bundle ID to its container when one exists. To
+  seed a `swift run` / Xcode-debug build, pass the file path instead:
+  `defaults write ~/Library/Preferences/com.maxcandela.MaxCandela <key> …`.
+  Getting this wrong silently tests stale values *and* writes test values into
+  the user's real install (found the hard way 2026-11-22).
 
 - EDR headroom is **dynamic**. Code that samples it once and caches will clamp
   wrong. Observe it.

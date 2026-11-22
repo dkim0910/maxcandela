@@ -52,6 +52,8 @@ final class MenuBarHiderTool: MenuTool {
         menuItem.submenu = submenu
         menuItem.symbol("menubar.rectangle")
 
+        // Not available here → no divider status items, nothing observed.
+        guard Self.isAvailable else { return }
         ProGate.shared.observe { [weak self] allowed in
             // Pro lapsed: give the menu bar back exactly as macOS lays it out.
             if allowed { self?.restore() } else { self?.remove() }
@@ -59,6 +61,25 @@ final class MenuBarHiderTool: MenuTool {
         if ProGate.shared.isAllowed { restore() }
         updateMenu()
     }
+
+    /// Hidden on macOS 27 and later in the sandboxed build. Hidden Bar —
+    /// the same divider technique — says in its App Store listing (1.13.1,
+    /// 2026-11-21) that "on macOS 27 this App Store version cannot hide
+    /// icons, because the App Store sandbox blocks it", Octobar marks its
+    /// module unavailable there, and macOS 27 draws its own overflow for
+    /// icons behind the notch. Store copy, not Apple's word, and not seen on
+    /// hardware here (the dev Mac runs 26): on macOS 26 and earlier it stays.
+    ///
+    /// To re-test on 27: `defaults write <bundle id>
+    /// com.maxcandela.menuBarHiderOn27 -bool true` and relaunch.
+    static var isAvailable: Bool {
+        let is27 = ProcessInfo.processInfo.isOperatingSystemAtLeast(
+            OperatingSystemVersion(majorVersion: 27, minorVersion: 0, patchVersion: 0))
+        guard AppSandbox.isActive, is27 else { return true }
+        return UserDefaults.standard.bool(forKey: "com.maxcandela.menuBarHiderOn27")
+    }
+
+    var isSupported: Bool { Self.isAvailable }
 
     func menuWillOpen() { updateMenu() }
     func shutdown() { remove() }

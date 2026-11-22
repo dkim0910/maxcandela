@@ -7,7 +7,7 @@ export const metadata: Metadata = pageMetadata({
   path: '/about/',
   title: 'About MaxCandela — a menu-bar toolbox for Mac',
   description:
-    'MaxCandela started as a way to unlock a MacBook Pro’s full XDR brightness and grew into a menu-bar toolbox: 17 small Mac tools under one icon.',
+    'MaxCandela started as a way to unlock a MacBook Pro’s full XDR brightness and grew into a menu-bar toolbox: 27 small Mac tools under one icon.',
 });
 
 export default function AboutPage() {
@@ -19,7 +19,7 @@ export default function AboutPage() {
     >
       <p>
         <strong>MaxCandela is a toolbox that lives in your Mac’s menu
-        bar</strong> — 17 small tools under one icon, eight of them free. It
+        bar</strong> — 27 small tools under one icon, 14 of them free. It
         began with one simple frustration:{' '}
         your MacBook Pro’s screen is capable of far more brightness than
         macOS lets you use. The panel in a 14″ or 16″ MacBook Pro is rated
@@ -48,18 +48,21 @@ export default function AboutPage() {
         color-calibrated transform, so everything gets brighter without
         washing out. It respects the system’s thermal and battery limits at all
         times and eases the boost back as your Mac heats up, collects no
-        personal data, and never sees what’s on your screen.
-        Free for 5 days, then $9.99 once or $0.99/month.
+        personal data, and never looks at what’s on your screen to do it.
+        Free for 14 days, then $9.99 once or $0.99/month.
       </p>
       <p>
         It has since grown into a small toolbox under the same ☀️ icon. Two
         more display controls sit beside the boost — Extra Dim and Warmth —
-        along with free everyday tools (Keep Awake, a timer, clipboard text
-        tools, a color picker, generators, world clocks, a sound switcher and
-        a system read-out) and a set of Pro tools: window snapping, a
-        clipboard manager, hidden menu-bar icons, text capture from the
-        screen, your Shortcuts and your next meeting. The brightness boost is
-        still what only an XDR display can do; the rest works on any Mac.
+        along with free everyday tools (Keep Awake, a timer, focus sessions,
+        break reminders, clipboard text tools, a scratchpad, a color picker,
+        generators, world clocks, a month calendar, a sound switcher, a
+        system read-out and desktop tools) and a set of Pro tools:
+        screenshots with markup, text and QR code capture from the screen, a
+        clipboard manager, a file shelf, per-app volume, Bluetooth
+        quick-connect, background window dimming, hidden menu-bar icons, your
+        Shortcuts and your next meeting. The brightness boost is still what
+        only an XDR display can do; the rest works on any Mac.
       </p>
 
       <h2>This website</h2>
@@ -77,10 +80,12 @@ export default function AboutPage() {
         <li><strong>Honest engineering.</strong> We never push the panel past
           what macOS itself allows — no hacks that fight the operating
           system’s safety limits.</li>
-        <li><strong>Minimal data.</strong> No accounts, no personal data, no
-          screen access — the app never sees what you&rsquo;re looking at. The
-          only thing collected is a handful of anonymous usage stats, exactly
-          as our privacy policy spells out.</li>
+        <li><strong>Minimal data.</strong> No accounts and no personal data.
+          The brightness boost never reads your screen; the tools that do —
+          Screenshot, Copy Text and Scan QR Code — capture only what you
+          select, when you ask, and keep it on your Mac. The only thing
+          collected is a handful of anonymous usage stats, exactly as our
+          privacy policy spells out.</li>
         <li><strong>Instant reversibility.</strong> Toggling off — or simply
           quitting the app — returns your display to exactly its previous
           state, always.</li>

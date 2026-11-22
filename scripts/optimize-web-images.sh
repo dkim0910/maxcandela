@@ -45,6 +45,24 @@ for name in "${SOURCES[@]}"; do
   done
 done
 
+# The hero's menu: the REAL main menu, captured by make-app-screenshots.sh
+# (assets/screenshots/store/raw/main.png), cropped to the menu with
+# transparent rounded corners. It replaced an HTML drawing of the menu that
+# had drifted from the app (no icons, missing rows). Re-run this after
+# make-app-screenshots.sh whenever the menu changes. Lossless: flat UI and
+# text compress better that way than at q80, and stay sharp.
+MENU_RAW="$REPO_ROOT/assets/screenshots/store/raw/main.png"
+MENU_TMP="$(mktemp -t maxcandela-menu).png"
+swift "$REPO_ROOT/scripts/crop-menu-shot.swift" "$MENU_RAW" "$MENU_TMP"
+cwebp -lossless -m 6 -mt "$MENU_TMP" -o "$PUBLIC_DIR/menu-main-2x.webp" >/dev/null 2>&1
+menu_w=$(sips -g pixelWidth "$MENU_TMP" | awk '/pixelWidth/ {print $2}')
+cwebp -lossless -m 6 -mt -resize $((menu_w / 2)) 0 "$MENU_TMP" -o "$PUBLIC_DIR/menu-main-1x.webp" >/dev/null 2>&1
+rm -f "$MENU_TMP"
+for f in menu-main-2x menu-main-1x; do
+  printf '%-30s %6s KB\n' "$f.webp" "$(( $(wc -c <"$PUBLIC_DIR/$f.webp") / 1024 ))"
+done
+echo "If the menu's size changed, update width/height in components/MenuMock.tsx."
+
 echo
 echo "Sources stay in assets/screenshots/ — they are the masters these .webp"
 echo "files are re-encoded from, and they are outside public/ so they are not"

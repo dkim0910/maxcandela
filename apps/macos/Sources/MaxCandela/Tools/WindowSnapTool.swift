@@ -122,12 +122,32 @@ final class WindowSnapTool: MenuTool {
         menuItem.submenu = submenu
         menuItem.symbol("rectangle.split.2x1")
 
+        // Not available here → no shortcuts registered, nothing observed; the
+        // menu drops the tool (`isSupported`).
+        guard Self.isAvailable else { return }
         ProGate.shared.observe { [weak self] allowed in
             if allowed { self?.registerIfWanted() } else { self?.unregister() }
         }
         if ProGate.shared.isAllowed { registerIfWanted() }
         updateMenu()
     }
+
+    /// Hidden in the sandboxed (App Store) build. Apple DTS: the
+    /// Accessibility API this tool moves windows with is "not compatible with
+    /// the App Sandbox", and no entitlement or supported design lets a
+    /// sandboxed app move other apps' windows (developer forums 820594,
+    /// 854711; 794253 shows the exact failure — trusted, yet every window
+    /// read returns `.cannotComplete`). Better absent than a Pro tool that
+    /// beeps. The code stays for a Developer ID build.
+    ///
+    /// To re-test on hardware: `defaults write <bundle id>
+    /// com.maxcandela.windowSnapInSandbox -bool true`, relaunch, grant
+    /// Accessibility, snap. If it works, delete this gate.
+    static var isAvailable: Bool {
+        !AppSandbox.isActive || UserDefaults.standard.bool(forKey: "com.maxcandela.windowSnapInSandbox")
+    }
+
+    var isSupported: Bool { Self.isAvailable }
 
     func menuWillOpen() { updateMenu() }
     func shutdown() { unregister() }

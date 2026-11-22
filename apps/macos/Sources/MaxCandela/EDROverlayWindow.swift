@@ -12,6 +12,10 @@ final class EDROverlayWindow: NSWindow {
     /// effectively invisible, large enough that the compositor doesn't cull it.
     static let patchSize: CGFloat = 4
 
+    /// Above normal content. The overlay tools (`OverlayLevel`) must stay
+    /// below this — OverlayGeometryTests checks it.
+    static let windowLevel: NSWindow.Level = .screenSaver
+
     let renderer: MetalRenderer
 
     /// Returns nil if Metal is unavailable on this machine (see MetalRenderer).
@@ -36,7 +40,7 @@ final class EDROverlayWindow: NSWindow {
         backgroundColor = .clear
         hasShadow = false
         ignoresMouseEvents = true            // click-through
-        level = .screenSaver                 // above normal content
+        level = Self.windowLevel
         collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenAuxiliary, .ignoresCycle]
 
         let hosting = NSView(frame: NSRect(origin: .zero, size: rect.size))

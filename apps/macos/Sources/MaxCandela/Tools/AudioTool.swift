@@ -15,6 +15,15 @@ enum AudioDevices {
         AudioObjectPropertyAddress(mSelector: selector, mScope: scope, mElement: kAudioObjectPropertyElementMain)
     }
 
+    /// UID prefix of the private aggregate devices App Volume creates
+    /// (`ProcessTapSession`). They are visible to this process only — which
+    /// includes this menu — and must never be offered as an output.
+    static let appVolumeUIDPrefix = "com.maxcandela.appvolume."
+
+    static func isAppVolumeDevice(uid: String?) -> Bool {
+        uid?.hasPrefix(appVolumeUIDPrefix) ?? false
+    }
+
     static func all() -> [Device] {
         var addr = address(kAudioHardwarePropertyDevices)
         var size: UInt32 = 0
@@ -23,7 +32,7 @@ enum AudioDevices {
         var ids = [AudioDeviceID](repeating: 0, count: Int(size) / MemoryLayout<AudioDeviceID>.size)
         guard AudioObjectGetPropertyData(system, &addr, 0, nil, &size, &ids) == noErr else { return [] }
         return ids.compactMap { id in
-            guard let name = name(of: id) else { return nil }
+            guard !isAppVolumeDevice(uid: uid(of: id)), let name = name(of: id) else { return nil }
             let input = channelCount(id, scope: kAudioObjectPropertyScopeInput) > 0
             let output = channelCount(id, scope: kAudioObjectPropertyScopeOutput) > 0
             return input || output ? Device(id: id, name: name, hasInput: input, hasOutput: output) : nil
@@ -31,11 +40,19 @@ enum AudioDevices {
     }
 
     private static func name(of id: AudioDeviceID) -> String? {
-        var addr = address(kAudioObjectPropertyName)
-        var name: Unmanaged<CFString>?
+        string(kAudioObjectPropertyName, of: id)
+    }
+
+    private static func uid(of id: AudioDeviceID) -> String? {
+        string(kAudioDevicePropertyDeviceUID, of: id)
+    }
+
+    private static func string(_ selector: AudioObjectPropertySelector, of id: AudioDeviceID) -> String? {
+        var addr = address(selector)
+        var string: Unmanaged<CFString>?
         var size = UInt32(MemoryLayout<Unmanaged<CFString>?>.size)
-        guard AudioObjectGetPropertyData(id, &addr, 0, nil, &size, &name) == noErr else { return nil }
-        return name?.takeRetainedValue() as String?
+        guard AudioObjectGetPropertyData(id, &addr, 0, nil, &size, &string) == noErr else { return nil }
+        return string?.takeRetainedValue() as String?
     }
 
     private static func channelCount(_ id: AudioDeviceID, scope: AudioObjectPropertyScope) -> Int {

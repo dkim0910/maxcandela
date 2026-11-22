@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleExecutable</key>
+	<string>TapSpike</string>
+	<key>CFBundleIdentifier</key>
+	<string>com.maxcandela.tapspike</string>
+	<key>CFBundleName</key>
+	<string>TapSpike</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>1.0</string>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>14.2</string>
+	<key>LSUIElement</key>
+	<true/>
+	<!-- The exact string App Volume ships with, so the prompt can be judged as users will see it. -->
+	<key>NSAudioCaptureUsageDescription</key>
+	<string>To change the volume of a single app, macOS passes that app's sound through MaxCandela, which plays it back at the level you choose. The sound is processed live on this Mac — it is never recorded, saved or sent anywhere — and only apps you adjust are affected.</string>
+</dict>
+</plist>

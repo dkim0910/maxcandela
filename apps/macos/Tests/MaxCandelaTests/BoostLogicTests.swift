@@ -38,37 +38,38 @@ final class BoostLogicTests: XCTestCase {
 
     func testTrialFullOnFirstDay() {
         let start = Date()
-        XCTAssertEqual(StoreManager.trialDaysRemaining(firstLaunch: start, now: start), 5)
+        XCTAssertEqual(StoreManager.trialDaysRemaining(firstLaunch: start, now: start), 14)
     }
 
     func testTrialCountsDownByWholeDays() {
         let start = Date()
         let threeDaysLater = start.addingTimeInterval(3 * 86_400 + 60)
-        XCTAssertEqual(StoreManager.trialDaysRemaining(firstLaunch: start, now: threeDaysLater), 2)
+        XCTAssertEqual(StoreManager.trialDaysRemaining(firstLaunch: start, now: threeDaysLater), 11)
     }
 
     func testTrialExpiresAtZeroAndStaysThere() {
         let start = Date()
-        let sixDaysLater = start.addingTimeInterval(6 * 86_400)
-        XCTAssertEqual(StoreManager.trialDaysRemaining(firstLaunch: start, now: sixDaysLater), 0)
+        let fifteenDaysLater = start.addingTimeInterval(15 * 86_400)
+        XCTAssertEqual(StoreManager.trialDaysRemaining(firstLaunch: start, now: fifteenDaysLater), 0)
         let yearLater = start.addingTimeInterval(365 * 86_400)
         XCTAssertEqual(StoreManager.trialDaysRemaining(firstLaunch: start, now: yearLater), 0)
     }
 
-    func testTrialExpiresExactlyAtTheEndOfDayFive() {
+    func testTrialExpiresExactlyAtTheEndOfTheLastDay() {
         // The precise boundary the paywall hangs off, pinned so a refactor of
-        // the day arithmetic can't quietly hand out a sixth day (or steal one).
+        // the day arithmetic can't quietly hand out an extra day (or steal one).
         let start = Date()
+        let length = Double(StoreManager.trialDays)
         XCTAssertEqual(StoreManager.trialDaysRemaining(firstLaunch: start,
-                                                       now: start.addingTimeInterval(5 * 86_400 - 1)), 1)
+                                                       now: start.addingTimeInterval(length * 86_400 - 1)), 1)
         XCTAssertEqual(StoreManager.trialDaysRemaining(firstLaunch: start,
-                                                       now: start.addingTimeInterval(5 * 86_400)), 0)
+                                                       now: start.addingTimeInterval(length * 86_400)), 0)
     }
 
     func testTrialLenientWhenClockRolledBack() {
         let start = Date()
         let past = start.addingTimeInterval(-86_400)
-        XCTAssertEqual(StoreManager.trialDaysRemaining(firstLaunch: start, now: past), 5)
+        XCTAssertEqual(StoreManager.trialDaysRemaining(firstLaunch: start, now: past), StoreManager.trialDays)
     }
 
     // MARK: - BrightnessController target scale
@@ -391,5 +392,28 @@ final class BoostLogicTests: XCTestCase {
         XCTAssertTrue(BrightnessController.DisplayStatus(
             name: "Display", applied: 1.0, headroom: 4.344).isMeaningful)
     }
-}
+    // MARK: - Automation (Shortcuts actions, maxcandela:// links)
 
+    func testBoostLinksParse() {
+        XCTAssertEqual(BoostCommand(url: URL(string: "maxcandela://boost/on")!), .on)
+        XCTAssertEqual(BoostCommand(url: URL(string: "maxcandela://boost/off")!), .off)
+        XCTAssertEqual(BoostCommand(url: URL(string: "maxcandela://boost/toggle")!), .toggle)
+        XCTAssertEqual(BoostCommand(url: URL(string: "MaxCandela://Boost/ON")!), .on)
+    }
+
+    func testUnknownLinksDoNothing() {
+        // A mistyped link must not guess — least of all guess "on".
+        XCTAssertNil(BoostCommand(url: URL(string: "maxcandela://boost")!))
+        XCTAssertNil(BoostCommand(url: URL(string: "maxcandela://boost/up")!))
+        XCTAssertNil(BoostCommand(url: URL(string: "maxcandela://dim/on")!))
+        XCTAssertNil(BoostCommand(url: URL(string: "https://boost/on")!))
+    }
+
+    func testOnlyOnAndOffCountAsSuccess() {
+        XCTAssertTrue(BoostOutcome.on.succeeded)
+        XCTAssertTrue(BoostOutcome.off.succeeded)
+        XCTAssertFalse(BoostOutcome.noHeadroom.succeeded)
+        XCTAssertFalse(BoostOutcome.needsPro.succeeded)
+        XCTAssertFalse(BoostOutcome.needsPro.message.isEmpty)
+    }
+}

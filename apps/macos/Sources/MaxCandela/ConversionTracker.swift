@@ -20,7 +20,7 @@ import StoreKit
 ///    UUID GA already uses (`Analytics.clientID`), so the privacy posture is
 ///    unchanged: one anonymous ID, reset by deleting the app's preferences.
 ///  - a row on RevenueCat's "Trials" chart. That chart counts App Store
-///    introductory free trials on subscriptions; the 5-day trial here is an
+///    introductory free trials on subscriptions; the 14-day trial here is an
 ///    app-side clock the store knows nothing about. Trial state is exposed
 ///    instead as the `license_state` subscriber attribute (trial / expired /
 ///    licensed) so customer lists can be filtered by it.

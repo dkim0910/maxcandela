@@ -7,7 +7,7 @@ export const metadata: Metadata = pageMetadata({
   path: '/privacy/',
   title: 'Privacy Policy — MaxCandela',
   description:
-    'MaxCandela collects no personal data and never sees your screen content. Read exactly what the app and website do and don’t collect.',
+    'MaxCandela collects no personal data, and what its tools read on your Mac stays there. Read exactly what the app and website do and don’t collect.',
 });
 
 export default function PrivacyPage() {
@@ -16,11 +16,13 @@ export default function PrivacyPage() {
       path="/privacy/"
       title="Privacy Policy"
       crumb="Privacy"
-      updated="November 21, 2026"
+      updated="November 22, 2026"
     >
       <p>
         MaxCandela is built to collect as little as possible. <strong>The Mac
-        app collects no personal data</strong> and never sees your screen. This
+        app collects no personal data</strong>, and what its tools read on your
+        Mac — the screen, your files, calendar, audio or Bluetooth devices —
+        stays on your Mac. This
         <strong> website</strong> uses analytics and includes Google ad code
         (ads may appear), which can set cookies — details below.
       </p>
@@ -30,20 +32,46 @@ export default function PrivacyPage() {
         <li>Collects no personal information: no name, email, Apple ID, or
           anything typed or displayed on your screen.</li>
         <li>Never transmits your screen content. The brightness boost works
-          without reading what is on your display at all. One optional tool,
-          Copy Text from Screen, does look at the screen: when you use it, it
-          captures only the box you draw, reads the text in it on your Mac
-          with Apple’s on-device text recognition, puts that text on your
-          clipboard and discards the image. It needs the macOS Screen
-          Recording permission, which is requested the first time you use it
-          and can be withdrawn in System Settings.</li>
-        <li>Window Snapping uses the macOS Accessibility permission, requested
-          the first time you snap a window, solely to move and resize the
-          front window. It does not read the contents of your windows.</li>
+          without reading what is on your display at all. Three optional Pro
+          tools do look at the screen, and only when you use them: they need
+          the macOS Screen Recording permission, which is requested the first
+          time and can be withdrawn in System Settings.
+          <em> Copy Text from Screen</em> and <em>Scan QR Code from
+          Screen</em> capture only the box you draw, read the text or code in
+          it on your Mac with Apple’s on-device recognition, put the result on
+          your clipboard and discard the image. <em>Screenshot</em> keeps its
+          capture in memory while the markup window is open; it goes to your
+          clipboard only if you copy it, to disk only if you save it to a
+          file you choose, and is discarded when you close the window.</li>
         <li>Next Meeting reads your upcoming calendar events — after you grant
           Calendar access — to show them in the menu and find a video-call
           link to open. Events are read on your Mac each time the menu opens
-          and are not stored or transmitted.</li>
+          and are not stored or transmitted. With Pro, the Calendar month view
+          reads events the same way when you open it, but only if that access
+          has already been granted; it never asks for access itself.</li>
+        <li>Bluetooth lists the devices paired with your Mac, connects and
+          disconnects them when you click, and reads the battery level of
+          devices that report one. It uses the macOS Bluetooth permission,
+          requested when you click Allow Bluetooth Access… in its menu. Nothing about
+          your devices is stored or sent anywhere.</li>
+        <li>App Volume changes the volume of individual apps. For each app you
+          move off 100%, macOS passes that app’s sound through MaxCandela,
+          which plays it at the level you chose; this uses the macOS System
+          Audio Recording permission, requested the first time. The sound is
+          processed live on your Mac — never recorded, saved or sent — and
+          apps you have not adjusted are not touched. MaxCandela never opens
+          your microphone for this.</li>
+        <li>File Shelf has access only to the files you drop on it, and keeps
+          a reference to them so they are still on the shelf after a restart.
+          It never changes, moves or deletes those files. Converted images and
+          merged PDFs are written as new files to your Downloads folder;
+          converted images leave out location and camera details unless you
+          switch that off. Screenshot’s Save writes only to the file you pick
+          in the save dialog.</li>
+        <li>Dim Background Windows asks macOS for the position, size and owning
+          app of the windows on screen — not their titles or contents — to
+          know where to darken. This is read on your Mac while the tool is on
+          and is not stored or sent.</li>
         <li>Shortcuts stores only the names of the shortcuts you add and asks
           the Shortcuts app to run them; MaxCandela does not see what a
           shortcut does.</li>
@@ -84,6 +112,13 @@ export default function PrivacyPage() {
         <li>The system read-out (CPU, memory, disk, battery, local IP address)
           is computed on your Mac and shown in the menu. None of it is
           transmitted.</li>
+        <li>The Scratchpad saves what you type in it to a file inside the
+          app’s own private storage on your Mac, so it is still there after a
+          restart. It is never sent anywhere.</li>
+        <li>Breaks counts screen time from the system’s own lock, sleep and
+          screen-saver events. It does not watch your keyboard or mouse.</li>
+        <li>Hide Desktop Icons draws a copy of your wallpaper from its file,
+          or a plain colour; it does not capture the screen.</li>
         <li>Stores its settings (whether the boost is enabled, trial start
           date, your options, recently picked colours) only on your Mac.</li>
       </ul>

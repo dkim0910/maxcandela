@@ -6,7 +6,11 @@ import StoreKit
 ///
 /// The bar is deliberately high, because a prompt shown to the wrong person
 /// earns a one-star review rather than nothing:
-///  - a paying customer (not a trial — they have not decided yet);
+///  - someone with Pro running — a paying customer *or* a trial user.
+///    Trial users were excluded until 2026-11-22; with 0 ratings on the
+///    store that cost more than it protected, and the usage bar below already
+///    selects people who keep coming back. Never an expired trial: they have
+///    just met the paywall;
 ///  - who has switched the boost on at least `minimumBoosts` times;
 ///  - over at least `minimumDays` days;
 ///  - never on hardware where macOS is reported to break the boost.
@@ -23,10 +27,10 @@ enum ReviewPrompt {
     }
 
     /// Pure, unit-tested.
-    static func shouldAsk(isPaying: Bool, boostCount: Int, firstBoost: Date?,
+    static func shouldAsk(license: StoreManager.LicenseState, boostCount: Int, firstBoost: Date?,
                           lastAskedVersion: String?, currentVersion: String,
                           boostReportedBroken: Bool, now: Date = Date()) -> Bool {
-        guard isPaying, !boostReportedBroken, boostCount >= minimumBoosts,
+        guard license != .expired, !boostReportedBroken, boostCount >= minimumBoosts,
               lastAskedVersion != currentVersion, let firstBoost
         else { return false }
         return now.timeIntervalSince(firstBoost) >= Double(minimumDays) * 86_400
@@ -34,14 +38,14 @@ enum ReviewPrompt {
 
     /// Call each time the user switches the boost on. Counts it and, when the
     /// bar is met, asks a few seconds later — not on top of the click.
-    static func boostWasSwitchedOn(isPaying: Bool, defaults: UserDefaults = .standard) {
+    static func boostWasSwitchedOn(license: StoreManager.LicenseState, defaults: UserDefaults = .standard) {
         defaults.set(defaults.integer(forKey: Key.count) + 1, forKey: Key.count)
         if defaults.object(forKey: Key.first) == nil {
             defaults.set(Date().timeIntervalSince1970, forKey: Key.first)
         }
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "dev"
         let first = Date(timeIntervalSince1970: defaults.double(forKey: Key.first))
-        guard shouldAsk(isPaying: isPaying,
+        guard shouldAsk(license: license,
                         boostCount: defaults.integer(forKey: Key.count),
                         firstBoost: first,
                         lastAskedVersion: defaults.string(forKey: Key.askedVersion),

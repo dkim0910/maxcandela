@@ -17,6 +17,7 @@ export default function SiteFooter() {
       </Link>
       <nav className="footer-links">
         <Link href="/how-it-works/">How it works</Link>
+        <Link href="/betterdisplay-alternative/">vs BetterDisplay</Link>
         <Link href="/about/">About</Link>
         <Link href="/privacy/">Privacy Policy</Link>
         <Link href="/terms/">Terms of Use</Link>

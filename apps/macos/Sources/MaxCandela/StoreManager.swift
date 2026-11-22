@@ -2,7 +2,7 @@ import AppKit
 import Foundation
 import StoreKit
 
-/// Licensing: free download, 5-day full trial, then either a monthly
+/// Licensing: free download, 14-day full trial, then either a monthly
 /// subscription or a lifetime unlock via Apple in-app purchase.
 ///
 /// Product IDs must match App Store Connect exactly:
@@ -26,7 +26,10 @@ final class StoreManager {
     static let monthlyProductID = "com.maxcandela.pro.monthly"
     private static let productIDs: Set<String> = [lifetimeProductID, monthlyProductID]
 
-    private static let trialDays = 5
+    /// 14 since 2026-11-22 (was 5): BetterDisplay gives 14, and with the
+    /// clock anchored at download a longer trial only delays revenue — it
+    /// cannot be reset. 14 also lets trial users reach ReviewPrompt's 7-day bar.
+    static let trialDays = 14
     private static let firstLaunchKey = "com.maxcandela.firstLaunchDate"
 
     private let defaults: UserDefaults

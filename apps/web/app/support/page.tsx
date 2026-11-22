@@ -87,6 +87,23 @@ export default function SupportPage() {
         <em>Boost Only In</em> — it then runs only while one of those apps is
         in front. All of these are off until you turn them on.
       </p>
+      <p>
+        Extra Dim is free. Warmth, like the boost, is part of MaxCandela Pro.
+      </p>
+
+      <h3>Can I switch the boost from Shortcuts, Raycast or a script?</h3>
+      <p>
+        Yes. The Shortcuts app has three MaxCandela actions — <em>Turn
+        Brightness Boost On</em>, <em>Turn Brightness Boost Off</em> and{' '}
+        <em>Toggle Brightness Boost</em> — which also work from Spotlight and
+        Siri, and in automations such as a Focus mode. Anything that can open
+        a link can use <code>maxcandela://boost/on</code>,{' '}
+        <code>maxcandela://boost/off</code> or{' '}
+        <code>maxcandela://boost/toggle</code>: Raycast, Alfred,
+        BetterTouchTool, or <code>open maxcandela://boost/on</code> in
+        Terminal. They follow the same rules as the menu: switching the boost
+        on needs the free trial or Pro, and switching it off always works.
+      </p>
 
       <h3>Can I boost one display and not another?</h3>
       <p>
@@ -108,6 +125,62 @@ export default function SupportPage() {
         any time; that is never blocked.
       </p>
 
+      <h3>The menu is taller than my screen</h3>
+      <p>
+        With every tool in one list, the menu is taller than the screen of a
+        14″ MacBook Pro or a 13″ MacBook Air, so macOS scrolls it. Choose{' '}
+        <em>Options ▸ Menu Layout ▸ Grouped by Category</em> to put the tools
+        in five short groups; the whole menu then fits, with Quit as the last
+        row.
+      </p>
+
+      <h3>Why does App Volume ask for “System Audio Recording”?</h3>
+      <p>
+        To change one app’s volume, macOS passes that app’s sound through
+        MaxCandela, which plays it at the level you set. macOS files that under
+        system audio recording, so it asks once, the first time you move an app
+        off 100%. The sound is processed live on your Mac — it is never
+        recorded, saved or sent anywhere — and only the apps you adjust go
+        through MaxCandela. Put an app back to 100%, or choose{' '}
+        <em>Reset All</em>, and it plays directly again. Apps appear in the
+        list only while they are playing sound. If an app you changed goes
+        silent, the permission is probably off: the menu then offers{' '}
+        <em>Check System Audio Recording Permission…</em>, or go to System
+        Settings ▸ Privacy &amp; Security ▸ Screen &amp; System Audio
+        Recording.
+      </p>
+
+      <h3>Bluetooth doesn’t show my AirPods’ battery</h3>
+      <p>
+        The Bluetooth tool shows a battery level only for devices that report
+        it the standard Bluetooth way. AirPods and Apple’s Magic Keyboard,
+        Mouse and Trackpad report theirs through undocumented parts of macOS
+        that MaxCandela does not use, so they appear without a figure;
+        connecting and disconnecting them still works. The first time, click{' '}
+        <em>Allow Bluetooth Access…</em> in the Bluetooth menu. If you said
+        no, switch MaxCandela on in System Settings ▸ Privacy &amp; Security ▸
+        Bluetooth.
+      </p>
+
+      <h3>Where do File Shelf conversions go?</h3>
+      <p>
+        Converted images and merged PDFs are saved as new files in your
+        Downloads folder, under a name that isn’t already taken, and added to
+        the shelf. The shelf never changes, moves or deletes the files you
+        drop on it — removing one only takes it off the shelf. Converted
+        images leave out the location and camera details unless you switch
+        that off.
+      </p>
+
+      <h3>Where is Hide Menu Bar Icons on macOS 27?</h3>
+      <p>
+        It is not offered on macOS 27. macOS 27 has its own overflow for
+        menu-bar icons, and the technique this tool uses does not work for App
+        Store apps there, so MaxCandela leaves the tool out of the menu rather
+        than show one that does nothing. It is available on macOS 26 and
+        earlier.
+      </p>
+
       <h3>I have a promo code — where do I enter it?</h3>
       <p>
         Redeem it at{' '}
@@ -124,7 +197,7 @@ export default function SupportPage() {
       </p>
       <p>
         A code takes effect <strong>immediately</strong> — it does not wait for
-        the 5-day free trial to finish, and it replaces the trial rather than
+        the 14-day free trial to finish, and it replaces the trial rather than
         extending it. If the menu still shows a trial after redeeming, choose{' '}
         <em>Purchases ▸ Restore Purchases</em>.
       </p>

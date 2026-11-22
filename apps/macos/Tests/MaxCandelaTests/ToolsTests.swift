@@ -341,7 +341,7 @@ final class ToolsTests: XCTestCase {
         // A second display sitting to the right of, and higher than, the main one.
         let screen = CGRect(x: 1728, y: 200, width: 1920, height: 1080)
         let selection = CGRect(x: 1828, y: 1080, width: 300, height: 100)   // 100 pt below its top edge
-        XCTAssertEqual(ScreenTextTool.captureRect(selection: selection, screenFrame: screen),
+        XCTAssertEqual(ScreenCapture.captureRect(selection: selection, screenFrame: screen),
                        CGRect(x: 100, y: 100, width: 300, height: 100))
     }
 

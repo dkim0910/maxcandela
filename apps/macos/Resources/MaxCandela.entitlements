@@ -15,5 +15,34 @@
 	     behind the system permission prompt. -->
 	<key>com.apple.security.personal-information.calendars</key>
 	<true/>
+	<!-- Bluetooth (BluetoothTool): list paired devices, connect/disconnect
+	     them, read the standard GATT battery level. Behind the system
+	     Bluetooth permission prompt (NSBluetoothAlwaysUsageDescription). -->
+	<key>com.apple.security.device.bluetooth</key>
+	<true/>
+	<!-- User-selected files, one key for two tools (Xcode treats read-only
+	     and read-write as one setting; read-write includes read):
+	     - File Shelf (FileShelfTool): security-scoped bookmarks so files
+	       dropped on the shelf are still reachable after a relaunch. Apple
+	       DTS (forums thread 798402): bookmark creation/resolution accepts
+	       either user-selected entitlement or bookmarks.app-scope. The shelf
+	       itself never writes to the user's files.
+	     - Screenshot (ScreenshotEditor): Save… writes the PNG to the file
+	       the user picks in the save panel, and nowhere else. -->
+	<key>com.apple.security.files.user-selected.read-write</key>
+	<true/>
+	<!-- File Shelf: converted images and merged PDFs are written to
+	     ~/Downloads under new, unused names. The sandbox refuses writing
+	     next to the original. -->
+	<key>com.apple.security.files.downloads.read-write</key>
+	<true/>
+	<!-- App Volume (AppVolumeTool): reading an app's sound from a Core Audio
+	     process tap is audio input to the sandbox. This is the key Apple's
+	     process-tap sample ships with, and the one the Hardened Runtime also
+	     requires; the macOS sandbox profile grants audio input for it or for
+	     com.apple.security.device.microphone. The microphone itself is never
+	     opened: hardware inputs are switched off (ProcessTapSession). -->
+	<key>com.apple.security.device.audio-input</key>
+	<true/>
 </dict>
 </plist>

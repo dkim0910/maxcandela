@@ -16,10 +16,33 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         ConversionTracker.configure()
         brightness = BrightnessController()
         menuBar = MenuBarController(brightness: brightness)
+        // Shortcuts actions and maxcandela:// links queue until this exists.
+        BoostAutomation.install { [weak self] command in
+            guard let menuBar = self?.menuBar else { return .off }
+            return await menuBar.setBoostFromAutomation(command)
+        }
         Analytics.track("app_launch")
         // Keep entitlements fresh (renewals, refunds, purchases on other Macs).
         StoreManager.shared.startTransactionListener { [weak self] in
             self?.menuBar.licenseDidChange()
+        }
+    }
+
+    /// `maxcandela://boost/on|off|toggle` — for Raycast, Alfred, BetterTouchTool
+    /// and anything else that can open a URL. Unknown links are ignored.
+    /// Can arrive before `applicationDidFinishLaunching` when the link is what
+    /// launched the app; `BoostAutomation` holds it until the menu exists.
+    func application(_ application: NSApplication, open urls: [URL]) {
+        for url in urls {
+            guard let command = BoostCommand(url: url) else {
+                NSLog("MaxCandela: ignoring unrecognised link \(url.absoluteString)")
+                continue
+            }
+            #if DEBUG
+            // Separates "macOS delivered the link late" from "we were slow".
+            NSLog("MaxCandela: link received \(command)")
+            #endif
+            BoostAutomation.enqueue(command)
         }
     }
 

@@ -28,11 +28,18 @@ BIN="$ROOT/apps/macos/.build/debug/MaxCandela"
 pkill -f 'debug/MaxCandela' 2>/dev/null || true
 sleep 1
 
-for shot in main WindowSnapTool ClipboardTool GeneratorTool WorldClockTool KeepAwakeTool; do
-  frame="$(mktemp -t maxcandela-shot)"
+# One capture. Extra VAR=value arguments are set for that run only.
+#  - APP_SANDBOX_CONTAINER_ID makes the debug build take the App Store
+#    build's tool list (Window Snapping is hidden when sandboxed).
+#  - MAXCANDELA_MENU_LAYOUT=flat: the default layout, every tool listed.
+shoot() {
+  local shot="$1"; shift
+  local frame; frame="$(mktemp -t maxcandela-shot)"
   rm -f "$frame"
-  MAXCANDELA_FORCE_TRIAL=licensed MAXCANDELA_SHOT="$shot" MAXCANDELA_SHOT_OUT="$frame" "$BIN" >/dev/null 2>&1 &
-  pid=$!
+  env APP_SANDBOX_CONTAINER_ID=screenshots MAXCANDELA_MENU_LAYOUT=flat \
+      MAXCANDELA_FORCE_TRIAL=licensed "$@" \
+      MAXCANDELA_SHOT="$shot" MAXCANDELA_SHOT_OUT="$frame" "$BIN" >/dev/null 2>&1 &
+  local pid=$!
   for _ in $(seq 1 60); do [ -s "$frame" ] && break; sleep 0.1; done
   if [ -s "$frame" ]; then
     # `|| true`: the file has no trailing newline, so read reports EOF.
@@ -45,6 +52,15 @@ for shot in main WindowSnapTool ClipboardTool GeneratorTool WorldClockTool KeepA
   fi
   wait "$pid" 2>/dev/null || true
   rm -f "$frame"
+}
+
+rm -f "$RAW/WindowSnapTool.png"   # removed from the App Store build
+for shot in main ClipboardTool GeneratorTool WorldClockTool KeepAwakeTool \
+            FocusTool BreaksTool DesktopTool WindowDimmerTool; do
+  shoot "$shot"
 done
+# A free user's calendar: the grid, and the events row marked Pro. (A Pro
+# capture would show this Mac's real events — never in a store screenshot.)
+shoot MonthCalendarTool MAXCANDELA_FORCE_TRIAL=expired
 
 swift "$ROOT/scripts/make-app-screenshots.swift" "$RAW" "$OUT"
