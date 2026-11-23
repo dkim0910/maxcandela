@@ -1,4 +1,4 @@
-# App Store listing — localizations (2.1.0, build 22)
+# App Store listing — localizations (2.1.4, build 24)
 
 Paste-ready metadata for six more App Store localizations. **Nothing here has
 been submitted.** Drafted 2026-11-22 by Claude, not by native speakers: have
@@ -14,12 +14,12 @@ own description for the people who land there. BetterDisplay ships its app in
 
 Rules these follow:
 
-- **They describe 2.1.0, the update from 1.1.8.** 2.0.0 was withdrawn from
+- **They describe 2.1.4, the update from 1.1.8.** 2.0.0 was withdrawn from
   review and never reached users, so "What's New" covers the whole toolbox
   (27 tools, 14 free), Shortcuts actions, the Options and the 14-day trial —
   and says nothing about Window Snapping, which no user ever had. A
   localization is added to an editable version in App Store Connect, so it
-  goes in with build 22. The counts follow `docs/app-store-listing.md`.
+  goes in with build 24. The counts follow `docs/app-store-listing.md`.
 - **No prices.** Apple shows localized prices on the listing itself, and a
   hard-coded `$9.99` is wrong in every one of these storefronts. The
   description still names both purchases, the 14-day trial, the auto-renewal
