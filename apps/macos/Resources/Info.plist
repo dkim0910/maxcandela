@@ -19,7 +19,7 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>2.1.4</string> // this is the marketing version, which is what users see in the App Store. It should be updated for every release.
+	<string>2.1.4</string> 
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
