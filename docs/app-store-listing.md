@@ -1,12 +1,12 @@
-# App Store listing — 2.1.0 (build 22)
+# App Store listing — 2.1.4 (build 24)
 
-Paste-ready text for App Store Connect, for **2.1.0 (22)**, uploaded
-2026-11-22. History: 2.0.0 (build 20) went to review with the text in commit
-`7f65659` and was then withdrawn, so **2.1.0 is the update from 1.1.8** —
+Paste-ready text for App Store Connect, for **2.1.4 (24)**, uploaded
+2026-11-23 (2.1.0 (22) was uploaded the day before and is superseded). History: 2.0.0 (build 20) went to review with the text in commit
+`7f65659` and was then withdrawn, so **2.1.4 is the update from 1.1.8** —
 the version users have. Everything below is written for someone coming from
 1.1.8 (a brightness-only app). In App Store Connect: remove 2.0.0 from review,
-rename that version to 2.1.0, attach build 22 (build 21 was a 2.0.0 upload
-and stays unused). Guideline 2.3 requires the listing to match the binary.
+rename that version to 2.1.4, attach build 24 (builds 21 and 22 were
+earlier uploads and stay unused). Guideline 2.3 requires the listing to match the binary.
 Translations for six more locales are in `app-store-listing-localized.md`.
 Character counts are checked by `scripts/check-listing-lengths.py`; every
 claim was checked against the code on 2026-11-22. Re-check if the tools change

@@ -18,8 +18,8 @@ packages:
 
 settings:
   base:
-    MARKETING_VERSION: "2.1.0"
-    CURRENT_PROJECT_VERSION: "22"
+    MARKETING_VERSION: "2.1.4" // this is the marketing version, which is what users see in the App Store. It should be updated for every release.
+    CURRENT_PROJECT_VERSION: "24" // this is the build number, which is what users see in the App Store. It should be updated for every release.
     DEVELOPMENT_TEAM: YU66583SCF          # your Apple Developer team
     SWIFT_VERSION: "5.9"
 

@@ -19,7 +19,7 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>2.1.0</string>
+	<string>2.1.4</string> // this is the marketing version, which is what users see in the App Store. It should be updated for every release.
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -32,7 +32,7 @@
 		</dict>
 	</array>
 	<key>CFBundleVersion</key>
-	<string>22</string>
+	<string>24</string>
 	<key>GAApiSecret</key>
 	<string></string>
 	<key>GAMeasurementID</key>
