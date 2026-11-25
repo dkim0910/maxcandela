@@ -744,6 +744,14 @@ set so they show the App Store build's tool list (no Window Snapping), the
 flat layout, and — for the calendar — an expired trial, so no real events can
 appear. A markup-editor screenshot was tried twice and dropped (Daniel:
 "looks bad"); don't re-add it unasked.
+**No price words in a caption — "free" counts** (Guideline 2.3.7). 2.1.4 (24)
+was rejected on 2026-11-25 for shot 1's "14 are free."; the caption was
+reworded and `1-toolbox.png` recomposed the same day, the screenshot was
+replaced in App Store Connect and 2.1.4 (24) resubmitted ("Waiting for
+Review", 2026-11-25 6:26 PM). Prices and the trial belong in the description,
+where 2.3.2 requires them. App Store Connect also holds a **2.1.4 (25)** that
+this repo has no record of (source is at 24); it was deliberately not
+submitted.
 They are composed from **real captures** of the menus: the debug app's
 screenshot mode (`MAXCANDELA_SHOT`, bottom of `MenuBarController.swift`)
 covers the whole screen with an opaque backdrop, opens one real menu over it
