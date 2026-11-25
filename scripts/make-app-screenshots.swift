@@ -48,7 +48,9 @@ let menuBehind = Layer(file: "main", scale: 0.8, centre: CGPoint(x: 1640, y: 900
 let shots: [Shot] = [
     Shot(name: "1-toolbox",
          headline: "27 Mac tools.\nOne menu-bar icon.",
-         body: "14 are free. Pro adds screenshots with markup, a file shelf, per-app volume, a clipboard manager and an XDR brightness boost.",
+         // No "free", no prices, no "trial" in any caption: App Review rejected
+         // 2.1.4 (24) under Guideline 2.3.7 for "14 are free." here (2026-11-25).
+         body: "Timers, a calendar, clipboard tools and more. Pro adds screenshots with markup, a file shelf, per-app volume and an XDR brightness boost.",
          layers: [Layer(file: "main", scale: 0.82, centre: CGPoint(x: 2200, y: 900))]),
     Shot(name: "2-calendar",
          headline: "Your month,\nin the menu bar.",
