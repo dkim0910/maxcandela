@@ -26,136 +26,45 @@ const COMPARE_BOOSTED = {
 
 // The free tools. Each line states what the app does today — check it
 // against apps/macos/Sources/MaxCandela/Tools before adding or rewording a
-// card. The counts in the copy are derived from these arrays: "14 free" is
+// card. Kept to one line each: the page lists 27 tools, and full-sentence
+// descriptions turned the list into a wall of grey text (2026-11-26). The
+// counts in the copy are derived from these arrays: "14 free" is
 // TOOLS.length (13) + Extra Dim (free since 2026-11-22), "27" is TOOLS +
 // PRO_TOOLS (11) + the three display tools. Hide Menu Bar Icons is counted
-// although macOS 27 hides it (see its card); Window Snapping is not — the
+// although macOS 27 hides it (see its line); Window Snapping is not — the
 // App Store build hides it everywhere (WindowSnapTool.isAvailable).
 const TOOLS = [
-  {
-    title: 'Keep Awake',
-    text: 'Stop your Mac’s display sleeping for half an hour, a few hours, or until you say so. Presentations, long downloads, reading.',
-  },
-  {
-    title: 'Timer',
-    text: 'A countdown that sits next to the menu-bar icon while it runs and chimes when it’s done.',
-  },
-  {
-    title: 'Focus',
-    text: 'Work in blocks with breaks between them — 25/5, 50/10 or 90/20 minutes, with a longer break after every fourth block. The countdown sits in the menu bar and a chime marks each change.',
-  },
-  {
-    title: 'Breaks',
-    text: 'After 20, 30, 45 or 60 minutes of screen time, a small panel asks you to look at something 20 feet away for 20 seconds, then closes itself. It never takes focus, so your typing carries on.',
-  },
-  {
-    title: 'Clipboard tools',
-    text: 'Change the case of copied text, trim it, sort lines, URL- and Base64-encode or decode, format JSON. Optional history of the last 15 things you copied — kept in memory only.',
-  },
-  {
-    title: 'Scratchpad',
-    text: 'A small floating notes window for text you need for a minute. It saves as you type and is still there after a restart.',
-  },
-  {
-    title: 'Color picker',
-    text: 'Pick any colour on screen with the system eyedropper and get its hex code on your clipboard.',
-  },
-  {
-    title: 'Generate',
-    text: 'A UUID, a strong password, a Unix timestamp, an ISO date or a paragraph of filler text — one click, straight to your clipboard. It also turns the link or text you copied into a QR code.',
-  },
-  {
-    title: 'World clock',
-    text: 'The time in the cities you work with, and whether it’s already tomorrow there.',
-  },
-  {
-    title: 'Calendar',
-    text: 'This month as a grid in the menu, with week numbers and the date in the menu bar if you want them. With Pro and Calendar access, days with events get a dot and a click lists them.',
-  },
-  {
-    title: 'Sound',
-    text: 'Switch between speakers, headphones and microphones, and mute the mic, without opening System Settings.',
-  },
-  {
-    title: 'System at a glance',
-    text: 'CPU, memory, free disk space, battery health and cycle count, uptime and your local IP address — live, and click any line to copy it.',
-  },
-  {
-    title: 'Desktop',
-    text: 'Hide your desktop icons under a copy of your wallpaper or a plain colour; clicks still reach them. Hide the Notch paints the menu-bar strip black so the camera housing blends in, while the menu bar shows white text.',
-  },
+  { title: 'Keep Awake', text: 'Keeps the display on for half an hour, a few hours, or until you say so.' },
+  { title: 'Timer', text: 'A countdown beside the menu-bar icon that chimes when it’s done.' },
+  { title: 'Focus', text: 'Work in 25, 50 or 90-minute blocks with breaks in between.' },
+  { title: 'Breaks', text: 'Reminds you to look 20 feet away for 20 seconds, then gets out of the way.' },
+  { title: 'Clipboard tools', text: 'Change case, trim, sort lines, encode, format JSON. Optional short history.' },
+  { title: 'Scratchpad', text: 'A small floating notes window that saves as you type.' },
+  { title: 'Color picker', text: 'Any colour on screen, as a hex code on your clipboard.' },
+  { title: 'Generate', text: 'A UUID, password, timestamp, filler text or QR code in one click.' },
+  { title: 'World clock', text: 'The time in your cities, and whether it’s already tomorrow there.' },
+  { title: 'Calendar', text: 'This month as a grid in the menu, with week numbers.' },
+  { title: 'Sound', text: 'Switch speakers, headphones and mics, and mute the mic.' },
+  { title: 'System at a glance', text: 'CPU, memory, disk, battery health, uptime and local IP.' },
+  { title: 'Desktop', text: 'Hide your desktop icons, or paint the menu bar black so the notch blends in.' },
 ];
 
-// The Pro tools — each one stands in for an app people buy on its own.
-// `kind` is that category; `needs` is the macOS permission the tool asks for
-// on first use (see the tool's type comment in apps/macos), or null.
-const PRO_TOOLS: { kind: string; needs: string | null; title: string; text: string }[] = [
-  {
-    kind: 'Screenshot app',
-    needs: 'Screen Recording',
-    title: 'Screenshot and markup',
-    text: 'Capture a region, a window or the whole screen, then mark it up — arrow, rectangle, text, highlighter, pixelate, redact, crop, with undo — and copy it or save it.',
-  },
-  {
-    kind: 'Screen text reader',
-    needs: 'Screen Recording',
-    title: 'Copy text from screen',
-    text: 'Drag a box over a video, an image or a PDF that won’t select, and the text in it is on your clipboard. Recognised on your Mac, never uploaded.',
-  },
-  {
-    kind: 'QR code reader',
-    needs: 'Screen Recording',
-    title: 'Scan QR code from screen',
-    text: 'Drag a box over a QR code or barcode on a slide, a web page or a video call, and what it holds is on your clipboard. Read on your Mac.',
-  },
-  {
-    kind: 'Clipboard manager',
-    needs: null,
-    title: 'Clipboard manager',
-    text: 'The last 200 things you copied in a searchable window on ⌃⌥⌘V. Pin what you reuse, and keep it between restarts if you choose to.',
-  },
-  {
-    kind: 'File shelf',
-    needs: null,
-    title: 'File Shelf',
-    text: 'Park files on a floating shelf mid-task and drag them out where they’re needed. Convert images to JPEG, PNG or HEIC, resize them and leave out the location; merge PDFs. New files go to Downloads.',
-  },
-  {
-    kind: 'Volume mixer',
-    needs: 'System Audio Recording',
-    title: 'App Volume',
-    text: 'A volume slider and mute for each app that is playing sound, from silent to 200%. The sound is adjusted live on your Mac — never recorded or sent.',
-  },
-  {
-    kind: 'Bluetooth menu',
-    needs: 'Bluetooth',
-    title: 'Bluetooth',
-    text: 'Your paired headphones, speakers, keyboards and mice, each one click to connect or disconnect. Battery levels show for devices that report them the standard way; AirPods and Apple’s Magic accessories don’t.',
-  },
-  {
-    kind: 'Window dimmer',
-    needs: null,
-    title: 'Dim background windows',
-    text: 'Darken every window except the app you’re working in, with a slider for how dark. Menus and alerts stay bright.',
-  },
-  {
-    kind: 'Menu bar organiser',
-    needs: null,
-    title: 'Hide menu bar icons',
-    text: 'Tuck the icons you rarely need behind a chevron and bring them back with a click. Hold ⌘ and drag to choose which. macOS 26 and earlier: macOS 27 has its own overflow, and the tool is not offered there.',
-  },
-  {
-    kind: 'Automation',
-    needs: null,
-    title: 'Your Shortcuts, one click away',
-    text: 'Add any shortcut from Apple’s Shortcuts app to the menu — dark mode, a Focus, your smart lights — and run it from the menu bar.',
-  },
-  {
-    kind: 'Calendar',
-    needs: 'Calendar',
-    title: 'Next meeting',
-    text: 'What’s coming up on your calendar, right in the menu, with a Join button for Zoom, Meet, Teams and Webex calls.',
-  },
+// The Pro tools — each one stands in for an app people buy on its own. The
+// macOS permission each asks for on first use is listed once, under the
+// list (and in the FAQ), not on every line; check those against the tool's
+// type comment in apps/macos before changing either.
+const PRO_TOOLS = [
+  { title: 'Screenshot and markup', text: 'Capture, then add arrows and text, pixelate, redact, crop. Copy or save.' },
+  { title: 'Copy text from screen', text: 'Drag over a video, image or PDF; its text lands on your clipboard. Read on your Mac.' },
+  { title: 'Scan QR code from screen', text: 'Read a QR code or barcode off a slide, a web page or a call.' },
+  { title: 'Clipboard manager', text: 'Your last 200 copies, searchable, on ⌃⌥⌘V. Pin what you reuse.' },
+  { title: 'File Shelf', text: 'Park files mid-task, drag them out later. Convert images, merge PDFs.' },
+  { title: 'App Volume', text: 'A volume slider for each app that’s playing sound, up to 200%.' },
+  { title: 'Bluetooth', text: 'Connect or disconnect paired headphones, keyboards and mice in one click.' },
+  { title: 'Dim background windows', text: 'Darken every window except the app you’re working in.' },
+  { title: 'Hide menu bar icons', text: 'Tuck icons you rarely need behind a chevron. macOS 26 and earlier.' },
+  { title: 'Shortcuts', text: 'Run any shortcut from Apple’s Shortcuts app from the menu.' },
+  { title: 'Next meeting', text: 'What’s next on your calendar, with a Join button for video calls.' },
 ];
 
 // The display tools. The boost and Warmth are MaxCandela Pro; Extra Dim is
@@ -163,27 +72,33 @@ const PRO_TOOLS: { kind: string; needs: string | null; title: string; text: stri
 const FEATURES = [
   {
     title: 'XDR brightness boost',
-    text: 'On a MacBook Pro XDR display, lifts your whole screen — desktop, every app, every window — past the brightness macOS normally caps everyday content at.',
+    tier: 'Pro',
+    text: 'Lifts the whole screen, every app and window, past the cap macOS puts on everyday content. MacBook Pro XDR displays.',
   },
   {
     title: 'Extra Dim',
-    text: 'Take the screen below the lowest step of the brightness keys, for a dark room late at night. Works on any Mac display.',
+    tier: 'Free',
+    text: 'Takes the screen below the lowest step of the brightness keys, for a dark room. Any Mac.',
   },
   {
     title: 'Warmth',
-    text: 'Shift the picture toward a warmer white, all day or only at night — it eases in and out over half an hour rather than snapping. Works on any Mac display.',
+    tier: 'Pro',
+    text: 'A warmer white, all day or only at night, easing in over half an hour. Any Mac.',
   },
   {
     title: 'True colors',
-    text: 'The boost is colour-calibrated and preserves your display’s ColorSync profile. Brighter — never washed out.',
+    tier: null,
+    text: 'The boost keeps your display’s ColorSync profile. Brighter, not washed out.',
   },
   {
     title: 'Looks after your Mac',
-    text: 'Never exceeds the limits macOS enforces for HDR. Because a bright screen makes heat, MaxCandela tracks how hard and how long it has been driving your display and eases the boost down as it warms — and cuts it entirely if it gets too hot, restoring it once things cool.',
+    tier: null,
+    text: 'Stays inside the limits macOS sets for HDR, eases off as the panel warms, and cuts out if it gets too hot.',
   },
   {
     title: 'Works the way you do',
-    text: 'Set a keyboard shortcut, pause the boost on battery, boost only in the apps you choose, and leave a second monitor alone.',
+    tier: null,
+    text: 'A keyboard shortcut, pause on battery, boost only in apps you choose, leave a second monitor alone.',
   },
 ];
 
@@ -296,11 +211,9 @@ export default function Home() {
               <span className="hl">One menu-bar icon.</span>
             </h1>
             <p className="subtitle">
-              Keep Awake, focus sessions, break reminders, clipboard tools, a
-              scratchpad and more — free. Pro replaces a shelf of paid
-              utilities: screenshots with markup, a clipboard manager, a file
-              shelf, per-app volume, text capture, and an XDR brightness boost
-              for MacBook Pro.
+              Keep Awake, Focus, Breaks, clipboard tools and a scratchpad are
+              free. Pro adds screenshots with markup, a clipboard manager,
+              per-app volume and an XDR brightness boost for MacBook Pro.
             </p>
             <div className="cta-row">
               <a className="app-store-link" href={APP_STORE_URL} aria-label="Download on the Mac App Store">
@@ -326,83 +239,63 @@ export default function Home() {
           </div>
         </section>
 
-        {/* ---- Tools (free) ---- */}
+        {/* ---- Tools (free) ----
+            Three short columns instead of one long definition list: the old
+            13 rows of full sentences were most of the page's height. */}
         <section className="block" id="tools">
           <div className="section-head">
-            <span className="section-label">Free</span>
-            <h2>The everyday Mac utilities, without 13 separate apps</h2>
+            <h2>Everyday Mac utilities, free</h2>
             <p className="section-sub">
-              One icon in the menu bar instead of a row of them. None of these
-              needs an account or a permission prompt.
+              No account, no permission prompts, no time limit.
             </p>
           </div>
-          <dl className="spec">
+          <ul className="tool-list">
             {TOOLS.map((t) => (
-              <div className="spec-row" key={t.title}>
-                <dt>{t.title}</dt>
-                <dd>{t.text}</dd>
-              </div>
+              <li className="tool" key={t.title}>
+                <h3>{t.title}</h3>
+                <p>{t.text}</p>
+              </li>
             ))}
-          </dl>
+          </ul>
         </section>
 
         {/* ---- Pro tools ---- */}
         <section className="block" id="pro">
           <div className="section-head">
-            <span className="section-label">MaxCandela Pro</span>
-            <h2>Eleven tools people usually buy one app at a time</h2>
+            <h2>Pro adds the Mac apps you’d otherwise buy one at a time</h2>
             <p className="section-sub">
-              A screenshot tool, a clipboard manager, a file shelf, a volume
-              mixer and a menu-bar organiser are each their own purchase
-              elsewhere. Here they are one unlock, free to try for 14 days.
+              Free for 14 days, then $9.99 once or $0.99 a month.
             </p>
           </div>
-          <div className="panels">
+          <ul className="tool-list">
             {PRO_TOOLS.map((t) => (
-              <article className="panel" key={t.title}>
-                <span className="panel-kind">{t.kind}</span>
+              <li className="tool" key={t.title}>
                 <h3>{t.title}</h3>
                 <p>{t.text}</p>
-                {t.needs && (
-                  <span className="panel-note">
-                    Asks for {t.needs} access the first time you use it
-                  </span>
-                )}
-              </article>
+              </li>
             ))}
-          </div>
+          </ul>
+          <p className="list-note">
+            Screenshot, Copy Text and Scan QR Code ask for Screen Recording the
+            first time you use them. App Volume asks for System Audio
+            Recording (the sound is adjusted live, never recorded), Bluetooth
+            for Bluetooth, Next Meeting for your calendar. Nothing asks at
+            launch.
+          </p>
         </section>
 
-        {/* ---- Display tools (Pro) ---- */}
+        {/* ---- Display: the boost shown, the display tools, the live demo ----
+            One section now; it used to be three (a trio, a before/after with
+            its own heading, and a boxed demo card). */}
         <section className="block" id="display">
           <div className="section-head">
-            <span className="section-label">Display</span>
-            <h2>Brighter, dimmer, warmer — control macOS doesn’t give you</h2>
+            <h2>Make your MacBook Pro screen brighter than macOS allows</h2>
             <p className="section-sub">
-              The brightness boost needs a MacBook Pro XDR display. Extra Dim
-              and Warmth work on any Mac. Extra Dim is free; the boost and
-              Warmth are part of Pro.
+              An XDR panel can sustain around 1,000 nits; macOS holds everyday
+              content near 600. Drag the slider: the left is the normal cap,
+              the right is the same desktop with the boost on.
             </p>
           </div>
-          <div className="trio">
-            {FEATURES.slice(0, 3).map((f) => (
-              <div className="trio-item" key={f.title}>
-                <h3>{f.title}</h3>
-                <p>{f.text}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* ---- The boost, shown: before/after ---- */}
-        <section className="showcase">
-          <h2>How dark your MacBook Pro screen is now vs. how bright it gets</h2>
-          <p className="section-sub">
-            A MacBook Pro XDR panel can sustain around 1,000 nits; macOS holds
-            everyday content near 600. Drag the slider — the left is the
-            screen at its normal cap, the right is the same desktop with the
-            boost on.
-          </p>
           <BeforeAfter
             before={COMPARE_NORMAL}
             after={COMPARE_BOOSTED}
@@ -412,115 +305,81 @@ export default function Home() {
             afterLabel="With MaxCandela"
             alt="MacBook Pro XDR display at the macOS brightness cap next to the same desktop unlocked to full brightness by MaxCandela"
           />
-          <dl className="spec spec-tight">
-            {FEATURES.slice(3).map((f) => (
-              <div className="spec-row" key={f.title}>
-                <dt>{f.title}</dt>
-                <dd>{f.text}</dd>
-              </div>
-            ))}
-          </dl>
-        </section>
 
-        {/* ---- Live demo ---- */}
-        <section className="demo" id="demo">
-          <div className="demo-text">
-            <span className="section-label">Try it here</span>
-            <h2>Don’t take our word for it — try the brightness boost</h2>
-            <p className="demo-copy">
-              On a MacBook Pro XDR display, this page can boost itself the
-              same way, right in your browser. Press the button and imagine
-              your whole Mac like this.
-            </p>
-            <p className="demo-fineprint">
-              The web demo brightens this page only. The Mac app brightens
-              everything, system-wide.
-            </p>
-          </div>
-          <div className="demo-control">
-            <button
-              className={`toggle toggle-big ${enabled ? 'toggle-on' : ''}`}
-              onClick={toggle}
-              disabled={supported !== true || isMac !== true}
-              aria-pressed={enabled}
-            >
-              <span className="toggle-dot" aria-hidden="true" />
-              {enabled ? 'Boost on — press to restore' : 'Try the boost'}
-            </button>
-            <div className={`status ${status.cls}`} role="status">
-              <span className="status-dot" aria-hidden="true" />
-              {status.text}
+          <div className="demo" id="demo">
+            <div className="demo-text">
+              <h3>Try the boost on this page</h3>
+              <p>
+                On a MacBook Pro XDR display, this page can brighten itself in
+                your browser. The app does the same for the whole screen.
+              </p>
             </div>
-            {status.note && <p className="demo-fineprint">{status.note}</p>}
-            {enabled && unlocker?.error && (
-              <p className="diag">{unlocker.error}</p>
-            )}
+            <div className="demo-control">
+              <button
+                className={`toggle toggle-big ${enabled ? 'toggle-on' : ''}`}
+                onClick={toggle}
+                disabled={supported !== true || isMac !== true}
+                aria-pressed={enabled}
+              >
+                <span className="toggle-dot" aria-hidden="true" />
+                {enabled ? 'Boost on, press to restore' : 'Try the boost'}
+              </button>
+              <div className={`status ${status.cls}`} role="status">
+                <span className="status-dot" aria-hidden="true" />
+                {status.text}
+              </div>
+              {status.note && <p className="demo-fineprint">{status.note}</p>}
+              {enabled && unlocker?.error && (
+                <p className="diag">{unlocker.error}</p>
+              )}
+            </div>
           </div>
+
+          <ul className="feature-list">
+            {FEATURES.map((f) => (
+              <li className="feature" key={f.title}>
+                <h3>
+                  {f.title}
+                  {f.tier && <span className="tier">{f.tier}</span>}
+                </h3>
+                <p>{f.text}</p>
+              </li>
+            ))}
+          </ul>
         </section>
 
-        {/* ---- Pricing ---- */}
+        {/* ---- Pricing ----
+            Two cards, not three: Monthly and Lifetime unlock the same thing,
+            so they share one card and one list. */}
         <section className="block pricing" id="pricing">
           <div className="section-head">
-            <span className="section-label">Pricing</span>
-            <h2>14 tools free — all 27 for $9.99 once</h2>
-            <p className="section-sub">
-              The everyday tools and Extra Dim cost nothing. Pro is free for 14 days, then
-              pick what suits you. The brightness boost needs a MacBook Pro XDR
-              display — check that it works on yours during the trial before
-              you buy.
-            </p>
+            <h2>Pricing: 14 tools free, all 27 for $9.99 once</h2>
           </div>
           <div className="price-cards">
             <div className="price-card">
               <h3>Free</h3>
-              <p className="price">
-                $0<span className="price-per"> forever</span>
-              </p>
+              <p className="price">$0</p>
               <ul>
-                <li>Keep Awake, Timer and Focus</li>
-                <li>Breaks, Scratchpad and Calendar</li>
-                <li>Clipboard tools and Generate</li>
-                <li>Color picker and World Clock</li>
-                <li>Sound, System and Desktop</li>
-                <li>Extra Dim for dark rooms</li>
+                <li>The 13 everyday tools above</li>
+                <li>Extra Dim</li>
+                <li>No time limit, no account</li>
               </ul>
               <a className="cta cta-secondary" href={APP_STORE_URL}>
                 Download free
               </a>
             </div>
-            <div className="price-card">
-              <h3>Pro Monthly</h3>
-              <p className="price">
-                $0.99<span className="price-per"> / month</span>
-              </p>
-              <ul>
-                <li>Everything in Free</li>
-                <li>Screenshot and markup, text and QR capture</li>
-                <li>Clipboard manager and File Shelf</li>
-                <li>App Volume, Bluetooth, window dimming</li>
-                <li>Hidden icons, Shortcuts, Next Meeting</li>
-                <li>XDR brightness boost and Warmth</li>
-                <li>Cancel anytime in the App Store</li>
-              </ul>
-              <a className="cta cta-secondary" href={APP_STORE_URL}>
-                Start free trial
-              </a>
-            </div>
-            <div className="price-card price-card-best">
-              <h3>
-                Pro Lifetime <span className="badge">Best value</span>
-              </h3>
+            <div className="price-card price-card-pro">
+              <h3>Pro</h3>
               <p className="price">
                 $9.99<span className="price-per"> once</span>
               </p>
+              <p className="price-alt">or $0.99 a month, cancel anytime</p>
               <ul>
                 <li>Everything in Free</li>
-                <li>Screenshot and markup, text and QR capture</li>
-                <li>Clipboard manager and File Shelf</li>
-                <li>App Volume, Bluetooth, window dimming</li>
-                <li>Hidden icons, Shortcuts, Next Meeting</li>
+                <li>The 11 Pro tools</li>
                 <li>XDR brightness boost and Warmth</li>
-                <li>Pays for itself in 11 months</li>
+                <li>Free for 14 days</li>
+                <li>Every Mac on your Apple ID</li>
               </ul>
               <a className="cta cta-primary" href={APP_STORE_URL}>
                 Start free trial
@@ -528,12 +387,12 @@ export default function Home() {
             </div>
           </div>
           <p className="pricing-fineprint">
-            Purchases via Apple. One purchase covers every Mac on your Apple
-            ID. Requires macOS 15.6+; the brightness boost also needs an
-            HDR/XDR display (MacBook Pro 14″/16″ with a Liquid Retina XDR
-            display, or Pro Display XDR). Subscriptions renew monthly and can
-            be cancelled anytime in App Store → Subscriptions; payment is
-            charged to your Apple Account. See our{' '}
+            Purchases via Apple. Requires macOS 15.6+; the brightness boost
+            also needs an HDR/XDR display (MacBook Pro 14″/16″ with a Liquid
+            Retina XDR display, or Pro Display XDR), so check it works on yours
+            during the trial. Subscriptions renew monthly and can be cancelled
+            anytime in App Store → Subscriptions; payment is charged to your
+            Apple Account. See our{' '}
             <Link href="/terms/">Terms of Use</Link> and{' '}
             <Link href="/privacy/">Privacy Policy</Link>.
           </p>
@@ -542,7 +401,6 @@ export default function Home() {
         {/* ---- FAQ ---- */}
         <section className="block faq" id="faq">
           <div className="section-head">
-            <span className="section-label">FAQ</span>
             <h2>Questions about the tools, the brightness boost and pricing</h2>
           </div>
           <div className="faq-list">

@@ -726,9 +726,14 @@ in the header comment of `app/globals.css`; the short version:
   then `scripts/optimize-web-images.sh` (which crops `raw/main.png` via
   `scripts/crop-menu-shot.swift`), and update the `<img>` width/height if the
   menu's size changed.
-- Free tools are a definition list (`.spec`); the six Pro tools are the only
-  boxed items (`.panels`, each with its category and any permission it asks
-  for); display tools are a three-up (`.trio`).
+- *(Superseded 2026-11-26, after Daniel still called it AI slop.)* All 27
+  tools are one line each in the same three-column `.tool-list` (free, then
+  Pro, with the Pro permissions stated once under the list); no uppercase
+  label over any heading; the display tools, the before/after and the demo
+  are one `#display` section (the demo is a plain row, `#demo` kept for the
+  nav and the links from `/how-it-works/` and `/betterdisplay-alternative/`);
+  pricing is two cards, Free and Pro, with Monthly folded into Pro. Home
+  page 8,528 → 6,193 px tall at 1728 px wide.
 - Buttons no longer lift on hover and the primary is flat amber.
 - **Not checked:** phone widths (breakpoints exist at 600–900 px but nobody
   has looked), and the page under the live boost demo.

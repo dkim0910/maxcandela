@@ -9,10 +9,13 @@
    2. No decoration that isn't information. The 2026-11 redesign removed the
       emoji-in-a-tile card grids, the gradient headline, the pill eyebrow and
       the centred-everything layout: three near-identical grids of twenty
-      cards read as a template, not a product. Lists are lists now (.spec),
-      the Pro tools are the only boxed items (.panel), and the one image
-      in the hero is the app's real menu (components/MenuMock.tsx). The amber
-      accent is for the primary action and for "on" — nothing else. */
+      cards read as a template, not a product. The 2026-11-26 pass went
+      further: no uppercase label over every heading, every tool on one line
+      in the same three-column list (.tool-list) instead of a definition list
+      plus a boxed grid, one display section instead of three, and two
+      pricing cards instead of three. The one image in the hero is the app's
+      real menu (components/MenuMock.tsx). The amber accent is for the
+      primary action and for "on" — nothing else. */
 
 * {
   margin: 0;
@@ -67,17 +70,6 @@ body {
 .section-head {
   max-width: 680px;
   margin-bottom: 44px;
-}
-
-/* A plain label, not a pill: small, quiet, and the only uppercase on the page. */
-.section-label {
-  display: block;
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--text-mute);
-  margin-bottom: 14px;
 }
 
 h2 {
@@ -366,6 +358,16 @@ h2 {
   margin: 0 10px;
 }
 
+/* On a phone the items wrap, and a wrapped line started with a stray dot. */
+@media (max-width: 520px) {
+  .hero-meta {
+    flex-direction: column;
+  }
+  .hero-meta li + li::before {
+    content: none;
+  }
+}
+
 /* ---- The menu bar (drawn) and the app's menu (a real capture) ----
    components/MenuMock.tsx. */
 
@@ -503,16 +505,6 @@ h2 {
   }
 }
 
-/* Product showcase */
-
-.showcase {
-  margin-top: 88px;
-}
-
-.showcase .ba {
-  margin-top: 36px;
-}
-
 /* Before/after comparison slider */
 .ba {
   position: relative;
@@ -612,49 +604,53 @@ h2 {
   z-index: 5;
 }
 
-/* Demo — text left, the control right */
+/* Demo — a row under the before/after: text left, the control right. It
+   used to be a raised, bordered card with its own big heading; inside the
+   display section it needs neither. */
 
 .demo {
-  margin-top: 128px;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 380px);
-  gap: 48px;
+  margin-top: 32px;
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  padding: 44px;
-  border: 1px solid var(--border);
-  border-radius: 20px;
-  background: var(--bg-raised);
+  justify-content: space-between;
+  gap: 20px 40px;
+  padding: 24px 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
 }
 
-.demo-copy {
-  margin-top: 14px;
-  color: var(--text-dim);
-  font-size: 17px;
+.demo-text {
+  flex: 1 1 360px;
+  min-width: 0;
+  max-width: 560px;
+}
+
+.demo-text h3 {
+  font-size: 18px;
+  font-weight: 650;
+  letter-spacing: -0.015em;
+}
+
+.demo-text p {
+  margin-top: 6px;
+  font-size: 15px;
   line-height: 1.55;
+  color: var(--text-dim);
 }
 
 .demo-control {
+  flex: 0 1 380px;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 16px;
+  gap: 12px;
 }
 
 .demo-fineprint {
-  margin-top: 16px;
   font-size: 13px;
   color: var(--text-mute);
-}
-
-.demo-control .demo-fineprint {
-  margin-top: 0;
-}
-
-@media (max-width: 860px) {
-  .demo {
-    grid-template-columns: minmax(0, 1fr);
-    padding: 28px;
-  }
 }
 
 /* Status pill */
@@ -705,159 +701,95 @@ h2 {
   color: var(--text-dim);
 }
 
-/* ---- Lists of tools ---- */
+/* ---- Lists of tools ----
+   .tool-list: each tool's name over one line of what it does, three to a
+   row, a hairline above each. All 27 tools use it; they used to be a
+   13-row definition list of full sentences plus eleven boxed panels. */
 
-/* .spec: a definition list — name left, what it does right, a hairline
-   between rows. The free tools read as a specification, which is what they
-   are; boxing each one made every small tool look like a product. */
-.spec {
+.tool-list {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0 40px;
+}
+
+.tool {
+  padding: 18px 0 20px;
   border-top: 1px solid var(--border);
 }
 
-.spec-row {
-  display: grid;
-  grid-template-columns: 220px minmax(0, 1fr);
-  gap: 32px;
-  padding: 20px 0;
-  border-bottom: 1px solid var(--border);
-}
-
-.spec dt {
+.tool h3 {
   font-size: 16px;
   font-weight: 600;
   letter-spacing: -0.01em;
 }
 
-.spec dd {
-  font-size: 15.5px;
-  line-height: 1.55;
+.tool p {
+  margin-top: 4px;
+  font-size: 15px;
+  line-height: 1.5;
   color: var(--text-dim);
-  max-width: 640px;
 }
 
-.spec-tight {
-  margin-top: 44px;
+.list-note {
+  margin-top: 24px;
+  max-width: 720px;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--text-dim);
 }
 
-@media (max-width: 640px) {
-  .spec-row {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 6px;
-  }
-}
+/* .feature-list: the display tools and the boost's promises, under the
+   before/after. Same hairline-over-item rhythm as .tool-list. */
 
-/* .panels: the Pro tools — the only boxed items on the page, because
-   each is a product-sized thing with a category and sometimes a permission.
-   The hairlines are the grid's background showing through 1px gaps, so an
-   unfilled last row would show as a grey block: the last panel widens to
-   close its row instead (rules below and in the two breakpoints). */
-.panels {
+.feature-list {
+  list-style: none;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 1px;
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  background: var(--border);
-  overflow: hidden;
+  gap: 8px 40px;
+  margin-top: 56px;
 }
 
-.panel {
+.feature {
+  padding: 18px 0 20px;
+  border-top: 1px solid var(--border-strong);
+}
+
+.feature h3 {
   display: flex;
-  flex-direction: column;
-  padding: 28px 26px 26px;
-  background: var(--bg);
-}
-
-.panel-kind {
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--text-mute);
-  margin-bottom: 18px;
-}
-
-.panel h3 {
-  font-size: 18px;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 17px;
   font-weight: 650;
   letter-spacing: -0.015em;
-  margin-bottom: 10px;
 }
 
-.panel p {
+.feature p {
+  margin-top: 6px;
   font-size: 15px;
   line-height: 1.55;
   color: var(--text-dim);
 }
 
-.panel-note {
-  margin-top: auto;
-  padding-top: 18px;
+.tier {
   font-size: 12.5px;
-  color: var(--text-mute);
-}
-
-.panel:last-child:nth-child(3n + 1) {
-  grid-column: span 3;
-}
-
-.panel:last-child:nth-child(3n + 2) {
-  grid-column: span 2;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: var(--text-dim);
 }
 
 @media (max-width: 900px) {
-  .panels {
+  .tool-list,
+  .feature-list {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .panel:last-child:nth-child(n) {
-    grid-column: auto;
-  }
-
-  .panel:last-child:nth-child(odd) {
-    grid-column: span 2;
   }
 }
 
 @media (max-width: 600px) {
-  .panels {
+  .tool-list,
+  .feature-list {
     grid-template-columns: minmax(0, 1fr);
-  }
-
-  .panel:last-child:nth-child(n) {
-    grid-column: auto;
-  }
-}
-
-/* .trio: three statements side by side, no boxes. */
-.trio {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 40px;
-}
-
-.trio-item {
-  padding-top: 20px;
-  border-top: 1px solid var(--border-strong);
-}
-
-.trio h3 {
-  font-size: 18px;
-  font-weight: 650;
-  letter-spacing: -0.015em;
-  margin-bottom: 10px;
-}
-
-.trio p {
-  font-size: 15px;
-  line-height: 1.55;
-  color: var(--text-dim);
-}
-
-@media (max-width: 760px) {
-  .trio {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 28px;
+    gap: 0;
   }
 }
 
@@ -865,8 +797,9 @@ h2 {
 
 .price-cards {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
+  max-width: 800px;
 }
 
 .price-card {
@@ -879,7 +812,7 @@ h2 {
   gap: 22px;
 }
 
-.price-card-best {
+.price-card-pro {
   border-color: var(--accent-dim);
 }
 
@@ -891,18 +824,6 @@ h2 {
   font-size: 15px;
   font-weight: 600;
   color: var(--text-dim);
-  /* Tall enough for the badge, so the three prices sit on one line. */
-  min-height: 26px;
-}
-
-.badge {
-  padding: 3px 9px;
-  border-radius: 6px;
-  border: 1px solid var(--accent-dim);
-  color: var(--accent);
-  font-size: 11.5px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
 }
 
 .price {
@@ -911,6 +832,14 @@ h2 {
   letter-spacing: -0.035em;
   line-height: 1;
   font-variant-numeric: tabular-nums;
+}
+
+/* "or $0.99 a month" under the Pro price; the card's 22px gap is too wide
+   between two lines that belong together. */
+.price-alt {
+  margin-top: -14px;
+  font-size: 14.5px;
+  color: var(--text-dim);
 }
 
 .price-per {
@@ -965,7 +894,7 @@ h2 {
   color: var(--text-dim);
 }
 
-@media (max-width: 900px) {
+@media (max-width: 640px) {
   .price-cards {
     grid-template-columns: minmax(0, 1fr);
     max-width: 440px;
