@@ -259,7 +259,7 @@ final class MenuBarController {
         // app-level rows. Every row carries an icon (see MenuStyling).
         menu.addItem(.sectionHeader(title: "Display"))
         boostItem.target = self
-        boostItem.action = #selector(toggleBoost)
+        boostItem.action = #selector(toggleBoostFromMenu)
         menu.addItem(boostItem.symbol("sun.max"))
 
         headroomItem.isEnabled = false
@@ -812,6 +812,17 @@ final class MenuBarController {
         lastToggleAppliedAt = nil
         brightness.toggle()
         refresh()
+    }
+
+    /// The menu's own "Turn Boost On/Off" row (and its ⌘B). Choosing it is an
+    /// explicit request, so it must clear the double-click flag exactly like a
+    /// single click or the shortcut does: the double-click that *opened* the
+    /// menu leaves `suppressPendingToggle` set, and without this the row then
+    /// did nothing when the boost was off — the licence check came back and
+    /// was discarded as a toggle the user no longer wanted.
+    @objc private func toggleBoostFromMenu() {
+        suppressPendingToggle = false
+        toggleBoost()
     }
 
     @objc private func toggleBoost() {

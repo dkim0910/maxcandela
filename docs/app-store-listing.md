@@ -169,7 +169,7 @@ Requested only on first use of the tool, never at launch. Nothing they give acce
 • System Audio Recording (device.audio-input) — Pro Tools > App Volume: play sound in any app, move its slider off 100%. A Core Audio process tap on that app plays its sound at the chosen level, live, never recorded; at 100% the tap is removed. The microphone is never opened; process taps need audio-input in the sandbox.
 • files.user-selected.read-write — File Shelf (Pro Tools > File Shelf > Show Shelf, drop files) bookmarks dropped files so they survive a relaunch and never modifies them. Screenshot's Save… writes only to the file chosen in the save panel.
 • files.downloads.read-write — File Shelf's Convert menu (JPEG/PNG/HEIC, resize, merge PDFs) writes new files to ~/Downloads; the sandbox does not allow writing next to the original.
-• Dim Background Windows reads only window bounds, layer and owner PID (CGWindowListCopyWindowInfo). No names, no pixels, no permission.
+• Dim Background Windows reads only window bounds, layer, alpha and owner PID (CGWindowListCopyWindowInfo). No names, no pixels, no permission.
 
 CLIPBOARD
 History is off by default (Tools > Clipboard > Keep Clipboard History), in memory only unless the Pro option "Remember After Quit" saves it in the app's container. Password-manager items are skipped.

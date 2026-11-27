@@ -13,22 +13,30 @@ MaxCandela raises a Mac display's usable brightness beyond the SDR ceiling by
 lighting up the display's **Extended Dynamic Range (EDR)** headroom. Think
 Vivid / BetterDisplay's brightness-boost feature, built from scratch. macOS
 only — the target hardware is MacBook Pros with XDR panels. No Android/Windows.
+Since 2026-11-21 the app is a **menu-bar toolbox** and the boost is one of its
+27 tools (14 free, 13 Pro — see "The toolbox pivot").
 
 It's a monorepo with two apps:
 
 - **`apps/macos/`** — native menu-bar app, Swift + AppKit + Metal. Build system
-  is **Swift Package Manager** (no `.xcodeproj` — SwiftPM drives everything).
-  Single-clicking the ☀️ status icon toggles full brightness; double-click or
-  right-click opens the menu (status, purchases, Legal ▸ Get Support, Quit).
-  On a display with no EDR headroom a single click opens the menu instead —
+  is **Swift Package Manager** (no checked-in `.xcodeproj` — SwiftPM drives dev
+  builds and tests; XcodeGen generates the project for the App Store build).
+  On a new install a single click on the ☀️ status icon opens the menu (boost,
+  Extra Dim, Warmth, the tools, purchases, Options, Legal ▸ Get Support, Quit).
+  Installs from before the toolbox keep the original gesture — single click
+  toggles full brightness, double-click or right-click opens the menu — and
+  Options ▸ "Clicking the Icon Toggles the Boost" switches either way
+  (`resolveClickBehaviour`). In toggle mode, on a display with no EDR headroom
+  a single click opens the menu instead —
   App Review rejected a build where the menu was right-click-only and the
   reviewer's MacBook Air hit a dead end (2026-07-20; see
   `docs/app-review-reply.md`). There is
   deliberately **no boost slider** (removed 2026-07 — toggle always targets the
   panel's max headroom; a manual level didn't add value and confused testing).
 - **`apps/web/`** — Next.js 16 (App Router, TypeScript, static export) site
-  with a brightness toggle in its top nav bar. Unlocks brightness inside the
-  browser via the HDR-video trick (see below).
+  with a live boost demo (the toggle sits in the home page's `#demo` row; the
+  nav bar only links to it). Unlocks brightness inside the browser via the
+  HDR-video trick (see below).
 
 Shared tooling lives in `scripts/`.
 
@@ -45,10 +53,12 @@ possible on MAS; marketed as "one purchase, all your Macs"). `StoreManager`
 implements StoreKit 2 entitlement checks + purchases; the trial clock uses the
 App Store receipt's original purchase date (`AppTransaction.shared`,
 tamper-proof) and falls back to the UserDefaults first-launch date when no
-receipt is present (dev builds). The paywall gates *turning the boost on*;
-turning it OFF and quitting are never gated (kill-switch invariant). On a
-display with no EDR headroom, clicking the icon shows a "no boost available"
-explanation instead of a fake on-state.
+receipt is present (dev builds). The paywall gates *turning the boost on*,
+Warmth and the Pro tools (`ProGate`); the free tools and Extra Dim are never
+gated, and neither is turning the boost OFF or quitting (kill-switch
+invariant). On a display with no EDR headroom, choosing "Turn Boost On" (menu
+row or shortcut) shows a "no boost available" explanation instead of a fake
+on-state; a click on the icon there always opens the menu.
 
 DEBUG builds bypass the paywall so `swift run` stays usable; set
 `MAXCANDELA_FORCE_PAYWALL=1` to test paywall flows in debug.
@@ -260,11 +270,12 @@ Rules that make this work:
 Structure: `components/BoostProvider.tsx` (root-layout context: state,
 detection, sessionStorage, renders the video) → `components/
 BrightnessUnlocker.tsx` (the video element + prime/boost styling).
-`app/page.tsx` is the marketing page (hero, demo section with the big toggle,
-features, pricing, FAQ); `components/NavBar.tsx` is links-only (toggle
-deliberately lives in the demo section); `components/LegalShell.tsx` +
+`app/page.tsx` is the marketing page (hero, `#tools`, `#pro`, `#display` with
+the before/after and the `#demo` toggle row, pricing, FAQ);
+`components/NavBar.tsx` is links-only (toggle
+deliberately lives in the demo row); `components/LegalShell.tsx` +
 `SiteFooter.tsx` wrap the secondary pages `/about`, `/privacy`, `/terms`,
-`/support`. `next.config.mjs` sets `output: 'export'` + `trailingSlash: true`
+`/support`, `/how-it-works`, `/betterdisplay-alternative` and the 404. `next.config.mjs` sets `output: 'export'` + `trailingSlash: true`
 (folder/index.html per route so static hosts serve them).
 
 ### SEO / metadata / analytics (apps/web)
@@ -314,9 +325,10 @@ deliberately lives in the demo section); `components/LegalShell.tsx` +
   subscriptions, which we don't offer; the app-side clock is invisible to the
   store. Filter on `license_state` instead. Key handling mirrors GA: public
   SDK key (`appl_…`, designed to ship in the binary) in Info.plist
-  `RCPublicAPIKey`, committed empty, filled from `RC_PUBLIC_API_KEY` in `.env`
-  by both `bundle-macos.sh` and the Xcode post-build script; empty ⇒ silently
-  off. DEBUG reads `MAXCANDELA_RC_API_KEY` from the environment or stays off.
+  `RCPublicAPIKey` — committed with the real key since the console side was
+  set up (it was committed empty before that), and overwritten from
+  `RC_PUBLIC_API_KEY` in `.env` when that is set, by both `bundle-macos.sh`
+  and the Xcode post-build script; empty ⇒ silently off. DEBUG reads `MAXCANDELA_RC_API_KEY` from the environment or stays off.
   SDK is `purchases-ios-spm` (SPM-only mirror), `from: 5.87.1` in *both*
   `Package.swift` and `project.yml` — keep them equal. `Package.resolved` is
   gitignored, so a fresh clone may resolve a newer 5.x; the SDK uses no
@@ -339,7 +351,10 @@ AppMenu               → the invisible main menu. An accessory app shows no men
                          mainMenu.performKeyEquivalent BEFORE the responder
                          chain — with no Edit menu, paste is dead in every text
                          field we present. Do not delete it as "unused UI".
-MenuBarController      → NSStatusItem. Single click = instant toggle; double
+MenuBarController      → NSStatusItem. New installs: single click = menu.
+                         Installs from before the toolbox, or with Options ▸
+                         "Clicking the Icon Toggles the Boost" on: single
+                         click = instant toggle; double
                          click / right-click = menu; single click on a
                          no-headroom display = menu (so Quit stays reachable
                          where the boost can't work — the App Review path).
@@ -351,10 +366,13 @@ MenuBarController      → NSStatusItem. Single click = instant toggle; double
                          against that panel's own SDR white. A second line
                          appears *only* to explain something — thermal
                          ease/pause/dim, or the no-headroom copy.
-                         Then the two buy items (top level — they must not be
+                         Then the Extra Dim and Warmth sliders, Warmth
+                         Schedule ▸, the Tools section (flat or grouped —
+                         MenuGroups), and under "MaxCandela Pro" the licence
+                         line and the two buy items (top level — they must not be
                          missable), Purchases ▸ (Restore Purchases, Redeem
-                         Code…, View in Mac App Store), Legal ▸ (Terms,
-                         Privacy, Get Support), Quit. No slider. Restore
+                         Code…, View in Mac App Store), Options ▸, Legal ▸ (Terms,
+                         Privacy, Get Support), Quit. No boost slider. Restore
                          Purchases stays visible in every license state
                          (Guideline 3.1.1) — but "Redeem Code…" hides once
                          `StoreManager.ownsLifetime`, i.e. the permanent unlock
@@ -389,7 +407,10 @@ MetalRenderer          → owns MTLDevice/queue; drives the CAMetalLayer render
                          loop (CADisplayLink via NSView.displayLink); clears
                          drawable to EDR white ×boost
 Preferences            → UserDefaults-backed enabled flag + boost level, Extra
-                         Dim, Warmth, and the three Options switches
+                         Dim, Warmth and its schedule, the shortcut, excluded
+                         displays, the Boost Only In apps, and the Options
+                         switches (pause on battery, shortcut on, click
+                         behaviour, menu layout)
 PowerMonitor           → on-battery? + change callback (public IOKit.ps)
 ShortcutRecorderView   → the key-capture box in Change Shortcut…
 WarmthSchedule         → "Only at Night" factor with 30-min ramps (pure)
@@ -402,11 +423,26 @@ LoginItem              → Launch at Login via SMAppService.mainApp; the system
 SliderMenuItemView     → labelled NSSlider hosted in an NSMenuItem.view
 KnownIssues            → M5 Pro / M5 Max check for the one-time notice (below)
 Tools/                 → the toolbox: MenuTool (contract), KeepAwakeTool,
-                         TimerTool, ClipboardTool + ClipboardPanel +
-                         TextTransforms, ColorPickerTool, GeneratorTool,
-                         WorldClockTool, AudioTool, SystemTool; Pro (ProGate):
-                         MenuBarHiderTool, WindowSnapTool, ScreenTextTool,
-                         ShortcutsTool, CalendarTool. See "The toolbox pivot".
+                         TimerTool, FocusTool, BreaksTool, ClipboardTool +
+                         ClipboardPanel + TextTransforms, ScratchpadTool,
+                         ColorPickerTool, GeneratorTool (+ QRCode),
+                         WorldClockTool, MonthCalendarTool, AudioTool,
+                         SystemTool, DesktopTool; Pro (ProGate):
+                         MenuBarHiderTool, WindowSnapTool (hidden when
+                         sandboxed), ScreenshotTool, ScreenTextTool (twice:
+                         text and codes), ShortcutsTool, CalendarTool,
+                         BluetoothTool, FileShelfTool, WindowDimmerTool,
+                         AppVolumeTool. The list that counts is
+                         `MenuBarController.tools`. See "The toolbox pivot"
+                         and "Ten more tools".
+MenuGroups             → MenuGroup (the five categories) + MenuLayout (flat,
+                         the default, or grouped) for the Tools section
+MenuStyling            → NSMenuItem.symbol(_:) / NSMenu.addSection(_:) helpers
+StoreManager           → StoreKit 2: product IDs, 14-day trial clock,
+                         currentState() (the licence's source of truth),
+                         purchase, restore, Transaction.updates listener
+Analytics              → anonymous GA4 via the Measurement Protocol; off in DEBUG
+WelcomeViewController  → the first-run popover anchored to the ☀️
 BoostAutomation       → Shortcuts actions + maxcandela://boost/on|off|toggle
                          route through MenuBarController.setBoostFromAutomation:
                          the click's rules, no dialogs. BoostIntents holds the
@@ -441,15 +477,15 @@ swift build -c release      # release
 xcodegen generate && open MaxCandela.xcodeproj
                             # open in Xcode (Archive / App Store upload live there —
                             #   the .xcodeproj is gitignored, so generate it first)
-swift test                  # unit tests — 303 across Adjustments, BoostLogic,
-                            #   ConversionTracker, DisplayManager, SupportMessages, Tools. Pure logic only: no test can
+swift test                  # unit tests — 303 across 20 suites (one per file in
+                            #   Tests/MaxCandelaTests/). Pure logic only: no test can
                             #   observe the backlight, see "Verifying a
                             #   brightness change actually works".
 
 # Web app (from apps/web/)
 npm install
 npm run dev                 # http://localhost:3000
-npm run lint                # next lint
+npm run lint                # BROKEN — Next 16 removed `next lint` (see the TODO list)
 npx tsc --noEmit            # safe to run while dev is serving — prefer this
 npm run build               # static export → apps/web/out/  (NOT while dev runs)
 ```
@@ -920,6 +956,7 @@ running instance first (`pkill -x MaxCandela`) to avoid two menu-bar icons.
 | `MAXCANDELA_FORCE_THERMAL=nominal\|fair\|serious\|critical swift run MaxCandela` | Force an OS thermal state (eases/cuts the boost) |
 | `MAXCANDELA_FORCE_TEMP=43.5 swift run MaxCandela` | Fake the chassis thermometer → walk the ease/protect ladder without cooking the Mac |
 | `MAXCANDELA_FORCE_NO_HEADROOM=1 swift run MaxCandela` | Pretend no display has EDR headroom → preview the "no boost available" alert (what App Review saw on a MacBook Air) |
+| `MAXCANDELA_OPEN_MENU=1 swift run MaxCandela` | Opens the menu by itself 2 s after launch, so its layout can be captured without a click |
 | `MAXCANDELA_RC_API_KEY=appl_… swift run MaxCandela` | Turn RevenueCat on in a debug run. Off otherwise — dev launches must not count as customers, and a bare binary has no Info.plist to read the key from. SDK output goes to the unified log, not stderr: `log show --last 5m --predicate 'subsystem CONTAINS "revenuecat"'` |
 
 **The offer-code sheet is NOT ours to position** (measured 2026-07-28, installed
@@ -960,7 +997,8 @@ Easy to confuse, since both are "about the paywall". They exercise opposite
 things (`StoreManager.currentState()`):
 
 - **`MAXCANDELA_FORCE_TRIAL=expired`** returns `.expired` immediately
-  (`StoreManager.swift:86`). StoreKit is never consulted, the receipt is never
+  (the `MAXCANDELA_FORCE_TRIAL` block at the top of `currentState()`).
+  StoreKit is never consulted, the receipt is never
   read, the clock never runs. It fakes the *answer* — use it to test the
   paywall **UI**. Deterministic, so this is the one for **App Store IAP review
   screenshots**.
@@ -973,14 +1011,15 @@ Consequences worth remembering:
 
 - `FORCE_PAYWALL=1` usually shows **no paywall**. Under `swift run` there's no
   App Store receipt, so it falls back to the `com.maxcandela.firstLaunchDate`
-  UserDefaults stamp; if this Mac first ran the app under 5 days ago the real
-  answer is `.trial`. That's correct behaviour, not a bug.
+  UserDefaults stamp; if this Mac first ran the app under 14 days ago
+  (`StoreManager.trialDays`) the real answer is `.trial`. That's correct behaviour, not a bug.
 - **`FORCE_TRIAL` wins if both are set** — it returns before the `FORCE_PAYWALL`
   check is reached.
 - Only `FORCE_PAYWALL=1` can catch a broken trial clock or receipt read; the
   forced states bypass that code entirely, so ship-check with it at least once.
 
-There is no CI yet. When adding it, run `swift build`/`swift test` (in
+There is no CI for builds or tests yet (the only workflow is `deploy-web.yml`,
+which builds and deploys the site). When adding it, run `swift build`/`swift test` (in
 `apps/macos`) and `npm run build` (in `apps/web`) on macOS-latest.
 
 ### App Store build (Xcode project via XcodeGen)
@@ -997,10 +1036,12 @@ open MaxCandela.xcodeproj      # then Product → Archive → Distribute
 ```
 
 The project reuses the same `Sources/MaxCandela` code, `Resources/Info.plist`,
-`Resources/MaxCandela.entitlements` (sandbox + network), and an app-icon asset
+`Resources/MaxCandela.entitlements` (seven keys: sandbox, network client,
+calendars, Bluetooth, user-selected files read-write, Downloads read-write,
+audio input), and an app-icon asset
 catalog at `Resources/Assets.xcassets` (generated from `make-icon.swift`'s
-PNGs). A post-build script injects `GA_API_SECRET` from the repo-root `.env`
-before signing (same as the CLI bundler). `Bundle.module` (icon load) is guarded
+PNGs). A post-build script injects `GA_API_SECRET` and `RC_PUBLIC_API_KEY`
+from the repo-root `.env` before signing (same as the CLI bundler). `Bundle.module` (icon load) is guarded
 by `#if SWIFT_PACKAGE` so it compiles under both SwiftPM and Xcode.
 
 The CLI path (`scripts/bundle-macos.sh --pkg`) still exists as an alternative.
@@ -1054,7 +1095,8 @@ does disabling instantly restore it) is required before claiming it works.
 - Shipping deployment target is **macOS 15.6** (Info.plist + project.yml). The
   SwiftPM `Package.swift` stays at macOS 14 for dev (`.v15` would force Swift 6
   tools / strict concurrency). The code uses no APIs newer than 14
-  (`NSView.displayLink`); raising the target higher buys nothing but loses users
+  (`NSView.displayLink`) without an `#available` guard (process taps 14.2,
+  the offer-code sheet 15.0, `purchase(confirmIn:)` 15.2); raising the target higher buys nothing but loses users
   — flagged to Daniel.
 - Swift 5.9. Prefer public frameworks (AppKit,
   Metal, QuartzCore, CoreGraphics). Flag any private API in this file first.
