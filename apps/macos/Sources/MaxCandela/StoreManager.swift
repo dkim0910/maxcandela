@@ -85,6 +85,11 @@ final class StoreManager {
 
     /// The current license state: a verified, unrevoked App Store entitlement
     /// wins; otherwise the trial clock decides.
+    ///
+    /// Main actor: it writes `ownsLifetime`, which the menu reads on the main
+    /// thread. A plain `async` method runs off the caller's actor, so two
+    /// overlapping checks (a licence refresh and a click) raced on that write.
+    @MainActor
     func currentState() async -> LicenseState {
         #if DEBUG
         // Force a license state for testing:
@@ -136,6 +141,9 @@ final class StoreManager {
 
     /// Load products from the App Store. Harmless to call repeatedly; no-ops
     /// outside an App Store environment (dev builds without a receipt).
+    /// Main actor for the same reason as `currentState()`: `products` is read
+    /// by the menu and the paywall on the main thread.
+    @MainActor
     func loadProducts() async {
         guard products.isEmpty else { return }
         do {

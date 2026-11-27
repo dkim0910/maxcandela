@@ -883,6 +883,13 @@ final class MenuBarController {
             if brightness.isEnabled {
                 brightness.toggle()
                 refresh()
+            } else if brightness.wantsPersistedBoost {
+                // Not running, but still the saved intent — held off by the
+                // battery or app rule, or waiting on the launch licence check.
+                // "Off" has to clear that too, or the boost comes back by
+                // itself when the hold lifts.
+                brightness.disable()
+                refresh()
             }
             return .off
         }
