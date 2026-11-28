@@ -1,3 +1,60 @@
+# App Review reply — 2.1.4 (24), information request, 2026-11-27
+
+Submission ID `1dbf648f-39b4-4926-acea-a718a6c8b42e`, reviewed on a MacBook Air
+(15-inch, M3). Not a rejection of the code: two questions, answered by reply,
+**no new binary**. Apple asked (2.1) which API keeps the screen awake, and
+(2.4.5(i)) where `device.bluetooth`, `files.downloads.read-write` and
+`personal-information.calendars` are used.
+
+Every statement below was checked against the source on 2026-11-28:
+`KeepAwakeTool` is the only `IOPMAssertion*` caller in `Sources/` (no
+`beginActivity`, no other assertion type); the assertion doc is quoted from the
+SDK's `IOPMLib.h`; menu labels, row titles and messages are the literal strings
+in `KeepAwakeTool`, `CalendarTool`, `MonthCalendarTool`, `BluetoothTool` and
+`FileShelfPanel`/`FileShelfConvert`. The menu paths assume the default flat
+layout ("Tools" / "Pro Tools" section headings).
+
+App Store Connect caps a reply at **4,000 characters** (the first draft was
+764 over). This version is 3,332.
+
+## Reply text (paste into App Store Connect)
+
+```
+Hello,
+
+Thank you for the review. Our answers are below. Everything described is in build 24 as submitted.
+
+GUIDELINE 2.1 — KEEPING THE SCREEN AWAKE
+
+Only the "Keep Awake" tool (Tools section of the menu) keeps the screen awake. It uses one public IOKit API:
+
+• IOPMAssertionCreateWithName(kIOPMAssertionTypePreventUserIdleDisplaySleep, kIOPMAssertionLevelOn, "MaxCandela Keep Awake", &assertionID), called when the user picks a duration.
+• IOPMAssertionRelease(assertionID), called to end it.
+
+While the assertion is held, the display does not dim or turn off from inactivity, and, as IOPMLib.h documents, the Mac does not idle-sleep. Sleep the user asks for (closing the lid, Apple menu > Sleep) still happens. The purpose is to keep the screen on while presenting, reading or watching a long download.
+
+The assertion is created only when the user clicks Keep Awake > For 30 Minutes, 1 Hour, 2 Hours, 4 Hours, or Until I Turn It Off. It is never created at launch or automatically. It is released on Keep Awake > Off, when the time runs out, and at quit. macOS also drops it if the process exits.
+
+To verify: choose For 30 Minutes, then run "pmset -g assertions" in Terminal. It lists a PreventUserIdleDisplaySleep assertion named "MaxCandela Keep Awake". Choose Off and the assertion is gone. The app uses no other sleep-prevention API.
+
+GUIDELINE 2.4.5(i) — ENTITLEMENTS
+
+All three are used by Pro tools. The 14-day free trial unlocks them, and they appear under the menu's "Pro Tools" heading. Each permission is requested only when the user clicks that tool's "Allow … Access…" row, never at launch. Nothing these tools read leaves the Mac.
+
+com.apple.security.personal-information.calendars
+Next Meeting (Pro Tools > Next Meeting > Allow Calendar Access…) calls EKEventStore.requestFullAccessToEvents. It then lists up to six events in the next 36 hours, with a "Join" item for Zoom, Google Meet, Teams, Webex or Whereby links. Once access is granted, Tools > Calendar also marks days that have events and lists the events of the day you click. Access is read-only. With no upcoming events it shows "Nothing in the next day and a half"; add an event in Calendar to see one.
+
+com.apple.security.device.bluetooth
+Bluetooth (Pro Tools > Bluetooth > Allow Bluetooth Access…) creates a CBCentralManager, which shows the system prompt. It then lists paired devices (IOBluetoothDevice pairedDevices) and checkmarks the connected ones. Clicking a device connects or disconnects it (openConnection / closeConnection). Where a device offers the standard GATT Battery Service (0x180F), its battery level is shown. With no paired devices it shows "No paired devices"; pair a keyboard, mouse or headphones in System Settings > Bluetooth to see one.
+
+com.apple.security.files.downloads.read-write
+File Shelf (Pro Tools > File Shelf > Show Shelf): drop images or PDFs on the shelf, select them, and use the Convert pop-up. It saves images as JPEG, PNG or HEIC (optionally resized or without location data) and merges PDFs. The new file is written to ~/Downloads under a new name, and the pop-up says "New files go to Downloads". Downloads is used because the sandbox does not allow writing next to the original. Nothing is overwritten, and the dropped files are never modified.
+
+Thank you, and please let us know if you need anything else.
+```
+
+---
+
 # App Review reply — 1.0.4 (4) rejection, 2026-07-20
 
 Submission ID `dd1bf338-4793-4df1-ac57-89e8db931fd2`. Five issues: **two were
